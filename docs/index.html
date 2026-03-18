@@ -775,7 +775,7 @@
         <th class="sortable" data-key="cagr12"    id="th-cagr12">12M ↕</th>
         <th class="sortable" data-key="cagr36"    id="th-cagr36">36M ↕</th>
         <th class="sortable" data-key="cagr60"    id="th-cagr60">60M ↕</th>
-        <th class="sortable col-alpha" data-key="alpha" id="th-alpha">α ↕</th>
+        <th class="sortable col-alpha" data-key="alpha" id="th-alpha" title="Alpha: retorno do fundo menos o benchmark no mesmo período.&#10;Benchmark: IBOV para fundos de ações, CDI para multimercados.&#10;Mostra quanto o gestor entregou além do mercado (janela da coluna de ordenação).&#10;Verde = superou o benchmark · Vermelho = ficou abaixo">Alpha ↕</th>
         <th class="sortable" data-key="inception" id="th-inception">Início ↕</th>
         <th class="sortable" data-key="tenure"    id="th-tenure">Track Record ↕</th>
       </tr>
@@ -961,6 +961,7 @@
 </div><!-- /tab-analise -->
 
 <div class="legend">
+  <div class="legend-item"><span class="legend-key">Alpha</span> <span>retorno do fundo menos IBOV (equity) ou CDI (multimercado) na janela ordenada</span></div>
   <div class="legend-status">
     <span class="status-dot loading" id="statusDot"></span><span id="statusText">Carregando…</span>
     <span id="statusDate"></span>
@@ -1113,11 +1114,24 @@ function calcTargetReturn(f) {
   const MEAN_REV    = 0.25;
   const final       = adjusted * (1 - MEAN_REV) + anchor60 * MEAN_REV;
 
+  // Track-record confidence discount:
+  // Funds with short history have correlated CAGR samples (12M, 36M, inception
+  // all overlap heavily) — this overstates estimation confidence.
+  // Discount pulls the estimate toward a conservative floor (half the CDI proxy)
+  // proportionally to the lack of track record. Full confidence at 5+ years.
+  const inceptionYearsForDiscount = (meta.inception && f.latestDate)
+    ? (new Date(f.latestDate) - new Date(meta.inception + 'T00:00:00')) / (365.25 * 86400000)
+    : 10;
+  const trackConfidence = Math.min(1, inceptionYearsForDiscount / 5);  // 0..1
+  const conservativeFloor = 8;  // approximate CDI proxy as floor
+  const discounted = final * trackConfidence + conservativeFloor * (1 - trackConfidence);
+
   return {
-    value:    final,
+    value:    discounted,
     raw:      rawAvg,
     sigma:    sigma,
     penalty:  penalty,
+    trackYears: parseFloat(inceptionYearsForDiscount.toFixed(1)),
     samples:  samples,   // tooltip: [[anos, cagr], ...]
   };
 }
@@ -1213,7 +1227,7 @@ function sortBy(key) {
   render();
 }
 
-const TH_LABELS = { cagr12:'12M', cagr36:'36M', cagr60:'60M', alpha:'α', inception:'Início', tenure:'Track Record' };
+const TH_LABELS = { cagr12:'12M', cagr36:'36M', cagr60:'60M', alpha:'Alpha', inception:'Início', tenure:'Track Record' };
 
 function updateHeaders() {
   Object.keys(TH_LABELS).forEach(k => {
@@ -1852,6 +1866,9 @@ function updatePortfolio() {
           : '';
         const rawNote = (Math.abs(target.raw - target.value) > 0.05)
           ? `\nBruto (pesos √T): ${target.raw >= 0 ? '+' : ''}${target.raw.toFixed(1)}%  →  final: ${sign}${v.toFixed(1)}%`
+          : '';
+        const trackNote = (target.trackYears != null && target.trackYears < 5)
+          ? `\nHistórico: ${target.trackYears.toFixed(1)} anos → desconto de confiança aplicado`
           : '';
         targetHtml = `<div class="alloc-target-wrap">
           <span class="port-alloc-target ${cls}">${sign}${v.toFixed(1)}%</span>
@@ -2633,11 +2650,15 @@ function maxSharpeWeights(cnpjs, mus, cdiTarget, cov) {
 // (mais interessante que simplesmente alocar 100% no melhor)
 // Se não conseguir Sharpe, usa pesos uniformes
 function maxReturnWeights(mus) {
-  // Aloca mais nos fundos de maior retorno (proporcional ao excesso sobre o mínimo)
-  const minMu = Math.min(...mus);
-  const excess = mus.map(m => Math.max(0, m - minMu + 0.01));
-  const tot    = excess.reduce((a, b) => a + b, 0);
-  return excess.map(x => x / tot);
+  // Pesos proporcionais ao retorno alvo de cada fundo.
+  // Usa softmax com temperatura 0.3 para dar separação clara entre fundos
+  // sem concentrar 100% no único melhor (o que seria idêntico a não diversificar).
+  // Temperatura baixa → mais concentrado no melhor; alta → mais uniforme.
+  const TEMP = 3.0;
+  const maxMu = Math.max(...mus);
+  const exp_ = mus.map(m => Math.exp((m - maxMu) / TEMP));
+  const sumE  = exp_.reduce((a, b) => a + b, 0);
+  return exp_.map(x => x / sumE);
 }
 
 // ── Gera todas as combinações C(n, k) ────────────────────────────────────────
@@ -2758,9 +2779,12 @@ function runOptimizer() {
           w = maxSharpeWeights(combo, mus, cdiTarget, cov);
           if (!w) w = minVolWeights(cov);  // fallback
         } else {
-          // Máx. retorno: primeiro tenta Sharpe, depois proporcional
-          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
-          if (!w) w = maxReturnWeights(mus);
+          // Máx. retorno: pesos proporcionais ao excesso de retorno alvo.
+          // NÃO usa maxSharpeWeights aqui — o portfólio tangente maximiza
+          // Sharpe, não retorno. Usar Sharpe para selecionar pesos em modo
+          // "máx. retorno" concentra demais em ativos de alto Sharpe e
+          // produz resultados inconsistentes entre diferentes valores de k.
+          w = maxReturnWeights(mus);
         }
         if (!w) w = new Array(k).fill(1 / k);  // fallback uniforme
 
@@ -2937,10 +2961,14 @@ function calcAlpha(f, window) {
 }
 
 function fmtAlpha(v) {
-  if (v == null) return '<span class="cagr-val na">N/D</span>';
+  if (v == null) return '<span class="cagr-val na" title="Sem dados suficientes para calcular o alpha">N/D</span>';
   const sign = v >= 0 ? '+' : '';
   const cls  = v >= 0 ? 'pos' : 'neg';
-  return '<span class="cagr-val ' + cls + '" style="font-size:0.78rem">' + sign + v.toFixed(1) + 'pp</span>';
+  const tip  = (v >= 0
+    ? sign + v.toFixed(1) + 'pp acima do benchmark (IBOV ou CDI) no período'
+    : v.toFixed(1) + 'pp abaixo do benchmark (IBOV ou CDI) no período')
+    + '\nJanela = coluna de ordenação ativa (12M, 36M ou 60M)';
+  return '<span class="cagr-val ' + cls + '" style="font-size:0.78rem" title="' + tip + '">' + sign + v.toFixed(1) + 'pp</span>';
 }
 
 
