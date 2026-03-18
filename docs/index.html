@@ -670,21 +670,21 @@
     background:transparent; color:var(--muted); cursor:pointer; transition:all 0.15s;
   }
   .chart-fund-toggle.active { color:#fff; border-color:transparent; }
-  #chartCanvas { width:100%; height:380px; }
+  #chartCanvas { width:100%; height:100%; display:block; }
 
   /* ── Analysis tab ── */
   .analysis-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; }
   @media(max-width:700px){ .analysis-grid { grid-template-columns:1fr; } }
   .analysis-card {
     background:var(--surface); border:1px solid var(--border); border-radius:10px;
-    padding:1rem 1.1rem;
+    padding:1rem 1.1rem; min-height:80px;
   }
   .analysis-card-title {
     font-family:'Courier New',monospace; font-size:0.6rem; text-transform:uppercase;
     letter-spacing:0.1em; color:var(--accent); margin-bottom:0.8rem; font-weight:bold;
   }
   /* scatter */
-  #scatterCanvas { width:100%; height:320px; }
+  #scatterCanvas { width:100%; height:100%; display:block; }
   /* heatmap */
   .heatmap-wrap { overflow-x:auto; }
   .heatmap-table { border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.6rem; width:100%; }
@@ -692,7 +692,7 @@
   .heatmap-table td { padding:2px 4px; text-align:center; white-space:nowrap; border-radius:2px; font-size:0.58rem; min-width:32px; }
   .heatmap-table .fund-label { text-align:left; color:var(--text); padding-right:8px; white-space:nowrap; max-width:120px; overflow:hidden; text-overflow:ellipsis; }
   /* underwater / drawdown */
-  #underwaterCanvas { width:100%; height:260px; }
+  #underwaterCanvas { width:100%; height:100%; display:block; }
   /* consistency */
   .consistency-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
   .consistency-table th { font-family:'Courier New',monospace; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); padding:4px 8px; text-align:right; border-bottom:1px solid var(--border); }
@@ -904,7 +904,7 @@
   </div>
 
   <div class="chart-fund-toggles" id="chartFundToggles"></div>
-  <canvas id="chartCanvas"></canvas>
+  <div style="position:relative;height:380px;width:100%"><canvas id="chartCanvas"></canvas></div>
   <div id="chartLegend" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:0.6rem;font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted)"></div>
 
 </div><!-- /tab-graficos -->
@@ -915,7 +915,8 @@
 
     <div class="analysis-card" style="grid-column:1/-1">
       <div class="analysis-card-title">Radar risco × retorno</div>
-      <canvas id="scatterCanvas"></canvas>
+      <div id="scatterLoading" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem">calculando…</div>
+      <div style="position:relative;height:320px;width:100%"><canvas id="scatterCanvas"></canvas></div>
     </div>
 
     <div class="analysis-card" style="grid-column:1/-1">
@@ -931,7 +932,7 @@
     <div class="analysis-card">
       <div class="analysis-card-title">Drawdown histórico (underwater)</div>
       <select id="uwFundSelect" style="font-family:'Courier New',monospace;font-size:0.68rem;padding:3px 8px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;width:100%;margin-bottom:0.6rem;outline:none;" onchange="renderUnderwaterChart()"></select>
-      <canvas id="underwaterCanvas"></canvas>
+      <div style="position:relative;height:260px;width:100%"><canvas id="underwaterCanvas"></canvas></div>
     </div>
 
     <div class="analysis-card" style="grid-column:1/-1">
@@ -1499,10 +1500,17 @@ function switchTab(name) {
   } else if (name === 'graficos' && historyData) {
     renderNormalizedChart();
   } else if (name === 'analise' && historyData) {
+    // Stagger heavy renders so browser can paint between each one
     renderScatter();
-    renderHeatmap();
-    renderConsistency();
-    renderStressTest();
+    requestAnimationFrame(function() {
+      renderHeatmap();
+      requestAnimationFrame(function() {
+        renderConsistency();
+        requestAnimationFrame(function() {
+          renderStressTest();
+        });
+      });
+    });
   }
 }
 
@@ -1539,7 +1547,16 @@ async function loadHistory() {
     // Pre-render analysis if already on those tabs
     const activeTab = document.querySelector('.tab-pane.active')?.id;
     if (activeTab === 'tab-graficos') renderNormalizedChart();
-    if (activeTab === 'tab-analise')  { renderScatter(); renderHeatmap(); renderConsistency(); renderStressTest(); }
+    if (activeTab === 'tab-analise')  {
+      renderScatter();
+      requestAnimationFrame(function() {
+        renderHeatmap();
+        requestAnimationFrame(function() {
+          renderConsistency();
+          requestAnimationFrame(function() { renderStressTest(); });
+        });
+      });
+    }
   } catch(e) {
     document.getElementById('portMetrics').innerHTML = '<div class="port-empty">Erro ao carregar history.json</div>';
   }
@@ -3017,7 +3034,7 @@ function renderNormalizedChart() {
         pts.push(parseFloat(val.toFixed(4)));
       }
       datasets.push({ label: fd.nome, data: pts, borderColor: color,
-        borderWidth: 1.5, pointRadius: 0, tension: 0.2, fill: false });
+        borderWidth: 1.5, pointRadius: 0, tension: 0, fill: false });
     } else {
       let cum = 1, peak = 1;
       const pts = [0];
@@ -3027,7 +3044,7 @@ function renderNormalizedChart() {
         pts.push(parseFloat((((cum - peak) / peak) * 100).toFixed(3)));
       }
       datasets.push({ label: fd.nome, data: pts, borderColor: color,
-        borderWidth: 1.2, pointRadius: 0, tension: 0.1,
+        borderWidth: 1.2, pointRadius: 0, tension: 0,
         fill: { target: 'origin', above: 'transparent', below: color + '22' } });
     }
   });
@@ -3059,6 +3076,7 @@ function renderNormalizedChart() {
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
+        decimation: { enabled: true, algorithm: 'lttb', samples: 200, threshold: 200 },
         tooltip: { callbacks: {
           label: function(c) {
             var v = c.parsed.y;
@@ -3113,6 +3131,8 @@ function renderScatter() {
   const ctx = document.getElementById('scatterCanvas');
   if (!ctx) return;
   if (scatterChart) { scatterChart.destroy(); scatterChart = null; }
+  var sl = document.getElementById('scatterLoading');
+  if (sl) sl.style.display = 'none';
 
   scatterChart = new Chart(ctx, {
     type: 'scatter',
