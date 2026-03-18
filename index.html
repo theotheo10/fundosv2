@@ -1,0 +1,3627 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ranking de Fundos — CAGR</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff;
+    --border: rgba(0,0,0,0.08); --text: #1a1916; --muted: #7a7870;
+    --green: #1a7a52; --green-light: #e8f5ee;
+    --blue: #1a4a8a;  --blue-light: #e8eef8;
+    --amber: #a05c00; --amber-light: #fdf3e3;
+    --red: #b83232;   --red-light: #fdeaea;
+    --accent: #e05c2a;
+  }
+  [data-theme=dark] {
+    --bg: #141412; --surface: #1e1d1a;
+    --border: rgba(255,255,255,0.09); --text: #e8e6e0; --muted: #7a7870;
+    --green: #2db87a; --green-light: #0d2e1e;
+    --blue: #4d8fd4;  --blue-light: #0d1e33;
+    --amber: #d4882a; --amber-light: #2a1e07;
+    --red: #e05050;   --red-light: #2a0f0f;
+    --accent: #f07040;
+  }
+  body {
+    font-family: 'Georgia', serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 2rem 1.5rem 4rem;
+    max-width: 1100px; margin: 0 auto;
+    transition: background 0.2s, color 0.2s;
+  }
+  .header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
+    border-bottom: 1px solid var(--border); padding-bottom: 1rem;
+  }
+  h1 { font-size: 1.6rem; font-weight: normal; letter-spacing: -0.02em; }
+  .subtitle { font-size: 0.82rem; color: var(--muted); font-family: 'Courier New', monospace; margin-top: 0.2rem; }
+  .theme-btn {
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
+    padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .theme-btn:hover { border-color: var(--text); color: var(--text); }
+
+  .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); vertical-align: middle; }
+  .status-dot.loading { background: var(--amber); animation: pulse 1.2s infinite; }
+  .status-dot.ok      { background: var(--green); }
+  .status-dot.warn    { background: var(--amber); }
+  .status-dot.error   { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .delayed-badge {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 0.58rem;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--amber-light);
+    color: var(--amber);
+    border: 0.5px solid var(--amber);
+    margin-left: 5px;
+    vertical-align: middle;
+    cursor: default;
+  }
+
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 760px; }
+
+  thead th {
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+    padding: 12px 16px; text-align: right; border-bottom: 1px solid var(--border);
+    background: var(--bg); white-space: nowrap; user-select: none; transition: color 0.15s;
+  }
+  thead th:first-child { text-align: left; }
+  thead th.sortable { cursor: pointer; }
+  thead th.sortable:hover { color: var(--text); }
+  thead th.sorted-desc, thead th.sorted-asc { color: var(--accent); }
+
+  tbody tr.fund-row { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+  tbody tr.fund-row:hover { background: var(--bg); }
+  tbody tr.detail-row { border-bottom: 1px solid var(--border); }
+  tbody tr.detail-row td { padding: 0; }
+  tbody tr.ibov-row { border-bottom: 1px solid var(--border); }
+  tbody tr.ibov-row td { background: var(--bg); }
+  tbody tr.ibov-row:last-child { border-bottom: none; }
+
+  td { padding: 13px 16px; font-size: 0.84rem; text-align: right; vertical-align: middle; }
+  td:first-child { text-align: left; }
+
+  .rank {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    font-family: 'Courier New', monospace; font-size: 0.68rem; font-weight: bold;
+    background: var(--border); color: var(--muted); margin-right: 10px; flex-shrink: 0;
+  }
+  .rank.r1   { background: #c9960c; color: #fff; }
+  .rank.r2   { background: #8a8a8a; color: #fff; }
+  .rank.r3   { background: #9c5c2a; color: #fff; }
+  .rank.ibov { background: var(--blue-light); color: var(--blue); font-size: 0.52rem; width: 30px; letter-spacing: -0.02em; }
+
+  .fund-name-cell { display: flex; align-items: center; min-width: 220px; }
+  .fund-name  { font-size: 0.84rem; line-height: 1.3; }
+  .fund-cnpj  { font-family: 'Courier New', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+  .expand-arrow { font-size: 0.55rem; color: var(--muted); margin-left: 5px; display: inline-block; transition: transform 0.2s; }
+
+  .cagr-val     { font-family: 'Courier New', monospace; font-size: 0.88rem; font-weight: bold; }
+  .cagr-val.pos { color: var(--green); }
+  .cagr-val.neg { color: var(--red); }
+  .cagr-val.na  { color: var(--muted); font-weight: normal; font-size: 0.78rem; }
+  .tenure       { font-family: 'Courier New', monospace; font-size: 0.78rem; color: var(--muted); }
+
+  /* ── Detail panel ── */
+  .detail-panel { overflow: hidden; max-height: 0; transition: max-height 0.35s ease; }
+  .detail-panel.open { max-height: 600px; }
+
+  .detail-inner {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr 1fr;
+    border-top: 2px solid var(--accent);
+  }
+
+  .detail-col {
+    padding: 0.9rem 1.2rem;
+    border-right: 1px solid var(--border);
+  }
+  .detail-col:last-child { border-right: none; }
+
+  .detail-col-header {
+    font-family: 'Courier New', monospace;
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--accent); margin-bottom: 0.8rem; font-weight: bold;
+  }
+
+  .ditem { margin-bottom: 0.6rem; }
+  .ditem:last-child { margin-bottom: 0; }
+  .dlabel { font-family: 'Courier New', monospace; font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 2px; }
+  .dval   { font-size: 0.82rem; color: var(--text); line-height: 1.3; }
+  .dnote  { font-family: 'Courier New', monospace; font-size: 0.62rem; color: var(--muted); margin-top: 2px; }
+
+  .tag { display: inline-block; font-family: 'Courier New', monospace; font-size: 0.6rem; padding: 1px 6px; border-radius: 8px; margin-left: 4px; vertical-align: middle; }
+  .tag-rv  { border: 0.5px solid var(--green); color: var(--green); background: var(--green-light); }
+  .tag-tr  { border: 0.5px solid var(--amber); color: var(--amber); background: var(--amber-light); }
+
+  .perf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem 1rem; }
+  .perf-label { font-family: 'Courier New', monospace; font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 2px; }
+  .perf-val   { font-family: 'Courier New', monospace; font-size: 1.05rem; font-weight: bold; line-height: 1; }
+  .perf-val.pos { color: var(--green); }
+  .perf-val.neg { color: var(--red); }
+  .perf-val.na  { color: var(--muted); font-size: 0.78rem; font-weight: normal; }
+
+  .skeleton { display: inline-block; height: 14px; border-radius: 4px; background: var(--border); animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+  .legend {
+    margin-top: 1.5rem;
+    display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center;
+    font-family: 'Courier New', monospace; font-size: 0.66rem; color: var(--muted);
+    border-top: 1px solid var(--border); padding-top: 1rem;
+  }
+  .legend-item { display: flex; align-items: baseline; gap: 0.4rem; }
+  .legend-key { color: var(--text); font-weight: bold; }
+  .legend-status { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+  .legend-status #statusDate { color: var(--muted); }
+  .legend-status #statusDate:not(:empty)::before { content: '·'; margin-right: 0.5rem; }
+  .legend-src { font-size: 0.62rem; opacity: 0.6; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 0; margin-bottom: 1.8rem; border-bottom: 1px solid var(--border); }
+  .tab-btn {
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    padding: 8px 20px; border: none; background: transparent;
+    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ── Portfolio ── */
+  .port-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    min-height: 600px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  /* Coluna esquerda — composição */
+  .port-left {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .port-header {
+    padding: 1rem 1.2rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .port-section-label {
+    font-family: 'Courier New', monospace;
+    font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.14em;
+    color: var(--muted); margin-bottom: 0.7rem;
+  }
+  .port-patrimonio-row {
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+  .port-patrimonio-row label {
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    white-space: nowrap;
+  }
+  .pat-input-wrap {
+    position: relative; display: flex; align-items: center;
+  }
+  .pat-prefix {
+    position: absolute; left: 10px;
+    font-family: 'Courier New', monospace; font-size: 0.75rem;
+    color: var(--muted); pointer-events: none; user-select: none;
+  }
+  .port-patrimonio-row input {
+    font-family: 'Courier New', monospace; font-size: 0.9rem; font-weight: bold;
+    padding: 7px 10px 7px 28px;
+    border: 1.5px solid var(--border);
+    background: var(--bg); color: var(--text);
+    width: 160px; outline: none;
+    border-radius: 8px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .port-patrimonio-row input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent);
+  }
+  .port-patrimonio-row input:hover:not(:focus) { border-color: var(--text); }
+
+  /* Barra de total */
+  .port-bar-row {
+    display: flex; align-items: center; gap: 0.8rem;
+    padding: 0.7rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+  }
+  .port-bar-track {
+    flex: 1; height: 2px; background: var(--border); overflow: hidden;
+  }
+  .port-bar-fill {
+    height: 100%; background: var(--accent);
+    transition: width 0.15s, background 0.15s;
+  }
+  .port-bar-fill.over { background: var(--red); }
+  .port-bar-label { color: var(--muted); white-space: nowrap; min-width: 70px; text-align: right; }
+  .port-bar-label.full { color: var(--green); }
+  .port-bar-label.over { color: var(--red); }
+
+  /* Lista de fundos */
+  .fund-selector { flex: 1; overflow-y: auto; }
+  .fund-row-port {
+    display: grid;
+    grid-template-columns: 16px 1fr 52px 52px;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 1.2rem;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .fund-row-port:last-child { border-bottom: none; }
+  .fund-row-port:hover { background: var(--bg); }
+  .fund-row-port.inactive { opacity: 0.45; }
+  .fund-row-port input[type=checkbox] {
+    accent-color: var(--accent); width: 13px; height: 13px; cursor: pointer; flex-shrink: 0;
+  }
+  .fund-row-name {
+    font-size: 0.8rem; cursor: pointer; line-height: 1.2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  /* Slider de peso */
+  .fund-slider {
+    -webkit-appearance: none; width: 100%; height: 2px;
+    background: var(--border); outline: none; cursor: pointer;
+    border-radius: 1px;
+  }
+  .fund-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--accent); cursor: pointer;
+  }
+  .fund-slider:disabled { opacity: 0.2; cursor: not-allowed; }
+  /* Input numérico de peso */
+  .fund-weight-input {
+    font-family: 'Courier New', monospace; font-size: 0.75rem;
+    width: 44px; padding: 3px 4px; text-align: right;
+    border: 1px solid transparent; border-radius: 3px;
+    background: transparent; color: var(--text); outline: none;
+  }
+  .fund-weight-input:focus {
+    border-color: var(--accent); background: var(--bg);
+  }
+  .fund-weight-input:disabled { opacity: 0.2; }
+
+  /* Coluna direita */
+  .port-right {
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Painel de métricas */
+  .port-metrics-panel {
+    padding: 1.2rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .port-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem 1rem;
+  }
+  .port-metric {
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+  }
+  .port-metric-label {
+    font-family: 'Courier New', monospace; font-size: 0.54rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .port-metric-val {
+    font-family: 'Courier New', monospace; font-size: 1.05rem; font-weight: bold; line-height: 1;
+  }
+  .port-metric-val.pos { color: var(--green); }
+  .port-metric-val.neg { color: var(--red); }
+  .port-metric-val.na  { color: var(--muted); font-size: 0.78rem; font-weight: normal; }
+  .port-metric-val.neu { color: var(--text); font-size: 0.88rem; }
+
+  /* Alocação visual */
+  .port-alloc-panel {
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .port-alloc-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 36px 82px 62px 56px 56px;
+    align-items: center; gap: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .port-alloc-row:last-child { margin-bottom: 0; }
+  .port-alloc-name {
+    font-size: 0.76rem; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis;
+  }
+  .port-alloc-bar-wrap { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .port-alloc-bar { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  .port-alloc-pct {
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+    color: var(--muted); text-align: right;
+  }
+  .port-alloc-brl {
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+    color: var(--muted); text-align: right;
+  }
+  .port-alloc-target {
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
+    font-weight: bold; text-align: right;
+  }
+  .port-alloc-target.pos { color: var(--green); }
+  .port-alloc-target.neg { color: var(--red); }
+  .port-alloc-target.na  { color: var(--muted); font-weight: normal; font-size: 0.65rem; }
+  .port-alloc-vol, .port-alloc-sharpe {
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+    color: var(--muted); text-align: right;
+  }
+  .port-alloc-total {
+    display: grid;
+    grid-template-columns: 120px 1fr 36px 82px 62px 56px 56px;
+    align-items: center; gap: 0.6rem;
+    margin-top: 0.55rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--border);
+  }
+  .port-alloc-total-label {
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    font-weight: bold; color: var(--text);
+  }
+  .port-alloc-total-val {
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
+    font-weight: bold; text-align: right;
+  }
+  .port-alloc-total-val.pos { color: var(--green); }
+  .port-alloc-total-val.neg { color: var(--red); }
+  .port-alloc-total-val.neu { color: var(--text); }
+  .port-alloc-total-val.muted { color: var(--muted); font-weight: normal; }
+  .port-alloc-header {
+    display: grid;
+    grid-template-columns: 120px 1fr 36px 82px 62px 56px 56px;
+    gap: 0.6rem; margin-bottom: 0.45rem;
+  }
+  .port-alloc-header span {
+    font-family: 'Courier New', monospace; font-size: 0.56rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); text-align: right;
+  }
+  .port-alloc-header span:first-child { text-align: left; }
+  .alloc-target-wrap { position: relative; display: inline-block; width: 100%; text-align: right; }
+  .alloc-target-wrap:hover .alloc-target-tip {
+    opacity: 1; pointer-events: auto; transform: translateY(0);
+  }
+  .alloc-target-tip {
+    position: fixed;
+    background: var(--text); color: var(--bg);
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    padding: 8px 11px; border-radius: 5px; white-space: pre-line;
+    width: 280px;
+    opacity: 0; pointer-events: none;
+    transform: translateY(4px); transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 9999; line-height: 1.8;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  }
+
+  /* Correlação */
+  .port-corr-panel { padding: 1rem 1.4rem; flex: 1; overflow: auto; }
+  .corr-table-wrap { overflow-x: auto; }
+  .corr-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    min-width: 300px;
+  }
+  .corr-table th {
+    color: var(--muted); padding: 4px 6px;
+    text-align: center; font-weight: normal;
+    border-bottom: 1px solid var(--border);
+  }
+  .corr-table td { padding: 4px 6px; text-align: center; }
+  .port-empty {
+    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    color: var(--muted); padding: 1.5rem 0; text-align: center;
+  }
+
+
+  /* ── Simulador de IR ── */
+  .ir-section {
+    margin-top: 2rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .ir-header {
+    padding: 1rem 1.4rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 1.2rem; flex-wrap: wrap;
+  }
+  .ir-header-title {
+    font-size: 0.72rem; font-family: 'Courier New', monospace;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+  }
+  .ir-slider-wrap {
+    display: flex; align-items: center; gap: 0.7rem; flex: 1; min-width: 220px;
+  }
+  .ir-slider-label {
+    font-family: 'Courier New', monospace; font-size: 0.68rem; color: var(--muted);
+    white-space: nowrap;
+  }
+  .ir-slider {
+    flex: 1; accent-color: var(--accent);
+    height: 3px; cursor: pointer;
+  }
+  .ir-slider-val {
+    font-family: 'Courier New', monospace; font-size: 0.8rem;
+    font-weight: bold; color: var(--text); min-width: 40px; text-align: right;
+  }
+  .ir-empty {
+    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    color: var(--muted); padding: 1.5rem; text-align: center;
+  }
+  .ir-table-wrap { overflow-x: auto; }
+  .ir-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 0.76rem; min-width: 680px;
+  }
+  .ir-table thead th {
+    font-family: 'Courier New', monospace; font-size: 0.56rem;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    padding: 0.5rem 0.7rem; text-align: right; border-bottom: 1px solid var(--border);
+    background: var(--bg); white-space: nowrap;
+  }
+  .ir-table thead th:first-child { text-align: left; }
+  .ir-table tbody td {
+    padding: 0.55rem 0.7rem; text-align: right;
+    border-bottom: 1px solid var(--border);
+    font-family: 'Courier New', monospace; font-size: 0.75rem;
+  }
+  .ir-table tbody td:first-child {
+    text-align: left; font-family: inherit; font-size: 0.77rem;
+  }
+  .ir-table tbody tr:last-child td { border-bottom: none; }
+  .ir-table tbody tr.ir-total-row td {
+    border-top: 2px solid var(--border);
+    font-weight: bold; background: var(--bg);
+  }
+  .ir-val-pos  { color: var(--green); }
+  .ir-val-neg  { color: var(--red); }
+  .ir-val-muted { color: var(--muted); font-size: 0.7rem; }
+  .ir-custo-cell { position: relative; display: inline-block; width: 100%; text-align: right; cursor: default; }
+  .ir-custo-eco  { font-weight: bold; display: block; }
+  .ir-custo-real { font-size: 0.65rem; color: var(--muted); display: block; margin-top: 1px; }
+  .ir-custo-cell:hover .ir-custo-tip {
+    opacity: 1; pointer-events: auto; transform: translateY(0);
+  }
+  .ir-custo-tip {
+    position: fixed;
+    background: var(--text); color: var(--bg);
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    padding: 10px 13px; border-radius: 6px; white-space: pre-line;
+    width: 340px;
+    opacity: 0; pointer-events: none;
+    transform: translateY(4px); transition: opacity 0.15s ease, transform 0.15s ease;
+    z-index: 9999; line-height: 1.8; text-align: left;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  }
+  .ir-trib-badge {
+    display: inline-block; font-family: 'Courier New', monospace;
+    font-size: 0.58rem; padding: 1px 5px; border-radius: 4px;
+    margin-left: 4px; vertical-align: middle;
+  }
+  .ir-trib-rv { border: 0.5px solid var(--green); color: var(--green); background: var(--green-light); }
+  .ir-trib-tr { border: 0.5px solid var(--amber); color: var(--amber); background: var(--amber-light); }
+  .ir-legend {
+    display: flex; gap: 0.5rem; padding: 0.7rem 1rem 0.9rem;
+    flex-wrap: wrap;
+  }
+  .ir-pill {
+    position: relative;
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    padding: 3px 9px; border-radius: 20px; cursor: default;
+    border: 1px solid var(--border); color: var(--muted);
+    transition: border-color 0.15s, color 0.15s;
+    user-select: none;
+  }
+  .ir-pill:hover { border-color: var(--text); color: var(--text); }
+  .ir-pill .ir-pill-icon { font-size: 0.58rem; opacity: 0.7; }
+  .ir-pill:hover .ir-custo-tip {
+    opacity: 1; pointer-events: auto; transform: translateY(0);
+  }
+
+  /* ── Otimizador ── */
+  .opt-bar {
+    padding: 0.7rem 1rem 0.6rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+  }
+  .opt-bar-label {
+    font-family: 'Courier New', monospace; font-size: 0.56rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 0.55rem;
+  }
+  .opt-controls {
+    display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+  }
+  .opt-size-group, .opt-obj-group {
+    display: flex; gap: 0.3rem;
+  }
+  .opt-divider {
+    width: 1px; background: var(--border); margin: 0 0.1rem; align-self: stretch;
+  }
+  .opt-btn {
+    font-family: 'Courier New', monospace; font-size: 0.64rem;
+    padding: 4px 9px; border-radius: 5px; cursor: pointer;
+    border: 1px solid var(--border);
+    background: transparent; color: var(--muted);
+    transition: all 0.12s; white-space: nowrap;
+  }
+  .opt-btn:hover  { border-color: var(--accent); color: var(--accent); }
+  .opt-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .opt-run {
+    font-family: 'Courier New', monospace; font-size: 0.64rem;
+    padding: 4px 12px; border-radius: 5px; cursor: pointer;
+    background: var(--accent); border: 1px solid var(--accent); color: #fff;
+    font-weight: bold; transition: opacity 0.12s; white-space: nowrap;
+    margin-left: auto;
+  }
+  .opt-run:hover    { opacity: 0.85; }
+  .opt-run:disabled { opacity: 0.4; cursor: not-allowed; }
+  .opt-status {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    color: var(--muted); margin-top: 0.4rem; min-height: 1rem;
+  }
+  .opt-constraint-row {
+    display: flex; align-items: center; gap: 0.6rem;
+    margin-top: 0.5rem; flex-wrap: wrap;
+  }
+  .opt-constraint-label {
+    font-family: 'Courier New', monospace; font-size: 0.6rem;
+    color: var(--muted); white-space: nowrap;
+  }
+  .opt-maxw-slider, .opt-minw-slider {
+    flex: 1; min-width: 80px; max-width: 120px;
+    accent-color: var(--accent); height: 3px; cursor: pointer;
+  }
+  .opt-maxw-val, .opt-minw-val {
+    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    font-weight: bold; color: var(--text); min-width: 36px;
+  }
+  .opt-constraint-warn {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    color: var(--red); margin-top: 0.25rem; display: none;
+  }
+  @media (max-width: 900px) {
+    .port-layout { grid-template-columns: 1fr; }
+    .port-left { border-right: none; border-bottom: 1px solid var(--border); }
+    .port-metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 700px) {
+    body { padding: 1.2rem 1rem 3rem; }
+    h1   { font-size: 1.3rem; }
+    .detail-inner { grid-template-columns: 1fr; }
+  }
+
+  /* ── Filter chips ── */
+  .filter-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:1rem; align-items:center; }
+  .filter-chip {
+    font-family:'Courier New',monospace; font-size:0.65rem; padding:3px 10px;
+    border-radius:20px; border:0.5px solid var(--border); background:transparent;
+    color:var(--muted); cursor:pointer; transition:all 0.15s; white-space:nowrap;
+  }
+  .filter-chip:hover { border-color:var(--text); color:var(--text); }
+  .filter-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .filter-sep { width:1px; height:14px; background:var(--border); align-self:center; }
+  .filter-label { font-family:'Courier New',monospace; font-size:0.6rem; color:var(--muted); }
+
+  /* ── Custom period selector ── */
+  .period-bar { display:flex; gap:10px; align-items:center; margin-bottom:1rem; flex-wrap:wrap; }
+  .period-bar label { font-family:'Courier New',monospace; font-size:0.65rem; color:var(--muted); }
+  .period-bar input[type=date] {
+    font-family:'Courier New',monospace; font-size:0.72rem; padding:3px 8px;
+    border:0.5px solid var(--border); background:var(--surface); color:var(--text);
+    border-radius:4px; outline:none;
+  }
+  .period-bar input[type=date]:focus { border-color:var(--accent); }
+  .period-badge { font-family:'Courier New',monospace; font-size:0.62rem; padding:2px 8px;
+    background:var(--blue-light); color:var(--blue); border-radius:12px; }
+  .period-clear { font-family:'Courier New',monospace; font-size:0.62rem; padding:2px 8px;
+    border:0.5px solid var(--border); border-radius:12px; background:transparent;
+    color:var(--muted); cursor:pointer; }
+  .period-clear:hover { color:var(--text); border-color:var(--text); }
+  th.col-alpha { white-space:nowrap; }
+
+  /* ── Tabs: graficos + analise (CSS already defined above) ── */
+
+  /* ── Chart tab ── */
+  .chart-controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:1.2rem; }
+  .chart-controls label { font-family:'Courier New',monospace; font-size:0.65rem; color:var(--muted); }
+  .chart-controls select {
+    font-family:'Courier New',monospace; font-size:0.72rem; padding:3px 8px;
+    border:0.5px solid var(--border); background:var(--surface); color:var(--text);
+    border-radius:4px; outline:none; cursor:pointer;
+  }
+  .chart-fund-toggles { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:1rem; }
+  .chart-fund-toggle {
+    font-size:0.62rem; font-family:'Courier New',monospace;
+    padding:2px 9px; border-radius:12px; border:0.5px solid var(--border);
+    background:transparent; color:var(--muted); cursor:pointer; transition:all 0.15s;
+  }
+  .chart-fund-toggle.active { color:#fff; border-color:transparent; }
+  #chartCanvas { width:100%; height:380px; }
+
+  /* ── Analysis tab ── */
+  .analysis-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; }
+  @media(max-width:700px){ .analysis-grid { grid-template-columns:1fr; } }
+  .analysis-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:1rem 1.1rem;
+  }
+  .analysis-card-title {
+    font-family:'Courier New',monospace; font-size:0.6rem; text-transform:uppercase;
+    letter-spacing:0.1em; color:var(--accent); margin-bottom:0.8rem; font-weight:bold;
+  }
+  /* scatter */
+  #scatterCanvas { width:100%; height:320px; }
+  /* heatmap */
+  .heatmap-wrap { overflow-x:auto; }
+  .heatmap-table { border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.6rem; width:100%; }
+  .heatmap-table th { padding:3px 6px; color:var(--muted); font-weight:normal; white-space:nowrap; }
+  .heatmap-table td { padding:2px 4px; text-align:center; white-space:nowrap; border-radius:2px; font-size:0.58rem; min-width:32px; }
+  .heatmap-table .fund-label { text-align:left; color:var(--text); padding-right:8px; white-space:nowrap; max-width:120px; overflow:hidden; text-overflow:ellipsis; }
+  /* underwater / drawdown */
+  #underwaterCanvas { width:100%; height:260px; }
+  /* consistency */
+  .consistency-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
+  .consistency-table th { font-family:'Courier New',monospace; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); padding:4px 8px; text-align:right; border-bottom:1px solid var(--border); }
+  .consistency-table th:first-child { text-align:left; }
+  .consistency-table td { padding:6px 8px; text-align:right; border-bottom:1px solid var(--border); font-family:'Courier New',monospace; font-size:0.72rem; }
+  .consistency-table td:first-child { text-align:left; font-family:Georgia,serif; font-size:0.8rem; }
+  /* stress test */
+  .stress-scenario { margin-bottom:0.8rem; padding:0.7rem 0.9rem; border:0.5px solid var(--border); border-radius:7px; }
+  .stress-scenario-title { font-family:'Courier New',monospace; font-size:0.62rem; color:var(--muted); margin-bottom:0.4rem; }
+  .stress-bars { display:flex; flex-direction:column; gap:4px; }
+  .stress-bar-row { display:flex; align-items:center; gap:6px; }
+  .stress-bar-name { font-size:0.65rem; color:var(--muted); width:90px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .stress-bar-track { flex:1; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+  .stress-bar-fill { height:100%; border-radius:3px; background:var(--red); }
+  .stress-bar-fill.recovery { background:var(--green); }
+  .stress-bar-val { font-family:'Courier New',monospace; font-size:0.62rem; width:48px; text-align:right; flex-shrink:0; }
+  /* aportes periodicos */
+  .aportes-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:1rem; }
+  .aportes-grid label { font-family:'Courier New',monospace; font-size:0.65rem; color:var(--muted); display:block; margin-bottom:3px; }
+  .aportes-grid input, .aportes-grid select {
+    font-family:'Courier New',monospace; font-size:0.78rem; padding:4px 8px;
+    border:0.5px solid var(--border); background:var(--surface); color:var(--text);
+    border-radius:4px; width:100%; outline:none;
+  }
+  .aportes-grid input:focus, .aportes-grid select:focus { border-color:var(--accent); }
+
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Ranking de Fundos</h1>
+    <div class="subtitle">CAGR · dados diários da CVM · atualizado automaticamente</div>
+  </div>
+  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">☽ escuro</button>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="tab-btn-ranking" onclick="switchTab('ranking')">Ranking</button>
+  <button class="tab-btn" id="tab-btn-portfolio" onclick="switchTab('portfolio')">Portfólio</button>
+  <button class="tab-btn" id="tab-btn-graficos" onclick="switchTab('graficos')">Gráficos</button>
+  <button class="tab-btn" id="tab-btn-analise" onclick="switchTab('analise')">Análise</button>
+</div>
+
+<div id="tab-ranking" class="tab-pane active">
+
+<div class="filter-bar">
+  <span class="filter-label">Tipo:</span>
+  <button class="filter-chip active" data-filter="tipo" data-val="" onclick="setFilter('tipo','',this)">Todos</button>
+  <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
+  <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
+  <button class="filter-chip" data-filter="tipo" data-val="Multimercado" onclick="setFilter('tipo','Multimercado',this)">Multimercado</button>
+  <span class="filter-sep"></span>
+  <span class="filter-label">Exposição:</span>
+  <button class="filter-chip active" data-filter="expo" data-val="" onclick="setFilter('expo','',this)">Todos</button>
+  <button class="filter-chip" data-filter="expo" data-val="Brasil" onclick="setFilter('expo','Brasil',this)">Brasil</button>
+  <button class="filter-chip" data-filter="expo" data-val="Internacional" onclick="setFilter('expo','Internacional',this)">Internacional</button>
+  <span class="filter-sep"></span>
+  <span class="filter-label">IR:</span>
+  <button class="filter-chip active" data-filter="trib" data-val="" onclick="setFilter('trib','',this)">Todos</button>
+  <button class="filter-chip" data-filter="trib" data-val="RV" onclick="setFilter('trib','RV',this)">RV</button>
+  <button class="filter-chip" data-filter="trib" data-val="TR" onclick="setFilter('trib','TR',this)">TR</button>
+</div>
+
+<div class="period-bar">
+  <span class="filter-label">Período customizado:</span>
+  <label>De: <input type="date" id="periodStart" onchange="onPeriodChange()"></label>
+  <label>Até: <input type="date" id="periodEnd" onchange="onPeriodChange()"></label>
+  <span id="periodBadge" style="display:none" class="period-badge"></span>
+  <button class="period-clear" onclick="clearPeriod()" style="display:none" id="periodClear">limpar</button>
+  <span id="periodNote" style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted)"></span>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#&nbsp;&nbsp;Fundo</th>
+        <th class="sortable" data-key="cagr12"    id="th-cagr12">12M ↕</th>
+        <th class="sortable" data-key="cagr36"    id="th-cagr36">36M ↕</th>
+        <th class="sortable" data-key="cagr60"    id="th-cagr60">60M ↕</th>
+        <th class="sortable col-alpha" data-key="alpha" id="th-alpha">α ↕</th>
+        <th class="sortable" data-key="inception" id="th-inception">Início ↕</th>
+        <th class="sortable" data-key="tenure"    id="th-tenure">Track Record ↕</th>
+      </tr>
+    </thead>
+    <tbody id="fundBody"></tbody>
+  </table>
+</div>
+
+</div><!-- /tab-ranking -->
+
+<div id="tab-portfolio" class="tab-pane">
+  <div class="port-layout">
+
+    <!-- Coluna esquerda: composição -->
+    <div class="port-left">
+      <div class="port-header">
+        <div class="port-section-label">Composição</div>
+        <div class="port-patrimonio-row">
+          <label>Patrimônio</label>
+          <div class="pat-input-wrap">
+            <span class="pat-prefix">R$</span>
+            <input type="text" id="portPatrimonio" value="1.000.000"
+              oninput="onPatrimonioInput(this)" onblur="onPatrimonioBlur(this)"
+              onkeydown="if(event.key==='Enter'){this.blur();}">
+          </div>
+        </div>
+      </div>
+      <div class="port-bar-row">
+        <div class="port-bar-track"><div class="port-bar-fill" id="portBarFill" style="width:0%"></div></div>
+        <span class="port-bar-label" id="portTotalPct">0% alocado</span>
+      </div>
+      <div class="opt-bar">
+        <div class="opt-bar-label">Otimizador de carteira</div>
+        <div class="opt-controls">
+          <div class="opt-size-group">
+            <button class="opt-btn active" id="optN3"  onclick="setOptN(3)">3 fundos</button>
+            <button class="opt-btn"        id="optN5"  onclick="setOptN(5)">5 fundos</button>
+            <button class="opt-btn"        id="optN10" onclick="setOptN(10)">10 fundos</button>
+          </div>
+          <div class="opt-divider"></div>
+          <div class="opt-obj-group">
+            <button class="opt-btn active" id="optObjSharpe"  onclick="setOptObj('sharpe')">Máx. Sharpe</button>
+            <button class="opt-btn"        id="optObjReturn"  onclick="setOptObj('return')">Máx. retorno</button>
+            <button class="opt-btn"        id="optObjVol"     onclick="setOptObj('vol')">Mín. vol.</button>
+          </div>
+          <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
+        </div>
+        <div class="opt-constraint-row">
+          <span class="opt-constraint-label">Peso máx. por fundo:</span>
+          <input type="range" class="opt-maxw-slider" id="optMaxWSlider"
+            min="10" max="100" value="100" step="5"
+            oninput="onOptMaxWSlider()">
+          <span class="opt-maxw-val" id="optMaxWVal">100%</span>
+          <span class="opt-constraint-label" id="optMaxWNote" style="opacity:0.5">(sem restrição)</span>
+        </div>
+        <div class="opt-constraint-row">
+          <span class="opt-constraint-label">Peso mín. por fundo:</span>
+          <input type="range" class="opt-minw-slider" id="optMinWSlider"
+            min="10" max="300" value="10" step="1"
+            oninput="onOptMinWSlider()">
+          <span class="opt-minw-val" id="optMinWVal">1.0%</span>
+          <span class="opt-constraint-label" id="optMinWNote" style="opacity:0.5">(padrão)</span>
+        </div>
+        <div class="opt-constraint-warn" id="optConstraintWarn">
+          ⚠ restrições incompatíveis para este tamanho de carteira
+        </div>
+        <div class="opt-status" id="optStatus">Aguardando dados…</div>
+      </div>
+      <div class="fund-selector" id="fundSelector"></div>
+    </div>
+
+    <!-- Coluna direita: resultados -->
+    <div class="port-right">
+      <div class="port-metrics-panel">
+        <div class="port-section-label" style="margin-bottom:0.8rem">Métricas do portfólio</div>
+        <div id="portMetrics" class="port-empty">Selecione ao menos um fundo e defina os pesos</div>
+      </div>
+      <div class="port-alloc-panel" id="portAllocPanel" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.5rem">
+          <div class="port-section-label">Alocação</div>
+        </div>
+        <div class="port-alloc-header">
+          <span>Fundo</span><span></span><span>Peso</span><span>Valor</span><span>Ret. alvo</span><span>Vol.</span><span>Sharpe</span>
+        </div>
+        <div id="portAlloc"></div>
+      </div>
+      <div class="port-corr-panel">
+        <div class="port-section-label" style="margin-bottom:0.7rem">Correlação</div>
+        <div id="portCorr" class="port-empty">Selecione ao menos 2 fundos</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Simulador de IR ── -->
+  <div class="ir-section" id="irSection">
+    <div class="ir-header">
+      <span class="ir-header-title">Simulação de IR no resgate</span>
+      <div class="ir-slider-wrap">
+        <span class="ir-slider-label">Prazo até o resgate:</span>
+        <input type="range" class="ir-slider" id="irSlider" min="1" max="20" value="5" step="1"
+               oninput="onIrSlider()">
+        <span class="ir-slider-val" id="irSliderVal">5 anos</span>
+      </div>
+    </div>
+    <div id="irBody" class="ir-empty">Selecione fundos e pesos no portfólio acima</div>
+  </div>
+
+</div><!-- /tab-portfolio -->
+
+
+<div id="tab-graficos" class="tab-pane">
+
+  <div class="chart-controls">
+    <label>Rebase: <select id="chartRebaseDate" onchange="renderNormalizedChart()">
+      <option value="36m">Últimos 36M</option>
+      <option value="24m">Últimos 24M</option>
+      <option value="12m">Últimos 12M</option>
+      <option value="start">Início da série</option>
+    </select></label>
+    <label>Mostrar: <select id="chartMode" onchange="renderNormalizedChart()">
+      <option value="normalized">Cota normalizada (base 100)</option>
+      <option value="drawdown">Underwater (drawdown)</option>
+    </select></label>
+    <label><input type="checkbox" id="chartShowBmk" onchange="renderNormalizedChart()" checked> IBOV</label>
+  </div>
+
+  <div class="chart-fund-toggles" id="chartFundToggles"></div>
+  <canvas id="chartCanvas"></canvas>
+  <div id="chartLegend" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:0.6rem;font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted)"></div>
+
+</div><!-- /tab-graficos -->
+
+<div id="tab-analise" class="tab-pane">
+
+  <div class="analysis-grid">
+
+    <div class="analysis-card" style="grid-column:1/-1">
+      <div class="analysis-card-title">Radar risco × retorno</div>
+      <canvas id="scatterCanvas"></canvas>
+    </div>
+
+    <div class="analysis-card" style="grid-column:1/-1">
+      <div class="analysis-card-title">Heatmap de retornos mensais</div>
+      <div class="heatmap-wrap"><div id="heatmapContainer"></div></div>
+    </div>
+
+    <div class="analysis-card">
+      <div class="analysis-card-title">Score de consistência</div>
+      <div id="consistencyContainer"></div>
+    </div>
+
+    <div class="analysis-card">
+      <div class="analysis-card-title">Drawdown histórico (underwater)</div>
+      <select id="uwFundSelect" style="font-family:'Courier New',monospace;font-size:0.68rem;padding:3px 8px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;width:100%;margin-bottom:0.6rem;outline:none;" onchange="renderUnderwaterChart()"></select>
+      <canvas id="underwaterCanvas"></canvas>
+    </div>
+
+    <div class="analysis-card" style="grid-column:1/-1">
+      <div class="analysis-card-title">Stress test — cenários históricos adversos</div>
+      <div id="stressContainer"></div>
+    </div>
+
+    <div class="analysis-card" style="grid-column:1/-1">
+      <div class="analysis-card-title">Simulador de aportes periódicos (com IR)</div>
+      <div class="aportes-grid">
+        <div><label>Aporte inicial (R$)</label><input type="number" id="apAporteInicial" value="100000" min="0"></div>
+        <div><label>Aporte recorrente (R$)</label><input type="number" id="apAporteRecorrente" value="5000" min="0"></div>
+        <div><label>Frequência</label><select id="apFreq"><option value="monthly">Mensal</option><option value="annual">Anual</option><option value="none">Sem aportes recorrentes</option></select></div>
+        <div><label>Prazo (anos)</label><input type="number" id="apAnos" value="10" min="1" max="30"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem;">
+        <span style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">Fundo:</span>
+        <select id="apFundSelect" style="font-family:'Courier New',monospace;font-size:0.72rem;padding:3px 8px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;outline:none;flex:1;"></select>
+        <button onclick="renderAportes()" style="font-family:'Courier New',monospace;font-size:0.68rem;padding:4px 14px;border:0.5px solid var(--accent);border-radius:4px;background:transparent;color:var(--accent);cursor:pointer;">calcular</button>
+      </div>
+      <div id="aportesResult"></div>
+    </div>
+
+  </div>
+
+</div><!-- /tab-analise -->
+
+<div class="legend">
+  <div class="legend-status">
+    <span class="status-dot loading" id="statusDot"></span><span id="statusText">Carregando…</span>
+    <span id="statusDate"></span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const FUND_META = {
+  "22.232.927/0001-90": { nome:"Tarpon GT",         inception:"2010-07-12", initialQuota:1.2136, maxQuota:30.3767845,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"BTG",      obs:"" },
+  "17.400.251/0001-66": { nome:"Organon",            inception:"2013-02-22", initialQuota:1.0000, maxQuota:23.4157589,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "18.302.338/0001-63": { nome:"Ártica Long Term",   inception:"2013-06-27", initialQuota:0.7647, maxQuota:20.9451521,  tipo:"Long Only",    trib:"RV", expo:"Majoritariamente Brasil",  banco:"BTG / C6", obs:"" },
+  "37.495.383/0001-26": { nome:"Genoa Arpa",         inception:"2021-04-30", initialQuota:1.0000, maxQuota:2.3753795,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"C6",       obs:"" },
+  "42.698.666/0001-05": { nome:"Artax Ultra",        inception:"2022-05-31", initialQuota:1.0000, maxQuota:2.0535150,   tipo:"Long Biased",  trib:"RV", expo:"Internacional",            banco:"Itaú",     obs:"Melhor versão: Itaú Artax Endurance (tributação RV)" },
+  "24.623.392/0001-03": { nome:"Guepardo Long Bias", inception:"2016-07-11", initialQuota:1.0000, maxQuota:8.5831314,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "28.747.685/0001-53": { nome:"Kapitalo Tarkus",    inception:"2017-11-06", initialQuota:1.0000, maxQuota:4.2435095,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"XP",       obs:"" },
+  "10.500.884/0001-05": { nome:"Real Investor",      inception:"2012-02-29", initialQuota:3.6300, maxQuota:31.0097067,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "35.744.790/0001-02": { nome:"Schroder Tech L&S",  inception:"2020-04-01", initialQuota:1.0000, maxQuota:2.8658328,   tipo:"Multimercado", trib:"TR", expo:"Internacional",            banco:"BTG",      obs:"" },
+  "38.954.217/0001-03": { nome:"Pátria Long Biased", inception:"2020-10-30", initialQuota:1.0000, maxQuota:3.0035117,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "32.073.525/0001-43": { nome:"Absolute Pace",      inception:"2018-12-27", initialQuota:1.0000, maxQuota:4.2214960,   tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "21.689.246/0001-92": { nome:"Arbor",              inception:"2015-03-23", initialQuota:1.0000, maxQuota:8.2977230,   tipo:"Long Only",    trib:"RV", expo:"Internacional",            banco:"BTG",      obs:"" },
+  "14.438.229/0001-17": { nome:"Charles River",      inception:"2011-11-07", initialQuota:1.0000, maxQuota:13.4070715,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"C6",       obs:"" },
+  "17.397.315/0001-17": { nome:"SPX Falcon",         inception:"2012-09-17", initialQuota:1.0000, maxQuota:7.3045380,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"Itaú",     obs:"" },
+};
+const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva" };
+
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? '' : 'dark');
+  document.getElementById('themeBtn').textContent = dark ? '☽ escuro' : '☀ claro';
+  localStorage.setItem('theme', dark ? 'light' : 'dark');
+}
+(function() {
+  if (localStorage.getItem('theme') === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.getElementById('themeBtn').textContent = '☀ claro';
+  }
+})();
+
+let funds        = [];
+let ibov         = { cagr12: null, cagr36: null, cagr60: null };
+let cdi          = { cagr12: null, cagr36: null, cagr60: null };
+let currentSort  = 'cagr36';
+let sortDir      = 1;
+const expandedCnpjs = new Set();
+
+function fmtPct(v) {
+  if (v === null || v === undefined || isNaN(v))
+    return '<span class="cagr-val na">N/D</span>';
+  const sign = v >= 0 ? '+' : '';
+  return `<span class="cagr-val ${v >= 0 ? 'pos' : 'neg'}">${sign}${v.toFixed(2)}%</span>`;
+}
+
+function fmtPctLarge(v) {
+  if (v === null || v === undefined || isNaN(v))
+    return '<span class="perf-val na">N/D</span>';
+  const sign = v >= 0 ? '+' : '';
+  return `<span class="perf-val ${v >= 0 ? 'pos' : 'neg'}">${sign}${v.toFixed(1)}%</span>`;
+}
+
+function fmtTenure(cnpj) {
+  const meta = FUND_META[cnpj];
+  const d = meta && meta.inception ? meta.inception : null;
+  if (!d) return '<span class="tenure">—</span>';
+  const start = new Date(d + 'T00:00:00'), today = new Date();
+  let years  = today.getFullYear() - start.getFullYear();
+  let months = today.getMonth()    - start.getMonth();
+  if (today.getDate() < start.getDate()) months--;
+  if (months < 0) { years--; months += 12; }
+  const parts = [];
+  if (years  > 0) parts.push(years  + ' ano'  + (years  !== 1 ? 's' : ''));
+  if (months > 0) parts.push(months + ' mes'  + (months !== 1 ? 'es' : ''));
+  return `<span class="tenure">${parts.join(' e ') || '< 1 mes'}</span>`;
+}
+
+function tenureDays(cnpj) {
+  const meta = FUND_META[cnpj];
+  const d = meta && meta.inception ? meta.inception : null;
+  return d ? (new Date() - new Date(d + 'T00:00:00')) / 86400000 : 0;
+}
+
+function cagrInception(f) {
+  const meta = FUND_META[f.cnpjFmt];
+  if (!meta || !meta.inception || !f.latestDate) return f.cagrInception ?? null;
+  const inceptionQuota = meta.initialQuota ?? 1.0;
+  const latestQuota    = f.latestQuota;
+  if (!latestQuota) return f.cagrInception ?? null;
+  const years = (new Date(f.latestDate) - new Date(meta.inception)) / (365.25 * 86400000);
+  if (years <= 0) return null;
+  return (Math.pow(latestQuota / inceptionQuota, 1 / years) - 1) * 100;
+}
+
+// ── Retorno Alvo ──────────────────────────────────────────────────────────────
+// Metodologia: média ponderada dos CAGRs onde peso = duração do período (anos).
+// Racional: var(CAGR_T) ∝ 1/T  →  estimador de mínima variância usa pesos ∝ T.
+// calcTargetReturn — estimativa do retorno estrutural de um fundo
+//
+// Metodologia:
+//   1. Pesos √T em vez de T:  dobrar o período não dobra a informação —
+//      o erro amostral de um CAGR decresce com √T, então √T é o peso
+//      estatisticamente correto. O 60M (√5≈2.24) ainda domina, mas o
+//      12M (√1=1) não é tão marginalizado quanto nos pesos lineares.
+//
+//   2. Penalização por dispersão ciclical: se os CAGRs de diferentes
+//      períodos divergem muito (σ > ~5pp), o fundo está provavelmente
+//      num pico ou vale de ciclo. Aplicamos um desconto proporcional
+//      à dispersão, limitado a 15% do retorno estimado.
+//
+//   3. Pull de reversão à média (25%): puxa o retorno ajustado em
+//      direção ao 60M (ou inception como fallback). Suaviza distorções
+//      de um 12M excepcionalmente bom ou ruim.
+//
+// Resultado: estimativa mais conservadora e robusta a pontos de ciclo,
+// mantendo transparência total via campo 'samples' no tooltip.
+function calcTargetReturn(f) {
+  const samples = [];
+  if (f.cagr12 != null) samples.push([1.0, f.cagr12]);
+  if (f.cagr36 != null) samples.push([3.0, f.cagr36]);
+  if (f.cagr60 != null) samples.push([5.0, f.cagr60]);
+
+  const meta = FUND_META[f.cnpjFmt] || {};
+  if (meta.inception && f.latestDate) {
+    const inceptionYears = (new Date(f.latestDate) - new Date(meta.inception + 'T00:00:00'))
+                           / (365.25 * 86400000);
+    const ci = cagrInception(f);
+    if (ci != null && inceptionYears > 5.5) {
+      samples.push([inceptionYears, ci]);
+    }
+  }
+
+  if (samples.length === 0) return null;
+
+  // Pesos √T
+  const sqrtWeights = samples.map(([T]) => Math.sqrt(T));
+  const totalW      = sqrtWeights.reduce((a, b) => a + b, 0);
+  const rawAvg      = samples.reduce((s, [, v], i) => s + sqrtWeights[i] * v, 0) / totalW;
+
+  // Dispersão ponderada dos CAGRs (desvio padrão entre períodos)
+  const variance = samples.reduce((s, [, v], i) =>
+    s + sqrtWeights[i] * (v - rawAvg) ** 2, 0) / totalW;
+  const sigma    = Math.sqrt(variance);
+
+  // Penalização: desconto quando os CAGRs de diferentes períodos divergem
+  // (indica fundo em pico/vale cíclico). Limitado a 15% do valor bruto.
+  const penalty  = Math.min(sigma * 0.30, Math.abs(rawAvg) * 0.15);
+  const adjusted = rawAvg >= 0 ? rawAvg - penalty : rawAvg + penalty;
+
+  // Pull de reversão à média: 25% em direção ao 60M (anchor de longo prazo)
+  const anchor60    = f.cagr60 ?? f.cagrInception ?? rawAvg;
+  const MEAN_REV    = 0.25;
+  const final       = adjusted * (1 - MEAN_REV) + anchor60 * MEAN_REV;
+
+  return {
+    value:    final,
+    raw:      rawAvg,
+    sigma:    sigma,
+    penalty:  penalty,
+    samples:  samples,   // tooltip: [[anos, cagr], ...]
+  };
+}
+
+// Retorno alvo do portfólio: E[R_p] = Σ w_i · E[R_i]  (linear nos pesos)
+// As correlações não afetam o retorno esperado — apenas o risco.
+// Sharpe = (E[R_p] - CDI_alvo) / σ_p
+// CDI_alvo: média ponderada dos CAGRs do CDI pelos mesmos períodos (pesos 1, 3, 5)
+// σ_p = √(wᵀ Σ w) usando matriz de covariância histórica dos retornos diários
+function calcPortfolioTargetReturn(selected, wNorm, historyData) {
+  const targets = {};
+  for (const cnpj of selected) {
+    const fData = funds.find(f => f.cnpjFmt === cnpj);
+    if (!fData) continue;
+    const t = calcTargetReturn(fData);
+    if (t) targets[cnpj] = t.value;
+  }
+  if (Object.keys(targets).length === 0) return null;
+
+  // Retorno esperado ponderado do portfólio
+  let expReturn = 0;
+  for (const cnpj of selected) {
+    if (targets[cnpj] != null) expReturn += wNorm[cnpj] * targets[cnpj];
+  }
+
+  // CDI alvo: mesma metodologia dos fundos — média ponderada por período
+  // usa cagr12 (peso 1), cagr36 (peso 3), cagr60 (peso 5) do CDI global
+  let cdiTarget = null;
+  if (cdi) {
+    const cdiSamples = [];
+    if (cdi.cagr12 != null) cdiSamples.push([1, cdi.cagr12]);
+    if (cdi.cagr36 != null) cdiSamples.push([3, cdi.cagr36]);
+    if (cdi.cagr60 != null) cdiSamples.push([5, cdi.cagr60]);
+    if (cdiSamples.length > 0) {
+      const totalW = cdiSamples.reduce((s, [T]) => s + T, 0);
+      cdiTarget    = cdiSamples.reduce((s, [T, v]) => s + T * v, 0) / totalW;
+    }
+  }
+
+  // σ_p usando matriz de covariância histórica: σ_p² = Σ_i Σ_j w_i w_j σ_i σ_j ρ_{ij}
+  let portVol = null;
+  if (historyData && historyData.correlation) {
+    const vols = {};
+    for (const cnpj of selected) {
+      const fd = historyData.funds[cnpj];
+      if (!fd) continue;
+      const rets = fd.returns;
+      const n    = rets.length;
+      const mean = rets.reduce((a, b) => a + b, 0) / n;
+      const var_ = rets.reduce((a, r) => a + (r - mean) ** 2, 0) / (n - 1);
+      vols[cnpj] = Math.sqrt(var_ * 252) * 100;  // % ao ano
+    }
+    let portVar = 0;
+    for (const ci of selected) {
+      for (const cj of selected) {
+        if (!vols[ci] || !vols[cj]) continue;
+        const rho = historyData.correlation[ci]?.[cj] ?? 0;
+        portVar += wNorm[ci] * wNorm[cj] * vols[ci] * vols[cj] * rho;
+      }
+    }
+    portVol = Math.sqrt(Math.max(0, portVar));
+  }
+
+  const excess = (cdiTarget != null) ? expReturn - cdiTarget : null;
+  const sharpe = (excess != null && portVol && portVol > 0) ? excess / portVol : null;
+  return { expReturn, cdiTarget, sharpe };
+}
+
+function calcDrawdown(f) {
+  if (!f.maxQuota || !f.latestQuota) return null;
+  if (f.latestQuota >= f.maxQuota) return 0;
+  return ((f.latestQuota - f.maxQuota) / f.maxQuota) * 100;
+}
+
+function fmtDrawdown(v) {
+  if (v === null) return '<span class="perf-val na">N/D</span>';
+  if (v === 0)    return '<span class="perf-val" style="color:var(--green)">0,0%</span>';
+  return `<span class="perf-val neg">${v.toFixed(1)}%</span>`;
+}
+
+function getSortVal(f, key) {
+  if (key === 'tenure')    return tenureDays(f.cnpjFmt);
+  if (key === 'inception') return cagrInception(f) ?? -Infinity;
+  if (key === 'alpha')     return calcAlpha(f, currentAlphaWindow) ?? -Infinity;
+  return f[key] ?? -Infinity;
+}
+
+function sortBy(key) {
+  if (['cagr12','cagr36','cagr60'].includes(key)) currentAlphaWindow = key;
+  if (currentSort === key) { sortDir *= -1; }
+  else { currentSort = key; sortDir = 1; }
+  updateHeaders();
+  render();
+}
+
+const TH_LABELS = { cagr12:'12M', cagr36:'36M', cagr60:'60M', alpha:'α', inception:'Início', tenure:'Track Record' };
+
+function updateHeaders() {
+  Object.keys(TH_LABELS).forEach(k => {
+    const th = document.getElementById('th-' + k);
+    if (!th) return;
+    th.classList.remove('sorted-asc','sorted-desc');
+    if (k === currentSort) {
+      th.classList.add(sortDir === 1 ? 'sorted-desc' : 'sorted-asc');
+      th.textContent = TH_LABELS[k] + (sortDir === 1 ? ' ↓' : ' ↑');
+    } else {
+      th.textContent = TH_LABELS[k] + ' ↕';
+    }
+  });
+}
+
+function toggleDetail(cnpj) {
+  if (expandedCnpjs.has(cnpj)) {
+    expandedCnpjs.delete(cnpj);
+    // Fecha só este painel — sem re-render completo da tabela
+    const id = cnpj.replace(/[^a-z0-9]/gi, '');
+    const panel = document.getElementById('detail-' + id);
+    if (panel) panel.classList.remove('open');
+    const arrow = document.querySelector(`[data-arrow="${cnpj}"]`);
+    if (arrow) arrow.style.transform = 'none';
+  } else {
+    expandedCnpjs.add(cnpj);
+    // Abre só este painel — sem re-render completo da tabela
+    const id = cnpj.replace(/[^a-z0-9]/gi, '');
+    const panel = document.getElementById('detail-' + id);
+    if (panel) panel.classList.add('open');
+    const arrow = document.querySelector(`[data-arrow="${cnpj}"]`);
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  }
+}
+
+function buildDetailPanel(f, isExp) {
+  const meta = FUND_META[f.cnpjFmt] || {};
+  const id   = (f.cnpjFmt || '').replace(/[^a-z0-9]/gi, '');
+  const tribClass = meta.trib === 'RV' ? 'tag-rv' : 'tag-tr';
+  const inception = meta.inception ? meta.inception.split('-').reverse().join('/') : '—';
+  const tenure = fmtTenure(f.cnpjFmt).replace(/<[^>]+>/g,'');
+
+  return `<div class="detail-panel ${isExp ? 'open' : ''}" id="detail-${id}">
+    <div class="detail-inner">
+
+      <div class="detail-col">
+        <div class="detail-col-header">Performance CAGR</div>
+        <div class="perf-grid">
+          <div><div class="perf-label">12 meses</div>${fmtPctLarge(f.cagr12)}</div>
+          <div><div class="perf-label">36 meses</div>${fmtPctLarge(f.cagr36)}</div>
+          <div><div class="perf-label">60 meses</div>${fmtPctLarge(f.cagr60)}</div>
+          <div><div class="perf-label">Desde o início</div>${fmtPctLarge(cagrInception(f))}</div>
+          <div style="grid-column:1/-1;border-top:1px solid var(--border);margin-top:0.3rem;padding-top:0.5rem;">
+            <div class="perf-label" style="margin-bottom:3px">Drawdown atual</div>
+            ${fmtDrawdown(calcDrawdown(f))}
+          </div>
+          ${f.isDelayed ? `<div style="grid-column:1/-1;margin-top:0.4rem;padding:0.35rem 0.5rem;background:var(--amber-light);border-radius:5px;border:0.5px solid var(--amber)">
+            <div style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--amber);margin-bottom:2px">Cota com atraso</div>
+            <div style="font-size:0.72rem;color:var(--text)">Última cota disponível: <strong>${f.latestDate}</strong><br>Referência dos demais fundos: ${window.anchorDate||'—'}<br>CAGRs calculados até ${f.latestDate} (${f.delayDays}d antes da referência)</div>
+          </div>` : ''}
+        </div>
+      </div>
+
+      <div class="detail-col">
+        <div class="detail-col-header">Sobre o fundo</div>
+        <div class="ditem">
+          <div class="dlabel">Nome</div>
+          <div class="dval" style="font-size:0.76rem">${f.name}</div>
+        </div>
+        <div class="ditem">
+          <div class="dlabel">Tipo · Exposição</div>
+          <div class="dval">${meta.tipo || '—'} · ${meta.expo || '—'}</div>
+        </div>
+      </div>
+
+      <div class="detail-col">
+        <div class="detail-col-header">Acesso</div>
+        <div class="ditem">
+          <div class="dlabel">Início · Track record</div>
+          <div class="dval">${inception} · ${tenure}</div>
+        </div>
+        <div class="ditem">
+          <div class="dlabel">Tributação</div>
+          <div class="dval">${TRIB_LABEL[meta.trib] || meta.trib || '—'} <span class="tag ${tribClass}">${meta.trib || '—'}</span></div>
+        </div>
+        <div class="ditem">
+          <div class="dlabel">Melhor banco</div>
+          <div class="dval">${meta.banco || '—'}</div>
+          ${meta.obs ? `<div class="dnote">${meta.obs}</div>` : ''}
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+function render() {
+  // Apply active filters
+  const filtered = funds.filter(f => {
+    const meta = FUND_META[f.cnpjFmt] || {};
+    if (activeFilters.tipo && meta.tipo !== activeFilters.tipo) {
+      // partial match for expo (Brasil matches "Majoritariamente Brasil")
+    }
+    if (activeFilters.tipo && !meta.tipo?.includes(activeFilters.tipo)) return false;
+    if (activeFilters.expo) {
+      const expo = meta.expo || '';
+      if (activeFilters.expo === 'Brasil' && !expo.includes('Brasil')) return false;
+      if (activeFilters.expo === 'Internacional' && !expo.includes('Internacional')) return false;
+    }
+    if (activeFilters.trib && meta.trib !== activeFilters.trib) return false;
+    return true;
+  });
+
+  const sorted = [...filtered].sort((a, b) =>
+    sortDir * (getSortVal(b, currentSort) - getSortVal(a, currentSort))
+  );
+
+  let ibovPos = null;
+  if (['cagr12','cagr36','cagr60'].includes(currentSort)) {
+    const iv = ibov[currentSort];
+    if (iv !== null) {
+      ibovPos = sorted.findIndex(f => sortDir * getSortVal(f, currentSort) < sortDir * iv);
+      if (ibovPos === -1) ibovPos = sorted.length;
+    }
+  }
+
+  let html = '';
+  sorted.forEach((f, i) => {
+    if (ibovPos !== null && i === ibovPos) html += buildIbovRow();
+
+    const meta  = FUND_META[f.cnpjFmt] || {};
+    const nome  = meta.nome || f.name;
+    const rc    = sortDir === 1 ? (i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '') : '';
+    const isExp = expandedCnpjs.has(f.cnpjFmt);
+
+    if (f.error) {
+      html += `<tr class="fund-row" onclick="toggleDetail('${f.cnpjFmt}')">
+        <td><div class="fund-name-cell">
+          <span class="rank ${rc}">${i+1}</span>
+          <div><div class="fund-name">${nome}</div><div class="fund-cnpj">${f.cnpjFmt}</div></div>
+        </div></td>
+        <td colspan="7" style="text-align:center;font-family:'Courier New',monospace;font-size:0.72rem;color:var(--red)">dados não encontrados na CVM</td>
+      </tr>
+      <tr class="detail-row"><td colspan="7"></td></tr>`;
+      return;
+    }
+
+    html += `
+    <tr class="fund-row" onclick="toggleDetail('${f.cnpjFmt}')">
+      <td><div class="fund-name-cell">
+        <span class="rank ${rc}">${i+1}</span>
+        <div>
+          <div class="fund-name">${nome}${f.isDelayed ? ` <span class="delayed-badge" title="Última cota disponível: ${f.latestDate} (${f.delayDays}d antes da referência ${window.anchorDate||''})">+${f.delayDays}d</span>` : ''} <span class="expand-arrow" data-arrow="${f.cnpjFmt}" style="transform:${isExp?'rotate(180deg)':'none'}">▾</span></div>
+          <div class="fund-cnpj">${f.cnpjFmt}</div>
+        </div>
+      </div></td>
+      <td>${fmtPct(f.cagr12)}</td>
+      <td>${fmtPct(f.cagr36)}</td>
+      <td>${fmtPct(f.cagr60)}</td>
+      <td>${fmtAlpha(calcAlpha(f, currentAlphaWindow))}</td>
+      <td>${fmtPct(cagrInception(f))}</td>
+      <td>${fmtTenure(f.cnpjFmt)}</td>
+    </tr>
+    <tr class="detail-row"><td colspan="6">${buildDetailPanel(f, isExp)}</td></tr>`;
+  });
+
+  if (ibovPos === null) html += buildIbovRow();
+  html += buildCdiRow();
+  document.getElementById('fundBody').innerHTML = html;
+}
+
+function buildIbovRow() {
+  const anchorFmt = window.anchorDate
+    ? (() => { const [y,m,d] = window.anchorDate.split('-'); return `${d}/${m}/${y}`; })()
+    : '—';
+  return `<tr class="ibov-row">
+    <td><div class="fund-name-cell">
+      <span class="rank ibov">IBOV</span>
+      <div>
+        <div class="fund-name">Ibovespa</div>
+        <div class="fund-cnpj">referência até ${anchorFmt} · Yahoo Finance</div>
+      </div>
+    </div></td>
+    <td>${fmtPct(ibov.cagr12)}</td>
+    <td>${fmtPct(ibov.cagr36)}</td>
+    <td>${fmtPct(ibov.cagr60)}</td>
+    <td><span class="cagr-val na">—</span></td>
+    <td><span class="tenure">—</span></td>
+  </tr>`;
+}
+
+function buildCdiRow() {
+  const anchorFmt = window.anchorDate
+    ? (() => { const [y,m,d] = window.anchorDate.split('-'); return `${d}/${m}/${y}`; })()
+    : '—';
+  return `<tr class="ibov-row">
+    <td><div class="fund-name-cell">
+      <span class="rank ibov" style="background:var(--green-light);color:var(--green)">CDI</span>
+      <div>
+        <div class="fund-name">CDI</div>
+        <div class="fund-cnpj">referência até ${anchorFmt} · Banco Central</div>
+      </div>
+    </div></td>
+    <td>${fmtPct(cdi.cagr12)}</td>
+    <td>${fmtPct(cdi.cagr36)}</td>
+    <td>${fmtPct(cdi.cagr60)}</td>
+    <td><span class="cagr-val na">—</span></td>
+    <td><span class="cagr-val na">—</span></td>
+    <td><span class="tenure">—</span></td>
+  </tr>`;
+}
+
+async function load() {
+  try {
+    const res  = await fetch('data.json?v=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    funds = data.funds;
+
+    // Âncora global: data de referência usada para todos os CAGRs
+    // CDI e IBOV foram calculados nessa mesma âncora, garantindo
+    // comparação em janelas idênticas para todos os ativos.
+    window.anchorDate = data.anchorDate || null;
+
+    const dot    = document.getElementById('statusDot');
+    const text   = document.getElementById('statusText');
+    const dateEl = document.getElementById('statusDate');
+    const errors = funds.filter(f => f.error).length;
+    const delayed = funds.filter(f => !f.error && f.isDelayed);
+
+    dot.className = errors ? 'status-dot error' : delayed.length ? 'status-dot warn' : 'status-dot ok';
+    text.textContent = errors
+      ? `${funds.length - errors} de ${funds.length} fundos carregados (${errors} com erro)`
+      : `${funds.length} fundos · dados da CVM`;
+
+    if (window.anchorDate) {
+      const [ay, am, ad] = window.anchorDate.split('-');
+      dateEl.textContent = `Referência: ${ad}/${am}/${ay}`;
+    } else {
+      const dates = funds.filter(f => f.latestDate).map(f => f.latestDate).sort();
+      if (dates.length) {
+        const [y,m,d] = dates[dates.length-1].split('-');
+        dateEl.textContent = `Última cota: ${d}/${m}/${y}`;
+      }
+    }
+    if (data.generatedAt) {
+      const gen = new Date(data.generatedAt);
+      const pad = n => String(n).padStart(2,'0');
+      dateEl.textContent += ` · gerado ${pad(gen.getUTCDate())}/${pad(gen.getUTCMonth()+1)} às ${pad(gen.getUTCHours())}:${pad(gen.getUTCMinutes())} UTC`;
+    }
+
+    if (data.ibov) ibov = data.ibov;
+    if (data.cdi)  cdi  = data.cdi;
+    updateHeaders();
+    render();
+
+  } catch(e) {
+    document.getElementById('statusDot').className = 'status-dot error';
+    document.getElementById('statusText').textContent = 'Erro ao carregar data.json: ' + e.message;
+  }
+}
+
+document.getElementById('fundBody').innerHTML = Array.from({length:14}, (_,i) => `<tr class="fund-row">
+  <td><div class="fund-name-cell"><span class="rank">${i+1}</span>
+    <div><span class="skeleton" style="width:${130+Math.random()*70|0}px;display:block;margin-bottom:5px"></span>
+         <span class="skeleton" style="width:110px;height:10px"></span></div>
+  </div></td>
+  ${Array.from({length:5},()=>`<td><span class="skeleton" style="width:56px"></span></td>`).join('')}
+</tr>`).join('');
+
+document.querySelectorAll('thead th[data-key]').forEach(th =>
+  th.addEventListener('click', () => sortBy(th.dataset.key))
+);
+
+
+// ── Tab switching ──────────────────────────────────────────────────────────────
+function switchTab(name) {
+  ['ranking','portfolio','graficos','analise'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+    document.getElementById('tab-btn-' + t).classList.toggle('active', t === name);
+  });
+  if ((name === 'portfolio' || name === 'graficos' || name === 'analise') && !historyData) {
+    loadHistory();
+  } else if (name === 'graficos' && historyData) {
+    renderNormalizedChart();
+  } else if (name === 'analise' && historyData) {
+    renderScatter();
+    renderHeatmap();
+    renderConsistency();
+    renderStressTest();
+  }
+}
+
+// ── Portfolio ──────────────────────────────────────────────────────────────────
+let historyData = null;
+let fundsMap    = null;
+const PORT_COLORS = ['#e05c2a','#1a7a52','#1a4a8a','#9c5c2a','#a05c00','#b83232','#7a5c9a','#2db87a','#4d8fd4','#d4882a','#e05050','#c9960c','#557a55','#8a6a3a'];
+
+// ── Patrimônio ──
+function parsePatrimonio() {
+  const raw = document.getElementById('portPatrimonio').value.replace(/\./g,'').replace(',','.');
+  return parseFloat(raw) || 0;
+}
+function onPatrimonioInput() { updatePortfolio(); }
+function onPatrimonioBlur(el) {
+  const v = parsePatrimonio();
+  if (v > 0) el.value = v.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
+  updatePortfolio();
+}
+
+async function loadHistory() {
+  document.getElementById('portMetrics').innerHTML = '<div class="port-empty">Carregando histórico…</div>';
+  try {
+    const res = await fetch('history.json?v=' + Date.now());
+    historyData = await res.json();
+    buildFundSelector();
+    updatePortfolio();
+    document.getElementById('optRunBtn').disabled = false;
+    document.getElementById('optStatus').textContent = 'Pronto — escolha tamanho e objetivo, depois clique Otimizar.';
+    // Init all analysis features
+    initChartToggles();
+    initUnderwaterSelect();
+    initAportesSelect();
+    // Pre-render analysis if already on those tabs
+    const activeTab = document.querySelector('.tab-pane.active')?.id;
+    if (activeTab === 'tab-graficos') renderNormalizedChart();
+    if (activeTab === 'tab-analise')  { renderScatter(); renderHeatmap(); renderConsistency(); renderStressTest(); }
+  } catch(e) {
+    document.getElementById('portMetrics').innerHTML = '<div class="port-empty">Erro ao carregar history.json</div>';
+  }
+}
+
+function buildFundSelector() {
+  if (!historyData) return;
+  const cnpjs = Object.keys(historyData.funds).sort((a,b) =>
+    historyData.funds[a].nome.localeCompare(historyData.funds[b].nome));
+
+  const html = cnpjs.map((cnpj, i) => {
+    const nome = historyData.funds[cnpj].nome;
+    return `<div class="fund-row-port inactive" id="frow-${i}">
+      <input type="checkbox" id="chk-${i}" data-cnpj="${cnpj}" onchange="onCheckChange(${i})">
+      <label class="fund-row-name" for="chk-${i}" title="${nome}">${nome}</label>
+      <input type="range" class="fund-slider" id="sl-${i}" data-cnpj="${cnpj}"
+        min="0" max="100" value="0" step="1" disabled
+        oninput="onSliderInput(${i})">
+      <input type="text" class="fund-weight-input" id="wi-${i}" data-cnpj="${cnpj}"
+        value="0%" disabled
+        onblur="onWeightBlur(${i})"
+        onkeydown="if(event.key==='Enter')this.blur()"
+        onfocus="this.select()">
+    </div>`;
+  }).join('');
+  document.getElementById('fundSelector').innerHTML = html;
+}
+
+// ── Eventos ──
+function onCheckChange(i) {
+  const chk  = document.getElementById('chk-' + i);
+  const sl   = document.getElementById('sl-'  + i);
+  const wi   = document.getElementById('wi-'  + i);
+  const row  = document.getElementById('frow-'+ i);
+  if (!chk.checked) {
+    sl.value   = 0;
+    wi.value   = '0%';
+    sl.disabled = true;
+    wi.disabled = true;
+    row.classList.add('inactive');
+  } else {
+    sl.disabled = false;
+    wi.disabled = false;
+    row.classList.remove('inactive');
+  }
+  updatePortfolio();
+}
+
+function onSliderInput(i) {
+  const sl  = document.getElementById('sl-' + i);
+  const wi  = document.getElementById('wi-' + i);
+  const val = parseInt(sl.value) || 0;
+  // Aplicar cap de 100%
+  const others = getTotalExcept(document.getElementById('chk-' + i).dataset.cnpj);
+  const capped = Math.min(val, 100 - others);
+  if (capped !== val) sl.value = capped;
+  wi.value = capped + '%';
+  updatePortfolio();
+}
+
+function onWeightBlur(i) {
+  const wi   = document.getElementById('wi-' + i);
+  const sl   = document.getElementById('sl-' + i);
+  const cnpj = document.getElementById('chk-' + i).dataset.cnpj;
+  // Aceita "55", "55%", "55.5"
+  let val = parseFloat(wi.value.replace('%','').replace(',','.')) || 0;
+  val = Math.max(0, Math.round(val));
+  // Cap: total sem este fundo + este <= 100
+  const others = getTotalExcept(cnpj);
+  val = Math.min(val, 100 - others);
+  sl.value = val;
+  wi.value = val + '%';
+  updatePortfolio();
+}
+
+function getTotalExcept(excludeCnpj) {
+  let total = 0;
+  document.querySelectorAll('#fundSelector input[type=checkbox]').forEach((chk, i) => {
+    if (chk.checked && chk.dataset.cnpj !== excludeCnpj) {
+      total += parseInt(document.getElementById('sl-' + i).value) || 0;
+    }
+  });
+  return total;
+}
+
+function getWeights() {
+  const weights = {};
+  document.querySelectorAll('#fundSelector input[type=checkbox]').forEach((chk, i) => {
+    if (chk.checked) {
+      const v = parseInt(document.getElementById('sl-' + i).value) || 0;
+      if (v > 0) weights[chk.dataset.cnpj] = v;
+    }
+  });
+  return weights;
+}
+
+function subtractMonthsStr(dateStr, n) {
+  const [y, m, day] = dateStr.split('-').map(Number);
+  let ny = y, nm = m - n;
+  while (nm <= 0) { nm += 12; ny--; }
+  while (nm > 12) { nm -= 12; ny++; }
+  const lastDay = new Date(ny, nm, 0).getDate();
+  const nd = Math.min(day, lastDay);
+  return `${ny}-${String(nm).padStart(2,'0')}-${String(nd).padStart(2,'0')}`;
+}
+
+function updatePortfolio() {
+  const weights  = getWeights();
+  const total    = Object.values(weights).reduce((a,b) => a+b, 0);
+  const selected = Object.keys(weights);
+
+  // Barra de progresso
+  const fill  = document.getElementById('portBarFill');
+  const label = document.getElementById('portTotalPct');
+  fill.style.width = Math.min(total, 100) + '%';
+  fill.classList.toggle('over', total > 100);
+  label.textContent = total + '% alocado';
+  label.className = 'port-bar-label' + (total > 100 ? ' over' : total === 100 ? ' full' : '');
+
+  if (selected.length === 0 || total === 0) {
+    document.getElementById('portMetrics').innerHTML = '<div class="port-empty">Selecione ao menos um fundo e defina os pesos</div>';
+    document.getElementById('portAllocPanel').style.display = 'none';
+    document.getElementById('portCorr').innerHTML    = '<div class="port-empty">Selecione ao menos 2 fundos</div>';
+    return;
+  }
+  if (!historyData) return;
+  if (!fundsMap) fundsMap = Object.fromEntries(funds.map(f => [f.cnpjFmt, f]));
+
+  const patrimonio = parsePatrimonio();
+  const wNorm      = Object.fromEntries(selected.map(c => [c, weights[c] / total]));
+
+  // Retornos ponderados
+  const n = historyData.funds[selected[0]].returns.length;
+  const portReturns = new Float64Array(n);
+  for (const cnpj of selected) {
+    const rets = historyData.funds[cnpj].returns;
+    const w    = wNorm[cnpj];
+    for (let i = 0; i < n; i++) portReturns[i] += rets[i] * w;
+  }
+
+  // CAGR real da série
+  const dates = historyData.commonDates;
+  const anchor = historyData.to;
+
+  function cagrFromSlice(startIdx, endIdx) {
+    if (endIdx <= startIdx) return null;
+    let cum = 1.0;
+    for (let i = startIdx; i < endIdx; i++) cum *= (1 + portReturns[i]);
+    const d0 = dates[startIdx], d1 = dates[Math.min(endIdx, dates.length - 1)];
+    const years = (new Date(d1) - new Date(d0)) / (365.25 * 86400000);
+    return years > 0 ? (Math.pow(cum, 1 / years) - 1) * 100 : null;
+  }
+
+  const d12   = subtractMonthsStr(anchor, 12);
+  const d36   = subtractMonthsStr(anchor, 36);
+  const idx12 = dates.reduce((best, d, i) => d <= d12 ? i : best, -1);
+  const idx36 = dates.reduce((best, d, i) => d <= d36 ? i : best, -1);
+
+  const cagr12w = idx12 >= 0 ? cagrFromSlice(idx12, portReturns.length) : null;
+  const cagr36w = idx36 >= 0 ? cagrFromSlice(idx36, portReturns.length) : null;
+
+  // Volatilidade anualizada
+  const mean     = portReturns.reduce((a,b) => a+b, 0) / n;
+  const variance = portReturns.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
+  const vol      = Math.sqrt(variance * 252) * 100;
+
+  // Drawdown máximo e atual
+  let cum = 1, peak = 1, maxDD = 0;
+  for (const r of portReturns) {
+    cum *= (1 + r);
+    if (cum > peak) peak = cum;
+    const dd = (cum - peak) / peak;
+    if (dd < maxDD) maxDD = dd;
+  }
+  const ddAtual = (cum - peak) / peak;
+
+  function fmtM(v, forceNeg = false) {
+    if (v === null || v === undefined || isNaN(v)) return '<span class="port-metric-val na">N/D</span>';
+    const cls  = forceNeg || v < 0 ? 'neg' : 'pos';
+    const sign = forceNeg ? '' : v >= 0 ? '+' : '';
+    return `<span class="port-metric-val ${cls}">${sign}${v.toFixed(1)}%</span>`;
+  }
+
+  const brlAlocado = patrimonio * total / 100;
+
+  // Retorno alvo do portfólio
+  const portTarget = calcPortfolioTargetReturn(selected, wNorm, historyData);
+  const fmtTarget  = v => v == null
+    ? '<span class="port-metric-val na">N/D</span>'
+    : `<span class="port-metric-val ${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
+  const fmtSharpe  = v => v == null
+    ? '<span class="port-metric-val na">N/D</span>'
+    : `<span class="port-metric-val neu" style="font-size:0.95rem">${v.toFixed(2)}</span>`;
+
+  // Métricas — grid 3 colunas, altura fixa
+  document.getElementById('portMetrics').innerHTML = `
+    <div class="port-metrics-grid">
+      <div class="port-metric"><div class="port-metric-label">CAGR 12M</div>${fmtM(cagr12w)}</div>
+      <div class="port-metric"><div class="port-metric-label">CAGR 36M</div>${fmtM(cagr36w)}</div>
+      <div class="port-metric"><div class="port-metric-label">Volatilidade</div>${fmtM(vol)}</div>
+      <div class="port-metric"><div class="port-metric-label">Drawdown m\u00e1x</div>${fmtM(maxDD * 100, true)}</div>
+      <div class="port-metric"><div class="port-metric-label">Drawdown atual</div>${fmtM(ddAtual * 100, true)}</div>
+      <div class="port-metric"><div class="port-metric-label">Valor alocado</div><span class="port-metric-val neu">${patrimonio > 0 ? 'R$\u00a0' + brlAlocado.toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</span></div>
+      <div class="port-metric" style="border-top:1px solid var(--border);padding-top:0.65rem;margin-top:0.1rem;grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:0">
+        <div>
+          <div class="port-metric-label">Retorno alvo <span style="font-size:0.52rem;opacity:0.65">(sem I.R.)</span></div>
+          ${fmtTarget(portTarget?.expReturn)}
+        </div>
+        <div>
+          <div class="port-metric-label">Sharpe</div>
+          ${fmtSharpe(portTarget?.sharpe)}
+        </div>
+      </div>
+    </div>`;
+
+  // Alocação
+  // Pre-compute vol and Sharpe for each selected fund
+  const fundVolMap    = {};
+  const fundSharpeMap = {};
+  const cdiForAlloc   = portTarget?.cdiTarget ?? 10;
+
+  for (const cnpj of selected) {
+    const fd = historyData.funds[cnpj];
+    if (!fd) continue;
+    const rets = fd.returns;
+    const n    = rets.length;
+    const mean = rets.reduce((a, b) => a + b, 0) / n;
+    const var_ = rets.reduce((a, r) => a + (r - mean) ** 2, 0) / (n - 1);
+    const volPct = Math.sqrt(var_ * 252) * 100;
+    fundVolMap[cnpj] = volPct;
+
+    const fData  = funds.find(f => f.cnpjFmt === cnpj);
+    const target = fData ? calcTargetReturn(fData) : null;
+    if (target && volPct > 0) {
+      fundSharpeMap[cnpj] = (target.value - cdiForAlloc) / volPct;
+    }
+  }
+
+  // Portfolio-level vol: σ_p = √(wᵀΣw)
+  let portVolAlloc = null;
+  if (historyData.correlation && selected.length > 1) {
+    let portVar = 0;
+    for (const ci of selected) {
+      for (const cj of selected) {
+        if (!fundVolMap[ci] || !fundVolMap[cj]) continue;
+        const rho = historyData.correlation[ci]?.[cj] ?? 0;
+        portVar  += wNorm[ci] * wNorm[cj] * fundVolMap[ci] * fundVolMap[cj] * rho;
+      }
+    }
+    portVolAlloc = Math.sqrt(Math.max(0, portVar));
+  } else if (selected.length === 1) {
+    portVolAlloc = fundVolMap[selected[0]] ?? null;
+  }
+  const portSharpeAlloc = (portVolAlloc && portVolAlloc > 0 && portTarget?.expReturn != null)
+    ? (portTarget.expReturn - cdiForAlloc) / portVolAlloc
+    : null;
+
+  const fmtVol = v => v == null
+    ? '<span class="port-alloc-vol" style="color:var(--muted)">—</span>'
+    : `<span class="port-alloc-vol">${v.toFixed(1)}%</span>`;
+  const fmtSharpeAlloc = v => v == null
+    ? '<span class="port-alloc-sharpe" style="color:var(--muted)">—</span>'
+    : `<span class="port-alloc-sharpe" style="color:${v >= 0 ? 'var(--green)' : 'var(--red)'}">${v.toFixed(2)}</span>`;
+
+  const allocPanel = document.getElementById('portAllocPanel');
+  if (selected.length > 0) {
+    allocPanel.style.display = 'block';
+
+    const rows = selected.map((cnpj, i) => {
+      const nome   = historyData.funds[cnpj].nome;
+      const pct    = weights[cnpj];
+      const brl    = patrimonio * pct / 100;
+      const color  = PORT_COLORS[i % PORT_COLORS.length];
+
+      // Retorno alvo individual
+      const fData  = funds.find(f => f.cnpjFmt === cnpj);
+      const target = fData ? calcTargetReturn(fData) : null;
+      let targetHtml;
+      if (!target) {
+        targetHtml = `<span class="port-alloc-target na">N/D</span>`;
+      } else {
+        const v    = target.value;
+        const cls  = v >= 0 ? 'pos' : 'neg';
+        const sign = v >= 0 ? '+' : '';
+        const tipLines = target.samples
+          .sort((a, b) => a[0] - b[0])
+          .map(([T, val]) => {
+            const label = T < 1.5 ? '12M' : T < 3.5 ? '36M' : T < 5.5 ? '60M' : `${T.toFixed(0)}A`;
+            return `${label}: ${val >= 0 ? '+' : ''}${val.toFixed(1)}%`;
+          }).join('  ·  ');
+        const dispNote = target.sigma > 2
+          ? `\nDisp. entre períodos: ${target.sigma.toFixed(1)}pp → ajuste −${target.penalty.toFixed(1)}pp`
+          : '';
+        const rawNote = (Math.abs(target.raw - target.value) > 0.05)
+          ? `\nBruto (pesos √T): ${target.raw >= 0 ? '+' : ''}${target.raw.toFixed(1)}%  →  final: ${sign}${v.toFixed(1)}%`
+          : '';
+        targetHtml = `<div class="alloc-target-wrap">
+          <span class="port-alloc-target ${cls}">${sign}${v.toFixed(1)}%</span>
+          <div class="alloc-target-tip">Ret. alvo (pesos √período + ajustes)
+${tipLines}${dispNote}${rawNote}</div>
+        </div>`;
+      }
+
+      const v_vol    = fundVolMap[cnpj]    ?? null;
+      const v_sharpe = fundSharpeMap[cnpj] ?? null;
+
+      return `<div class="port-alloc-row">
+        <span class="port-alloc-name" title="${nome}">${nome}</span>
+        <div class="port-alloc-bar-wrap"><div class="port-alloc-bar" style="width:${pct}%;background:${color}"></div></div>
+        <span class="port-alloc-pct">${pct}%</span>
+        <span class="port-alloc-brl">${patrimonio > 0 ? 'R$\u00a0' + brl.toLocaleString('pt-BR',{maximumFractionDigits:0}) : ''}</span>
+        ${targetHtml}
+        ${fmtVol(v_vol)}
+        ${fmtSharpeAlloc(v_sharpe)}
+      </div>`;
+    }).join('');
+
+    // Total / portfolio summary row
+    const portRetAlloc  = portTarget?.expReturn ?? null;
+    const totBrl        = patrimonio * total / 100;
+    const totalRow = `<div class="port-alloc-total">
+      <span class="port-alloc-total-label">Portfólio</span>
+      <span></span>
+      <span class="port-alloc-total-val neu">${total}%</span>
+      <span class="port-alloc-total-val neu">${patrimonio > 0 ? 'R$\u00a0' + totBrl.toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</span>
+      <span class="port-alloc-total-val ${portRetAlloc != null ? (portRetAlloc >= 0 ? 'pos' : 'neg') : 'muted'}">
+        ${portRetAlloc != null ? (portRetAlloc >= 0 ? '+' : '') + portRetAlloc.toFixed(1) + '%' : '—'}
+      </span>
+      <span class="port-alloc-total-val ${portVolAlloc != null ? 'neu' : 'muted'}">
+        ${portVolAlloc != null ? portVolAlloc.toFixed(1) + '%' : '—'}
+      </span>
+      <span class="port-alloc-total-val ${portSharpeAlloc != null ? (portSharpeAlloc >= 0 ? 'pos' : 'neg') : 'muted'}">
+        ${portSharpeAlloc != null ? portSharpeAlloc.toFixed(2) : '—'}
+      </span>
+    </div>`;
+
+    document.getElementById('portAlloc').innerHTML = rows + totalRow;
+  } else {
+    allocPanel.style.display = 'none';
+  }
+
+  // Correlação
+  if (selected.length < 2) {
+    document.getElementById('portCorr').innerHTML = '<div class="port-empty">Selecione ao menos 2 fundos</div>';
+    return;
+  }
+  const corr  = historyData.correlation;
+  const names = selected.map(c => historyData.funds[c].nome.split(' ')[0]);
+  const th    = '<tr><th></th>' + names.map(n => `<th>${n}</th>`).join('') + '</tr>';
+  const rows  = selected.map((ca, i) =>
+    `<tr><th>${names[i]}</th>` +
+    selected.map((cb, j) => {
+      if (i === j) return `<td style="color:var(--muted)">\u2014</td>`;
+      const v   = corr[ca]?.[cb] ?? 0;
+      const abs = Math.abs(v);
+      const bg  = `rgba(${Math.round(abs*180)},${Math.round((1-abs)*80+80)},80,0.22)`;
+      const col = abs > 0.7 ? 'var(--red)' : abs < 0.35 ? 'var(--green)' : 'var(--text)';
+      return `<td style="background:${bg};color:${col}">${v.toFixed(2)}</td>`;
+    }).join('') + '</tr>'
+  ).join('');
+  document.getElementById('portCorr').innerHTML = `<div class="corr-table-wrap"><table class="corr-table">${th}${rows}</table></div>`;
+
+  // Atualiza simulador de IR sempre que o portfólio mudar
+  renderIR();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SIMULADOR DE IR
+// ════════════════════════════════════════════════════════════════════════════
+
+// Tabela regressiva: alíquota marginal por prazo (dias desde o aporte)
+function trAliquota(diasAporte) {
+  if (diasAporte <= 180) return 0.225;
+  if (diasAporte <= 360) return 0.20;
+  if (diasAporte <= 720) return 0.175;
+  return 0.15;
+}
+
+// Formata BRL
+function fmtBRL(v) {
+  return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function fmtBRLDec(v) {
+  return 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function fmtPctIr(v) {
+  return v.toFixed(1) + '%';
+}
+
+// ── Simulação por fundo ───────────────────────────────────────────────────────
+//
+// RV (Renda Variável):
+//   - Sem come-cotas
+//   - IR no resgate: 15% sobre rendimento bruto total
+//
+// TR (Tabela Regressiva):
+//   - Come-cotas em mai e nov de cada ano (15% sobre rendimento desde último CC)
+//     O rendimento tributado vira nova base de custo para o próximo período
+//   - No resgate: alíquota complementar sobre o trecho desde o último CC
+//     * Prazo total do aporte > 720 dias → alíquota = 15% (complemento = 0%
+//       mas o trecho aberto desde o último CC *ainda não foi tributado*, então
+//       incide 15% sobre ele)
+//     * Prazo total ≤ 720 dias → alíquota da tabela regressiva sobre o trecho
+//   - Obs: "complemento" aqui significa o imposto sobre o último trecho aberto.
+//     Para prazo > 720d, esse trecho paga 15% diretamente (não é complemento de
+//     nada — é o imposto sobre um pedaço ainda não tributado).
+//
+// Simplificação aprovada: prazo para alíquota contado a partir do aporte inicial.
+
+function simularFundo(aporte, retornoAnual, trib, anosResgate) {
+  const r = retornoAnual / 100;  // taxa anual (retorno alvo)
+
+  if (trib === 'RV') {
+    // ── Renda Variável ──────────────────────────────────────────────────────
+    const valorBruto  = aporte * Math.pow(1 + r, anosResgate);
+    const rendimento  = valorBruto - aporte;
+    const ir          = rendimento * 0.15;
+    const valorLiq    = valorBruto - ir;
+    // RV: sem come-cotas → rendimento real = potencial → aliq efetiva = econômica = 15%
+    const aliqEfetiva  = rendimento > 0 ? (ir / rendimento) * 100 : 0;
+    const aliqEconomica = aliqEfetiva;  // idênticas para RV
+    return {
+      aporte, valorBruto, rendimentoBruto: rendimento,
+      irComeCotas: 0, irResgate: ir, irTotal: ir,
+      valorLiquido: valorLiq, aliqEfetiva, aliqEconomica,
+      detalhes: []
+    };
+  }
+
+  // ── Tabela Regressiva ─────────────────────────────────────────────────────
+  // Simula período a período (entre come-cotas)
+  //
+  // Estado: base = valor sobre o qual incide crescimento (após antecipações IR)
+  //         irComeCotas = IR total antecipado via come-cotas
+  //         patrimonioReal = valor real da carteira (cresce normalmente)
+  //
+  // A cada come-cotas:
+  //   rendimento_periodo = patrimonioReal_atual - base_atual
+  //   ir_cc = rendimento_periodo * 0.15
+  //   patrimonioReal -= ir_cc
+  //   base = patrimonioReal (nova base para o próximo período)
+  //
+  // No resgate (entre dois come-cotas):
+  //   rendimento_trecho = patrimonioReal_final - base_apos_ultimo_cc
+  //   aliq_trecho = trAliquota(dias_desde_ultimo_CC_ou_aporte)
+  //     — para prazo > 720d: sempre 15%
+  //     — para prazo ≤ 720d: usar o prazo do trecho, não o prazo total,
+  //       pois a alíquota regressiva incide sobre cada trecho individualmente.
+  //   ir_resgate = rendimento_trecho * aliq_trecho
+  //   valorLiquido = patrimonioReal_final - ir_resgate
+
+  const hoje = new Date();
+  function proximosComeCotas(anosTotal) {
+    const datas = [];
+    const fimMs = hoje.getTime() + anosTotal * 365.25 * 86400000;
+    const ano0  = hoje.getFullYear();
+    for (let a = ano0; a <= ano0 + anosTotal + 1; a++) {
+      [new Date(a, 4, 31), new Date(a, 10, 30)].forEach(d => {
+        if (d > hoje && d.getTime() < fimMs) datas.push(d);
+      });
+    }
+    return datas.sort((a, b) => a - b);
+  }
+
+  const ccDatas     = proximosComeCotas(anosResgate);
+  const dataResgate = new Date(hoje.getTime() + anosResgate * 365.25 * 86400000);
+
+  let patrimonioReal = aporte;
+  let base           = aporte;
+  let irComeCotas    = 0;
+  const detalhes     = [];
+
+  function crescer(valorInicial, dias) {
+    return valorInicial * Math.pow(1 + r, dias / 365.25);
+  }
+
+  let dataAtual        = new Date(hoje);
+  let dataUltimoEvento = new Date(hoje);  // data do último CC ou do aporte
+
+  for (const dataCC of ccDatas) {
+    const dias = (dataCC - dataAtual) / 86400000;
+    patrimonioReal = crescer(patrimonioReal, dias);
+    const rendPeriodo = patrimonioReal - base;
+    if (rendPeriodo > 0) {
+      const irCC = rendPeriodo * 0.15;
+      irComeCotas    += irCC;
+      patrimonioReal -= irCC;
+      detalhes.push({
+        tipo: 'come-cotas',
+        data: dataCC.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+        rendimento: rendPeriodo,
+        ir: irCC,
+        aliq: 15,
+      });
+    }
+    base             = patrimonioReal;
+    dataAtual        = new Date(dataCC);
+    dataUltimoEvento = new Date(dataCC);
+  }
+
+  // Crescimento do último trecho (do último CC até o resgate)
+  const diasUltimoTrecho = (dataResgate - dataAtual) / 86400000;
+  patrimonioReal = crescer(patrimonioReal, diasUltimoTrecho);
+  const rendTrecho = patrimonioReal - base;
+
+  // Alíquota do trecho final: prazo desde o último come-cotas (ou desde o
+  // aporte, se não houve nenhum come-cotas no período). Correto para prazos
+  // ≤ 720d; para > 720d a alíquota é 15% de qualquer forma.
+  const diasTrecho  = (dataResgate - dataUltimoEvento) / 86400000;
+  const aliqTrecho  = trAliquota(diasTrecho);
+  const irResgate   = Math.max(0, rendTrecho * aliqTrecho);
+
+  if (rendTrecho > 0) {
+    detalhes.push({
+      tipo: 'resgate',
+      data: dataResgate.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }),
+      rendimento: rendTrecho,
+      ir: irResgate,
+      aliq: aliqTrecho * 100,
+    });
+  }
+
+  const valorBruto   = patrimonioReal;
+  const irTotal      = irComeCotas + irResgate;
+  const valorLiquido = valorBruto - irResgate;  // come-cotas já saiu do patrimônio ao longo do tempo
+
+  const rendimentoReal = valorBruto - aporte;
+  const aliqEfetiva    = rendimentoReal > 0 ? (irTotal / rendimentoReal) * 100 : 0;
+  // aliqEconomica: quanto % do rendimento potencial (sem IR) o fisco consumiu.
+  // Usa ganho líquido do investidor = rendimentoReal - irResgate
+  // (come-cotas já saiu do patrimônio ao longo do tempo; irResgate sai no resgate)
+  // Isso captura o IR efetivo + o custo de oportunidade do capital antecipado.
+  const rendPotencial = aporte * Math.pow(1 + r, anosResgate) - aporte;
+  const ganhoLiquido  = rendimentoReal - irResgate;
+  const aliqEconomica = rendPotencial > 0 ? (1 - ganhoLiquido / rendPotencial) * 100 : 0;
+
+  return {
+    aporte, valorBruto, rendimentoBruto: rendimentoReal,
+    irComeCotas, irResgate, irTotal,
+    valorLiquido, aliqEfetiva, aliqEconomica, detalhes
+  };
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function onIrSlider() {
+  const anos = parseInt(document.getElementById('irSlider').value);
+  document.getElementById('irSliderVal').textContent = anos + (anos === 1 ? ' ano' : ' anos');
+  renderIR();
+}
+
+function renderIR() {
+  const el   = document.getElementById('irBody');
+  const anos = parseInt(document.getElementById('irSlider')?.value || 5);
+
+  const weights  = getWeights();
+  const selected = Object.keys(weights);
+  if (selected.length === 0 || !historyData) {
+    el.className = 'ir-empty';
+    el.innerHTML = 'Selecione fundos e pesos no portfólio acima';
+    return;
+  }
+
+  const total      = Object.values(weights).reduce((a, b) => a + b, 0);
+  const patrimonio = parsePatrimonio();
+
+  // Calcula simulação por fundo
+  const rows    = [];
+  let totAporte  = 0, totBruto = 0, totCC = 0, totResgate = 0, totTotal = 0, totLiq = 0, totRend = 0, totRendPot = 0;
+
+  for (const cnpj of selected) {
+    const w      = weights[cnpj] / total;
+    const aporte = patrimonio * w;
+    const meta   = FUND_META[cnpj] || {};
+    const trib   = meta.trib || 'RV';
+    const nome   = (historyData.funds[cnpj]?.nome) || meta.nome || cnpj;
+
+    // Retorno alvo do fundo
+    const fData  = funds.find(f => f.cnpjFmt === cnpj);
+    const target = fData ? calcTargetReturn(fData) : null;
+    const retorno = target ? target.value : null;
+
+    if (retorno === null) {
+      rows.push({ cnpj, nome, trib, aporte, sem_dados: true });
+      continue;
+    }
+
+    const sim = simularFundo(aporte, retorno, trib, anos);
+    rows.push({ cnpj, nome, trib, retorno, ...sim });
+
+    totAporte  += sim.aporte;
+    totBruto   += sim.valorBruto;
+    totRend    += sim.valorLiquido - sim.aporte;  // rendimento real líquido (após todo IR)
+    totCC      += sim.irComeCotas;
+    totResgate += sim.irResgate;
+    totTotal   += sim.irTotal;
+    totLiq     += sim.valorLiquido;
+    totRendPot += sim.aporte * Math.pow((1 + retorno / 100), anos) - sim.aporte;
+  }
+
+  const totAliqEf = totRend > 0 ? (totTotal / totRend) * 100 : 0;
+
+  // ── Build HTML ──
+  let html = `<div class="ir-table-wrap"><table class="ir-table">
+    <thead><tr>
+      <th>Fundo</th>
+      <th>Ret. alvo</th>
+      <th>Aporte</th>
+      <th>Valor bruto</th>
+      <th>IR total</th>
+      <th>Custo fiscal</th>
+      <th>Valor líquido</th>
+      <th>CAGR líquido</th>
+    </tr></thead><tbody>`;
+
+  for (const row of rows) {
+    const tribBadge = row.trib === 'RV'
+      ? '<span class="ir-trib-badge ir-trib-rv">RV</span>'
+      : '<span class="ir-trib-badge ir-trib-tr">TR</span>';
+
+    if (row.sem_dados) {
+      html += `<tr>
+        <td>${row.nome}${tribBadge}</td>
+        <td colspan="7" class="ir-val-muted" style="text-align:center">retorno alvo indisponível</td>
+      </tr>`;
+      continue;
+    }
+
+    html += `<tr>
+      <td>${row.nome}${tribBadge}</td>
+      <td class="ir-val-pos">+${row.retorno.toFixed(1)}%</td>
+      <td>${fmtBRL(row.aporte)}</td>
+      <td>${fmtBRL(row.valorBruto)}</td>
+      <td class="ir-val-neg">
+        ${row.trib === 'TR' && (row.irComeCotas > 0 || row.irResgate > 0)
+          ? `<div class="ir-custo-cell">
+               <span style="display:block">${fmtBRL(row.irTotal)}</span>
+               <div class="ir-custo-tip">
+                 <strong>Come-cotas (antecipações em mai/nov)</strong>
+                 ${row.irComeCotas > 0 ? fmtBRL(row.irComeCotas) : 'nenhum no período'}
+                 Pago ao longo do tempo, sobre cada período semestral.
+                 A alíquota é sempre 15% — mas o capital pago deixa de crescer.
+                 
+                 <strong>IR no resgate (último trecho)</strong>
+                 ${row.irResgate > 0 ? fmtBRL(row.irResgate) : 'zero — trecho final coincidiu com come-cotas'}
+                 Sobre o rendimento entre o último come-cotas e o resgate.
+                 Alíquota calculada sobre o prazo deste trecho (não do aporte total):
+                 ≤ 180d → 22,5% · ≤ 360d → 20% · ≤ 720d → 17,5% · &gt; 720d → 15%.
+               </div>
+             </div>`
+          : `<span>${fmtBRL(row.irTotal)}</span>`
+        }
+      </td>
+      <td>
+        ${row.trib === 'RV'
+          ? `<div class="ir-custo-cell">
+               <span class="ir-val-neg" style="font-family:'Courier New',monospace;font-weight:bold">${fmtPctIr(row.aliqEconomica)}</span>
+               <div class="ir-custo-tip">
+                 <strong>O que significa este número?</strong>
+                 De cada R$&nbsp;100 que esse fundo poderia ter rendido
+                 sem nenhum imposto, R$&nbsp;${row.aliqEconomica.toFixed(1)} foram para o fisco
+                 e R$&nbsp;${(100 - row.aliqEconomica).toFixed(1)} ficaram com você.
+                 
+                 Para fundos RV sem come-cotas, isso equivale
+                 exatamente à alíquota aplicada: 15%.
+               </div>
+             </div>`
+          : `<div class="ir-custo-cell">
+               <span class="ir-custo-eco ir-val-neg">${fmtPctIr(row.aliqEconomica)}</span>
+               <div class="ir-custo-tip">
+                 <strong>O que significa este número?</strong>
+                 De cada R$&nbsp;100 que esse fundo poderia ter rendido
+                 sem nenhum imposto, R$&nbsp;${row.aliqEconomica.toFixed(1)} foram para o fisco
+                 e R$&nbsp;${(100 - row.aliqEconomica).toFixed(1)} ficaram com você.
+                 
+                 <strong>Por que é maior que 15%?</strong>
+                 O come-cotas antecipa IR a cada semestre. O capital
+                 pago ao fisco deixa de crescer nos anos seguintes —
+                 esse custo de oportunidade é invisível mas real.
+                 Quanto maior o prazo e o retorno, maior o impacto.
+                 
+                 <strong>Compare com fundos RV:</strong> sem come-cotas,
+                 todo o capital cresce até o resgate e só então
+                 paga 15%. Por isso RV sempre mostra 15% aqui,
+                 independente do prazo.
+               </div>
+             </div>`
+        }
+      </td>
+      <td class="ir-val-pos">${fmtBRL(row.valorLiquido)}</td>
+      <td class="ir-val-pos">${row.aporte > 0 && row.valorLiquido > row.aporte
+        ? '+' + ((Math.pow(row.valorLiquido / row.aporte, 1 / anos) - 1) * 100).toFixed(1) + '%'
+        : '<span class="ir-val-muted">—</span>'
+      }</td>
+    </tr>`;
+  }
+
+  // Linha de total
+  const totRendPct = totAporte > 0 ? ((totBruto / totAporte - 1) * 100) : 0;
+  const totGanhoLiq = totLiq - totAporte;
+  const totCustoEco = totRendPot > 0 ? (1 - totGanhoLiq / totRendPot) * 100 : 0;
+  html += `<tr class="ir-total-row">
+    <td>Total portfólio</td>
+    <td>—</td>
+    <td>${fmtBRL(totAporte)}</td>
+    <td>${fmtBRL(totBruto)}</td>
+    <td class="ir-val-neg">
+      ${totCC > 0
+        ? `<div class="ir-custo-cell">
+             <span style="display:block">${fmtBRL(totTotal)}</span>
+             <div class="ir-custo-tip">
+               <strong>Come-cotas (antecipações)</strong>
+               ${fmtBRL(totCC)}
+               Soma de todos os come-cotas pagos pelos fundos TR.
+               
+               <strong>IR no resgate</strong>
+               ${totResgate > 0 ? fmtBRL(totResgate) : 'zero'}
+             </div>
+           </div>`
+        : `<span>${fmtBRL(totTotal)}</span>`
+      }
+    </td>
+    <td>
+      <div class="ir-custo-cell">
+        <span class="ir-custo-eco ir-val-neg">${fmtPctIr(totCustoEco)}</span>
+        <div class="ir-custo-tip">
+          <strong>Custo fiscal do portfólio</strong>
+          De cada R$&nbsp;100 de potencial deste portfólio,
+          R$&nbsp;${totCustoEco.toFixed(1)} de cada R$&nbsp;100 foram para o fisco.
+          
+          É a média ponderada pelo aporte de cada fundo.
+          Fundos RV sempre contribuem com 15%;
+          fundos TR contribuem com mais, dependendo
+          do prazo e do retorno (quanto maior, pior o come-cotas).
+        </div>
+      </div>
+    </td>
+    <td class="ir-val-pos">${fmtBRL(totLiq)}</td>
+    <td class="ir-val-pos">${totAporte > 0 && totLiq > totAporte
+      ? '+' + ((Math.pow(totLiq / totAporte, 1 / anos) - 1) * 100).toFixed(1) + '%'
+      : '<span class="ir-val-muted">—</span>'
+    }</td>
+  </tr>`;
+
+  html += `</tbody></table></div>
+  <div class="ir-legend">
+    <div class="ir-pill">
+      <span class="ir-pill-icon">ⓘ</span> RV
+      <div class="ir-custo-tip">
+        <strong>Renda Variável — tributação no resgate</strong>
+        Sem come-cotas. O capital cresce integralmente até o resgate.
+        No dia do resgate: 15% sobre o rendimento total.
+        
+        Resultado: a base de cálculo do IR é máxima,
+        mas todo o capital trabalhou por mais tempo.
+      </div>
+    </div>
+    <div class="ir-pill">
+      <span class="ir-pill-icon">ⓘ</span> TR
+      <div class="ir-custo-tip">
+        <strong>Tabela Regressiva — come-cotas semestral</strong>
+        Em maio e novembro de cada ano, 15% sobre o rendimento
+        do período é antecipado ao fisco. O capital pago deixa
+        de crescer nos anos seguintes.
+        
+        No resgate, o trecho desde o último come-cotas paga:
+        ≤ 180 dias → 22,5% &nbsp;·&nbsp; ≤ 360d → 20%
+        ≤ 720 dias → 17,5% &nbsp;·&nbsp; &gt; 720d → 15%
+        
+        Quanto maior o prazo e o retorno, maior o custo
+        invisível do come-cotas antecipado.
+      </div>
+    </div>
+    <div class="ir-pill">
+      <span class="ir-pill-icon">ⓘ</span> Custo fiscal
+      <div class="ir-custo-tip">
+        <strong>O que é o custo fiscal?</strong>
+        De cada R$&nbsp;100 que o fundo poderia ter rendido
+        sem nenhum imposto, quanto foi para o fisco?
+        
+        Inclui o IR efetivamente pago <em>e</em> o custo de
+        oportunidade do capital antecipado via come-cotas.
+        
+        RV sempre mostra 15% — é a alíquota exata aplicada.
+        TR mostra mais: o come-cotas destrói rendimento
+        composto, e esse custo cresce com o prazo.
+      </div>
+    </div>
+    <div class="ir-pill">
+      <span class="ir-pill-icon">ⓘ</span> Ret. alvo
+      <div class="ir-custo-tip">
+        <strong>Como é calculado o retorno alvo?</strong>
+        Média ponderada dos CAGRs históricos do fundo
+        com pesos proporcionais a √período (não ao período).
+        
+        12M → peso 1,0 &nbsp;·&nbsp; 36M → peso 1,7 &nbsp;·&nbsp; 60M → peso 2,2
+        Inception → peso = √anos desde o início (se &gt; 5,5a)
+        
+        Pesos √T: o erro amostral de um CAGR decresce
+        com √T, então √T é o peso estatisticamente correto.
+        O 60M ainda domina, mas o 12M não é ignorado.
+        
+        <strong>Penalização por dispersão ciclical:</strong>
+        Se os CAGRs de diferentes períodos divergem muito
+        (ex: +30% em 12M vs +8% em 60M), o fundo está
+        num pico ou vale de ciclo. Aplicamos um desconto
+        proporcional à dispersão entre os períodos.
+        
+        <strong>Reversão à média (25%):</strong>
+        O resultado é puxado 25% em direção ao CAGR 60M,
+        suavizando distorções de momento de curto prazo.
+        
+        É uma estimativa — não uma garantia de retorno futuro.
+      </div>
+    </div>
+  </div>`;
+
+  el.className = '';
+  el.innerHTML = html;
+}
+
+// ── Tooltip positioning (position:fixed, never clips) ────────────────────────
+document.addEventListener('mousemove', e => {
+  document.querySelectorAll('.ir-custo-tip, .alloc-target-tip').forEach(tip => {
+    if (tip.style.opacity === '1' || getComputedStyle(tip).opacity > 0) {
+      const tw = tip.offsetWidth  || 240;
+      const th = tip.offsetHeight || 80;
+      const margin = 12;
+      let x = e.clientX + margin;
+      let y = e.clientY + margin;
+      // Flip left if too close to right edge
+      if (x + tw > window.innerWidth  - margin) x = e.clientX - tw - margin;
+      // Flip up if too close to bottom edge
+      if (y + th > window.innerHeight - margin) y = e.clientY - th - margin;
+      tip.style.left = x + 'px';
+      tip.style.top  = y + 'px';
+    }
+  });
+});
+
+// Show/hide on mouseenter/mouseleave (complement CSS :hover for fixed tips)
+document.addEventListener('mouseover', e => {
+  const cell = e.target.closest('.ir-custo-cell, .alloc-target-wrap');
+  if (!cell) return;
+  const tip = cell.querySelector('.ir-custo-tip, .alloc-target-tip');
+  if (!tip) return;
+  tip.style.opacity   = '1';
+  tip.style.transform = 'translateY(0)';
+});
+document.addEventListener('mouseout', e => {
+  const cell = e.target.closest('.ir-custo-cell, .alloc-target-wrap');
+  if (!cell) return;
+  // Only hide if we're leaving the cell entirely
+  if (cell.contains(e.relatedTarget)) return;
+  const tip = cell.querySelector('.ir-custo-tip, .alloc-target-tip');
+  if (!tip) return;
+  tip.style.opacity   = '0';
+  tip.style.transform = 'translateY(4px)';
+});
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// OTIMIZADOR DE CARTEIRA
+// ════════════════════════════════════════════════════════════════════════════
+
+let optN      = 3;
+let optObj    = 'sharpe';
+let optMaxW   = 1.0;   // 1.0 = no constraint (100%)
+let optMinW   = 0.01;  // 1% default minimum weight
+
+function setOptN(n) {
+  optN = n;
+  ['3','5','10'].forEach(k =>
+    document.getElementById('optN' + k).classList.toggle('active', +k === n)
+  );
+  validateOptConstraints();
+}
+function setOptObj(obj) {
+  optObj = obj;
+  ['sharpe','return','vol'].forEach(k =>
+    document.getElementById('optObj' + k.charAt(0).toUpperCase() + k.slice(1))
+      .classList.toggle('active', k === obj)
+  );
+}
+
+function onOptMaxWSlider() {
+  const v = parseInt(document.getElementById('optMaxWSlider').value);
+  optMaxW = v / 100;
+  document.getElementById('optMaxWVal').textContent = v + '%';
+  document.getElementById('optMaxWNote').textContent = v === 100 ? '(sem restrição)' : '';
+  validateOptConstraints();
+}
+
+function onOptMinWSlider() {
+  // Slider range 10–300 maps to 1.0%–30.0% in steps of 0.1%
+  const raw  = parseInt(document.getElementById('optMinWSlider').value);
+  const pct  = raw / 10;               // e.g. 10→1.0%, 35→3.5%, 300→30.0%
+  optMinW    = pct / 100;
+  document.getElementById('optMinWVal').textContent = pct.toFixed(1) + '%';
+  document.getElementById('optMinWNote').textContent = pct === 1.0 ? '(padrão)' : '';
+  validateOptConstraints();
+}
+
+function validateOptConstraints() {
+  const warn    = document.getElementById('optConstraintWarn');
+  const runBtn  = document.getElementById('optRunBtn');
+  // infeasible if: minW * N > 1  OR  minW > maxW
+  const infeasible = (optMinW * optN > 1.0 + 1e-9) || (optMinW > optMaxW + 1e-9);
+  warn.style.display   = infeasible ? 'block' : 'none';
+  // Still allow running — optimizer skips infeasible combos gracefully
+  if (infeasible) {
+    warn.textContent = optMinW > optMaxW
+      ? '⚠ peso mínimo maior que o máximo'
+      : `⚠ mín. × ${optN} fundos = ${(optMinW * optN * 100).toFixed(0)}% > 100% — restrição incompatível`;
+  }
+}
+
+// ── Álgebra linear básica (vetores e matrizes, sem dependências) ──────────────
+
+// Produto matriz-vetor
+function matVec(M, v) {
+  return M.map(row => row.reduce((s, x, j) => s + x * v[j], 0));
+}
+// Produto vetor-vetor (dot)
+function dot(a, b) { return a.reduce((s, x, i) => s + x * b[i], 0); }
+
+// Gauss-Jordan: inverte matriz n×n, retorna null se singular
+function invertMatrix(M) {
+  const n   = M.length;
+  const aug = M.map((row, i) => {
+    const r = [...row];
+    for (let j = 0; j < n; j++) r.push(i === j ? 1 : 0);
+    return r;
+  });
+  for (let col = 0; col < n; col++) {
+    // Pivot
+    let maxRow = col;
+    for (let row = col + 1; row < n; row++)
+      if (Math.abs(aug[row][col]) > Math.abs(aug[maxRow][col])) maxRow = row;
+    [aug[col], aug[maxRow]] = [aug[maxRow], aug[col]];
+    if (Math.abs(aug[col][col]) < 1e-12) return null;  // singular
+    const pivot = aug[col][col];
+    for (let j = 0; j < 2 * n; j++) aug[col][j] /= pivot;
+    for (let row = 0; row < n; row++) {
+      if (row === col) continue;
+      const factor = aug[row][col];
+      for (let j = 0; j < 2 * n; j++) aug[row][j] -= factor * aug[col][j];
+    }
+  }
+  return aug.map(row => row.slice(n));
+}
+
+// ── Covariância a partir de retornos diários ──────────────────────────────────
+// Retorna matriz k×k de covariâncias anualizadas (×252) em (%²)
+function covMatrix(cnpjs, historyData) {
+  const k    = cnpjs.length;
+  const rets = cnpjs.map(c => historyData.funds[c].returns);
+  const n    = rets[0].length;
+  const means = rets.map(r => r.reduce((a, b) => a + b, 0) / n);
+  const cov   = Array.from({length: k}, () => new Array(k).fill(0));
+  for (let i = 0; i < k; i++)
+    for (let j = i; j < k; j++) {
+      let s = 0;
+      for (let t = 0; t < n; t++)
+        s += (rets[i][t] - means[i]) * (rets[j][t] - means[j]);
+      cov[i][j] = cov[j][i] = (s / (n - 1)) * 252 * 10000; // (%²) anualizado
+    }
+  return cov;
+}
+
+// ── Volatilidade do portfólio dado peso w e cov ──────────────────────────────
+function portVol(w, cov) {
+  // σ² = wᵀ Σ w  (em %²) → σ em %
+  let v2 = 0;
+  for (let i = 0; i < w.length; i++)
+    for (let j = 0; j < w.length; j++)
+      v2 += w[i] * w[j] * cov[i][j];
+  return Math.sqrt(Math.max(0, v2));
+}
+
+// ── Mínima variância analítico ────────────────────────────────────────────────
+// w* = Σ⁻¹ · 1 / (1ᵀ · Σ⁻¹ · 1)
+// Mínima variância long-only via remoção iterativa de ativos com peso negativo.
+// Mesma abordagem do max-Sharpe: garante solução exata para o subconjunto ativo.
+function minVolWeights(cov) {
+  const n      = cov.length;
+  let active   = cov.map((_, i) => i);
+
+  for (let iter = 0; iter < n; iter++) {
+    const k      = active.length;
+    if (k === 0) return null;
+
+    const subCov = active.map(i => active.map(j => cov[i][j]));
+    const inv    = invertMatrix(subCov);
+    if (!inv) return null;
+
+    const ones  = new Array(k).fill(1);
+    const inv1  = matVec(inv, ones);
+    const denom = inv1.reduce((a, b) => a + b, 0);
+    if (Math.abs(denom) < 1e-12) return null;
+
+    const wSub = inv1.map(x => x / denom);
+
+    if (wSub.every(x => x >= -1e-10)) {
+      const wPos = wSub.map(x => Math.max(0, x));
+      const tot  = wPos.reduce((a, b) => a + b, 0);
+      if (tot <= 0) return null;
+      const wFull = new Array(n).fill(0);
+      active.forEach((origIdx, k) => { wFull[origIdx] = wPos[k] / tot; });
+      return wFull;
+    }
+
+    // Remove asset with most negative weight
+    const minK = wSub.indexOf(Math.min(...wSub));
+    active.splice(minK, 1);
+  }
+  return null;
+}
+
+// ── Máximo Sharpe (tangency portfolio) ───────────────────────────────────────
+// Solução analítica: w* = Σ⁻¹ · (μ - rf) / (1ᵀ · Σ⁻¹ · (μ - rf))
+// μ[i] = retorno alvo do fundo i (%)
+// rf    = CDI alvo (%)
+// Se pesos negativos → clip + renormalise (restrição long-only)
+// Máximo Sharpe long-only via Critical Line (remoção iterativa de ativos negativos).
+// Quando a solução analítica Σ⁻¹(μ−rf) tem pesos negativos, remove o ativo
+// com peso mais negativo e re-resolve no subconjunto restante.
+// Converge para o verdadeiro portfólio tangente long-only.
+// Nota: garante ótimo local da subárea ativa; casos com múltiplos ativos
+// borderline simultâneos podem precisar de QP completo, mas são raros
+// na prática com fundos de ações brasileiros.
+function maxSharpeWeights(cnpjs, mus, cdiTarget, cov) {
+  const n      = mus.length;
+  let active   = mus.map((_, i) => i);  // índices dos ativos ativos
+
+  for (let iter = 0; iter < n; iter++) {
+    const k       = active.length;
+    if (k === 0) return null;
+
+    // Sub-problema: extrair sub-matriz e sub-vetor
+    const subCov = active.map(i => active.map(j => cov[i][j]));
+    const subMus = active.map(i => mus[i]);
+    const excess = subMus.map(m => m - cdiTarget);
+    if (excess.every(e => e <= 0)) return null;  // nenhum ativo bate o CDI
+
+    const inv = invertMatrix(subCov);
+    if (!inv) return null;
+
+    const ie    = matVec(inv, excess);
+    const denom = ie.reduce((a, b) => a + b, 0);
+    if (Math.abs(denom) < 1e-12) return null;
+
+    const wSub = ie.map(x => x / denom);
+
+    // Todos não-negativos → solução encontrada
+    if (wSub.every(x => x >= -1e-10)) {
+      const wPos = wSub.map(x => Math.max(0, x));
+      const tot  = wPos.reduce((a, b) => a + b, 0);
+      if (tot <= 0) return null;
+      // Expande de volta para n dimensões
+      const wFull = new Array(n).fill(0);
+      active.forEach((origIdx, k) => { wFull[origIdx] = wPos[k] / tot; });
+      return wFull;
+    }
+
+    // Remove o ativo com peso mais negativo e repete
+    const minK = wSub.indexOf(Math.min(...wSub));
+    active.splice(minK, 1);
+  }
+  return null;
+}
+
+// ── Máximo retorno: sem restrição → concentrado no fundo de maior retorno
+// Com k fundos: ordena por retorno alvo, pega top-k, otimiza Sharpe entre eles
+// (mais interessante que simplesmente alocar 100% no melhor)
+// Se não conseguir Sharpe, usa pesos uniformes
+function maxReturnWeights(mus) {
+  // Aloca mais nos fundos de maior retorno (proporcional ao excesso sobre o mínimo)
+  const minMu = Math.min(...mus);
+  const excess = mus.map(m => Math.max(0, m - minMu + 0.01));
+  const tot    = excess.reduce((a, b) => a + b, 0);
+  return excess.map(x => x / tot);
+}
+
+// ── Gera todas as combinações C(n, k) ────────────────────────────────────────
+function* combinations(arr, k) {
+  if (k === 0) { yield []; return; }
+  for (let i = 0; i <= arr.length - k; i++)
+    for (const rest of combinations(arr.slice(i + 1), k - 1))
+      yield [arr[i], ...rest];
+}
+
+// ── Avalia um portfólio (w, cnpjs) e retorna métricas ────────────────────────
+function evalPortfolio(w, cnpjs, mus, cdiTarget, cov) {
+  const ret = dot(w, mus);
+  const vol = portVol(w, cov);
+  const sharpe = vol > 0 ? (ret - cdiTarget) / vol : -Infinity;
+  return { w, cnpjs, ret, vol, sharpe };
+}
+
+// ── Aplica carteira otimizada na UI ──────────────────────────────────────────
+function applyOptimizedPortfolio(cnpjs, weights) {
+  // Desmarca todos
+  document.querySelectorAll('#fundSelector input[type=checkbox]').forEach((chk, i) => {
+    chk.checked = false;
+    const sl = document.getElementById('sl-' + i);
+    const wi = document.getElementById('wi-' + i);
+    const row = document.getElementById('frow-' + i);
+    if (sl) { sl.value = 0; sl.disabled = true; }
+    if (wi) { wi.value = '0%'; wi.disabled = true; }
+    if (row) row.classList.add('inactive');
+  });
+
+  // Arredondamento inteligente: garante mínimo 1% para cada fundo da combinação,
+  // depois redistribui o excesso tirando 1% por vez dos maiores.
+  const k = weights.length;
+  // Passo 1: arredonda normalmente
+  let rounded = weights.map(w => Math.round(w * 100));
+  // Passo 2: força mínimo de 1% para todos (são fundos escolhidos pelo otimizador)
+  rounded = rounded.map(v => Math.max(1, v));
+  // Passo 3: ajusta soma para 100, tirando 1% dos maiores pesos iterativamente
+  let total = rounded.reduce((a, b) => a + b, 0);
+  while (total > 100) {
+    const maxIdx = rounded.indexOf(Math.max(...rounded));
+    if (rounded[maxIdx] <= 1) break;  // não pode tirar mais
+    rounded[maxIdx]--;
+    total--;
+  }
+  // Se ficou abaixo de 100 (raro), adiciona ao maior
+  if (total < 100) {
+    const maxIdx = rounded.indexOf(Math.max(...rounded));
+    rounded[maxIdx] += (100 - total);
+  }
+
+  document.querySelectorAll('#fundSelector input[type=checkbox]').forEach((chk, i) => {
+    const idx = cnpjs.indexOf(chk.dataset.cnpj);
+    if (idx === -1) return;
+    const pct = rounded[idx];
+    if (pct <= 0) return;
+    chk.checked = true;
+    const sl = document.getElementById('sl-' + i);
+    const wi = document.getElementById('wi-' + i);
+    const row = document.getElementById('frow-' + i);
+    if (sl) { sl.value = pct; sl.disabled = false; }
+    if (wi) { wi.value = pct + '%'; wi.disabled = false; }
+    if (row) row.classList.remove('inactive');
+  });
+
+  updatePortfolio();
+}
+
+// ── Entrada principal ─────────────────────────────────────────────────────────
+function runOptimizer() {
+  if (!historyData) return;
+
+  const btn    = document.getElementById('optRunBtn');
+  const status = document.getElementById('optStatus');
+  btn.disabled = true;
+  status.textContent = 'Calculando…';
+
+  // Defer para não bloquear o render
+  setTimeout(() => {
+    try {
+      const allCnpjs = Object.keys(historyData.funds);
+      const k        = optN;
+
+      // Retornos alvo por fundo
+      const muMap = {};
+      for (const cnpj of allCnpjs) {
+        const fData = funds.find(f => f.cnpjFmt === cnpj);
+        const t     = fData ? calcTargetReturn(fData) : null;
+        muMap[cnpj] = t ? t.value : null;
+      }
+
+      // CDI alvo
+      let cdiTarget = 10;  // fallback
+      if (cdi) {
+        const s = [];
+        if (cdi.cagr12 != null) s.push([1, cdi.cagr12]);
+        if (cdi.cagr36 != null) s.push([3, cdi.cagr36]);
+        if (cdi.cagr60 != null) s.push([5, cdi.cagr60]);
+        if (s.length) cdiTarget = s.reduce((a,[T,v]) => a + T*v, 0) / s.reduce((a,[T]) => a+T, 0);
+      }
+
+      // Filtra fundos com dados completos
+      const validCnpjs = allCnpjs.filter(c => muMap[c] != null);
+
+      let best = null;
+      let nCombos = 0;
+
+      for (const combo of combinations(validCnpjs, k)) {
+        nCombos++;
+        const mus = combo.map(c => muMap[c]);
+        const cov = covMatrix(combo, historyData);
+
+        let w = null;
+        if (optObj === 'vol') {
+          w = minVolWeights(cov);
+        } else if (optObj === 'sharpe') {
+          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+          if (!w) w = minVolWeights(cov);  // fallback
+        } else {
+          // Máx. retorno: primeiro tenta Sharpe, depois proporcional
+          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+          if (!w) w = maxReturnWeights(mus);
+        }
+        if (!w) w = new Array(k).fill(1 / k);  // fallback uniforme
+
+        // Enforce min/max weight constraints
+        // Feasibility: minW*k ≤ 1, maxW*k ≥ 1, minW ≤ maxW
+        const feasible = (optMinW * k <= 1.0 + 1e-9)
+                      && (optMaxW * k >= 1.0 - 1e-9)
+                      && (optMinW  <= optMaxW + 1e-9);
+        if (!feasible) { continue; }  // skip infeasible combination
+
+        if (optMaxW < 1.0 || optMinW > 1e-9) {
+          // Alternating projections onto {sum=1} and box [minW, maxW]
+          // Bug-free version: never renorm after clip (that can violate maxW)
+          for (let iter = 0; iter < 50; iter++) {
+            // Project onto sum=1: add uniform slack
+            const slack = (1.0 - w.reduce((a,b) => a+b, 0)) / k;
+            w = w.map(x => x + slack);
+            // Project onto box
+            const prev = [...w];
+            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+            if (w.every((x, i) => Math.abs(x - prev[i]) < 1e-10)) break;
+          }
+          // Final redistribution to guarantee sum=1 while respecting bounds
+          for (let iter = 0; iter < 50; iter++) {
+            const diff = 1.0 - w.reduce((a, b) => a + b, 0);
+            if (Math.abs(diff) < 1e-12) break;
+            const freeIdx = diff > 0
+              ? w.map((x, i) => x < optMaxW - 1e-12 ? i : -1).filter(i => i >= 0)
+              : w.map((x, i) => x > optMinW + 1e-12 ? i : -1).filter(i => i >= 0);
+            if (freeIdx.length === 0) break;
+            const per = diff / freeIdx.length;
+            freeIdx.forEach(i => { w[i] += per; });
+            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+          }
+        }
+
+        const p = evalPortfolio(w, combo, mus, cdiTarget, cov);
+
+        if (!best) { best = p; continue; }
+
+        const better =
+          optObj === 'vol'    ? p.vol    < best.vol    :
+          optObj === 'sharpe' ? p.sharpe > best.sharpe :
+          /* return */          p.ret    > best.ret;
+
+        if (better) best = p;
+      }
+
+      if (!best) {
+        status.textContent = 'Não foi possível otimizar.';
+        btn.disabled = false;
+        return;
+      }
+
+      const objLabel = optObj === 'vol' ? `vol. ${best.vol.toFixed(1)}%` :
+                       optObj === 'sharpe' ? `Sharpe ${best.sharpe.toFixed(2)}` :
+                       `retorno ${best.ret.toFixed(1)}%`;
+      status.textContent =
+        `${nCombos} combinações avaliadas · melhor: ${objLabel} · ` +
+        best.cnpjs.map((c,i) => `${historyData.funds[c].nome.split(' ')[0]} ${Math.round(best.w[i]*100)}%`).join(' · ');
+
+      applyOptimizedPortfolio(best.cnpjs, best.w);
+
+    } catch(e) {
+      document.getElementById('optStatus').textContent = 'Erro: ' + e.message;
+    }
+    btn.disabled = false;
+  }, 20);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FILTROS, PERÍODO CUSTOMIZADO E ALPHA
+// ════════════════════════════════════════════════════════════════════════════
+
+const activeFilters = { tipo: '', expo: '', trib: '' };
+
+function setFilter(dim, val, btn) {
+  activeFilters[dim] = val;
+  document.querySelectorAll('.filter-chip[data-filter="' + dim + '"]').forEach(c =>
+    c.classList.toggle('active', c.dataset.val === val));
+  render();
+}
+
+// Período customizado
+let customPeriodStart = null;
+let customPeriodEnd   = null;
+let originalFundCAGRs = null;   // snapshot before override
+
+function onPeriodChange() {
+  const s = document.getElementById('periodStart').value;
+  const e = document.getElementById('periodEnd').value;
+  if (!s || !e || s >= e) return;
+  if (!historyData) { loadHistory().then(() => onPeriodChange()); return; }
+  customPeriodStart = s;
+  customPeriodEnd   = e;
+  const badge = document.getElementById('periodBadge');
+  const clear = document.getElementById('periodClear');
+  badge.style.display = 'inline';
+  clear.style.display = 'inline';
+  const [sy,sm,sd] = s.split('-');
+  const [ey,em,ed] = e.split('-');
+  badge.textContent = sd+'/'+sm+'/'+sy+' \u2192 '+ed+'/'+em+'/'+ey;
+  document.getElementById('periodNote').textContent = 'Retorno acumulado no período (não anualizado)';
+  // Save original CAGRs once
+  if (!originalFundCAGRs) {
+    originalFundCAGRs = funds.map(f => ({
+      cnpjFmt: f.cnpjFmt, cagr12: f.cagr12, cagr36: f.cagr36, cagr60: f.cagr60
+    }));
+  }
+  recalcFromHistory();
+}
+
+function clearPeriod() {
+  customPeriodStart = null;
+  customPeriodEnd   = null;
+  document.getElementById('periodStart').value = '';
+  document.getElementById('periodEnd').value   = '';
+  document.getElementById('periodBadge').style.display = 'none';
+  document.getElementById('periodClear').style.display = 'none';
+  document.getElementById('periodNote').textContent = '';
+  // Restore original CAGRs
+  if (originalFundCAGRs) {
+    originalFundCAGRs.forEach(orig => {
+      const f = funds.find(ff => ff.cnpjFmt === orig.cnpjFmt);
+      if (f) { f.cagr12 = orig.cagr12; f.cagr36 = orig.cagr36; f.cagr60 = orig.cagr60; }
+    });
+    originalFundCAGRs = null;
+  }
+  const th = document.getElementById('th-cagr12');
+  if (th) th.textContent = '12M \u2195';
+  // Restore ibov/cdi from data.json
+  load();
+}
+
+function recalcFromHistory() {
+  if (!historyData || !customPeriodStart || !customPeriodEnd) return;
+  const dates = historyData.commonDates;
+  const s = customPeriodStart, e = customPeriodEnd;
+  const iStart = dates.reduce((best, d, i) => d <= s ? i : best, 0);
+  const iEnd   = dates.reduce((best, d, i) => d <= e ? i : best, 0);
+  if (iEnd <= iStart) return;
+
+  funds.forEach(f => {
+    const fd = historyData.funds[f.cnpjFmt];
+    if (!fd) return;
+    const rets = fd.returns;
+    let cum = 1.0;
+    for (let i = iStart; i <= iEnd && i < rets.length; i++) cum *= (1 + rets[i]);
+    f.cagr12 = (cum - 1) * 100;
+    f.cagr36 = null;
+    f.cagr60 = null;
+  });
+
+  const th12 = document.getElementById('th-cagr12');
+  if (th12) th12.textContent = 'Período';
+  render();
+}
+
+// Alpha: CAGR fundo − CAGR benchmark relevante
+// Benchmark: IBOV para equity, CDI para multimercados
+let currentAlphaWindow = 'cagr36';
+
+function getBenchmarkCAGR(cnpj, window) {
+  const meta = FUND_META[cnpj] || {};
+  return (meta.tipo === 'Multimercado') ? cdi[window] : ibov[window];
+}
+
+function calcAlpha(f, window) {
+  if (!window) window = currentAlphaWindow;
+  const fv = f[window];
+  const bv = getBenchmarkCAGR(f.cnpjFmt, window);
+  if (fv == null || bv == null) return null;
+  return fv - bv;
+}
+
+function fmtAlpha(v) {
+  if (v == null) return '<span class="cagr-val na">N/D</span>';
+  const sign = v >= 0 ? '+' : '';
+  const cls  = v >= 0 ? 'pos' : 'neg';
+  return '<span class="cagr-val ' + cls + '" style="font-size:0.78rem">' + sign + v.toFixed(1) + 'pp</span>';
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// GRÁFICO DE COTA NORMALIZADA / UNDERWATER
+// ════════════════════════════════════════════════════════════════════════════
+
+const CHART_COLORS = [
+  '#e05c2a','#1a7a52','#1a4a8a','#9c5c2a','#b83232',
+  '#a05c00','#7a5c9a','#157a6e','#5c3a9a','#c9960c',
+  '#2a7a4a','#6a3a2a','#3a6a9a','#8a5c3a'
+];
+
+let normalizedChart = null;
+let chartFundActive = {};
+
+function initChartToggles() {
+  if (!historyData) return;
+  const wrap = document.getElementById('chartFundToggles');
+  if (!wrap || wrap.children.length > 0) return;
+  const cnpjs = Object.keys(historyData.funds);
+  cnpjs.forEach(function(cnpj, i) {
+    chartFundActive[cnpj] = true;
+    const btn = document.createElement('button');
+    btn.className = 'chart-fund-toggle active';
+    btn.style.background = CHART_COLORS[i % CHART_COLORS.length];
+    btn.style.borderColor = CHART_COLORS[i % CHART_COLORS.length];
+    btn.style.color = '#fff';
+    btn.textContent = historyData.funds[cnpj].nome.split(' ')[0];
+    btn.onclick = (function(c, idx) {
+      return function() {
+        chartFundActive[c] = !chartFundActive[c];
+        btn.classList.toggle('active', chartFundActive[c]);
+        btn.style.background = chartFundActive[c] ? CHART_COLORS[idx % CHART_COLORS.length] : 'transparent';
+        btn.style.color      = chartFundActive[c] ? '#fff' : 'var(--muted)';
+        renderNormalizedChart();
+      };
+    })(cnpj, i);
+    wrap.appendChild(btn);
+  });
+}
+
+function getRebaseIndex(dates, window) {
+  if (!dates || !dates.length) return 0;
+  if (window === 'start') return 0;
+  const anchor = dates[dates.length - 1];
+  let months = 36;
+  if (window === '24m') months = 24;
+  else if (window === '12m') months = 12;
+  const ay = parseInt(anchor.slice(0,4)), am = parseInt(anchor.slice(5,7));
+  let ty = ay, tm = am - months;
+  while (tm <= 0) { tm += 12; ty--; }
+  const target = ty + '-' + String(tm).padStart(2,'0') + '-' + anchor.slice(8);
+  return dates.reduce(function(best, d, i) { return d <= target ? i : best; }, 0);
+}
+
+function renderNormalizedChart() {
+  if (!historyData || typeof Chart === 'undefined') return;
+  const modeEl   = document.getElementById('chartMode');
+  const rebaseEl = document.getElementById('chartRebaseDate');
+  const bmkEl    = document.getElementById('chartShowBmk');
+  const mode     = modeEl   ? modeEl.value   : 'normalized';
+  const rebase   = rebaseEl ? rebaseEl.value  : '36m';
+  const showBmk  = bmkEl    ? bmkEl.checked   : true;
+
+  const dates  = historyData.commonDates;
+  const iStart = getRebaseIndex(dates, rebase);
+  const sliced = dates.slice(iStart);
+
+  // Monthly tick labels only
+  const tickLabels = sliced.map(function(d, i) {
+    if (i === 0 || d.slice(8) === '01' || i === sliced.length - 1)
+      return d.slice(5,7) + '/' + d.slice(2,4);
+    return '';
+  });
+
+  const datasets = [];
+  const cnpjs = Object.keys(historyData.funds);
+
+  cnpjs.forEach(function(cnpj, ci) {
+    if (!chartFundActive[cnpj]) return;
+    const fd    = historyData.funds[cnpj];
+    const rets  = fd.returns;
+    const color = CHART_COLORS[ci % CHART_COLORS.length];
+
+    if (mode === 'normalized') {
+      let val = 100;
+      const pts = [100];
+      for (let i = iStart; i < iStart + sliced.length - 1 && i < rets.length; i++) {
+        val *= (1 + rets[i]);
+        pts.push(parseFloat(val.toFixed(4)));
+      }
+      datasets.push({ label: fd.nome, data: pts, borderColor: color,
+        borderWidth: 1.5, pointRadius: 0, tension: 0.2, fill: false });
+    } else {
+      let cum = 1, peak = 1;
+      const pts = [0];
+      for (let i = iStart; i < iStart + sliced.length - 1 && i < rets.length; i++) {
+        cum *= (1 + rets[i]);
+        if (cum > peak) peak = cum;
+        pts.push(parseFloat((((cum - peak) / peak) * 100).toFixed(3)));
+      }
+      datasets.push({ label: fd.nome, data: pts, borderColor: color,
+        borderWidth: 1.2, pointRadius: 0, tension: 0.1,
+        fill: { target: 'origin', above: 'transparent', below: color + '22' } });
+    }
+  });
+
+  // IBOV approx: use ibov.cagr36 to build daily series
+  if (showBmk && mode === 'normalized') {
+    const ibovAnnual = (ibov.cagr36 != null ? ibov.cagr36 : 15) / 100;
+    const ibovDaily  = Math.pow(1 + ibovAnnual, 1 / 252) - 1;
+    let val = 100;
+    const pts = [100];
+    for (let i = 0; i < sliced.length - 1; i++) {
+      val *= (1 + ibovDaily);
+      pts.push(parseFloat(val.toFixed(4)));
+    }
+    datasets.push({ label: 'IBOV (retorno uniforme — proxy linear)', data: pts,
+      borderColor: 'rgba(140,140,140,0.55)', borderWidth: 1.5,
+      borderDash: [5,3], pointRadius: 0, tension: 0, fill: false });
+  }
+
+  const ctx = document.getElementById('chartCanvas');
+  if (!ctx) return;
+  if (normalizedChart) { normalizedChart.destroy(); normalizedChart = null; }
+
+  normalizedChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: tickLabels, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: function(c) {
+            var v = c.parsed.y;
+            return c.dataset.label + ': ' + (mode === 'normalized' ? v.toFixed(1) : v.toFixed(2) + '%');
+          }
+        }}
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
+               maxRotation: 0, autoSkip: true, maxTicksLimit: 18 },
+             grid: { display: false } },
+        y: { ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
+               callback: function(v) { return mode === 'normalized' ? v.toFixed(0) : v.toFixed(1) + '%'; } },
+             grid: { color: 'rgba(128,128,128,0.1)' } }
+      }
+    }
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// RADAR RISCO × RETORNO (SCATTER)
+// ════════════════════════════════════════════════════════════════════════════
+
+let scatterChart = null;
+
+function renderScatter() {
+  if (!historyData || !funds.length || typeof Chart === 'undefined') return;
+  const cnpjs = Object.keys(historyData.funds);
+  const cdiVal = cdi.cagr36 != null ? cdi.cagr36 : 12;
+
+  const points = [];
+  cnpjs.forEach(function(cnpj, i) {
+    const fd   = historyData.funds[cnpj];
+    const n    = fd.returns.length;
+    if (n < 2) return;
+    const mean = fd.returns.reduce(function(a,b) { return a+b; }, 0) / n;
+    const vari = fd.returns.reduce(function(a,r) { return a + (r-mean)*(r-mean); }, 0) / (n-1);
+    const vol  = Math.sqrt(vari * 252) * 100;
+    const fData = funds.find(function(f) { return f.cnpjFmt === cnpj; });
+    if (!fData) return;
+    const t = calcTargetReturn(fData);
+    if (!t) return;
+    points.push({ x: parseFloat(vol.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
+      label: fd.nome, color: CHART_COLORS[i % CHART_COLORS.length] });
+  });
+
+  if (!points.length) return;
+  const maxVol = Math.max.apply(null, points.map(function(p){return p.x;})) * 1.15;
+  const avgSharpe = points.reduce(function(s,p){return s+(p.y-cdiVal)/p.x;},0) / points.length;
+
+  const ctx = document.getElementById('scatterCanvas');
+  if (!ctx) return;
+  if (scatterChart) { scatterChart.destroy(); scatterChart = null; }
+
+  scatterChart = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets: [
+      { type: 'line', label: 'Linha do mercado',
+        data: [{x:0,y:cdiVal},{x:maxVol,y:cdiVal+avgSharpe*maxVol}],
+        borderColor: 'rgba(128,128,128,0.35)', borderWidth: 1.2,
+        borderDash: [5,4], pointRadius: 0, fill: false, tension: 0 }
+    ].concat(points.map(function(p) {
+      return { label: p.label, data: [{x:p.x,y:p.y}],
+        backgroundColor: p.color+'cc', borderColor: p.color,
+        borderWidth: 1, pointRadius: 7, pointHoverRadius: 10 };
+    }))},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(c) {
+          if (c.datasetIndex === 0) return 'Referência — Sharpe médio dos fundos exibidos';
+          var p = points[c.datasetIndex - 1];
+          return p.label + '  vol ' + p.x.toFixed(1) + '%  ret ' + p.y.toFixed(1) + '%  Sharpe ' + ((p.y-cdiVal)/p.x).toFixed(2);
+        }}}
+      },
+      scales: {
+        x: { title: { display: true, text: 'Volatilidade anualizada (%)',
+               font: { family: 'Courier New', size: 10 }, color: '#888' },
+             ticks: { font: { family: 'Courier New', size: 10 }, color: '#888' },
+             grid: { color: 'rgba(128,128,128,0.1)' } },
+        y: { title: { display: true, text: 'Retorno alvo (%)',
+               font: { family: 'Courier New', size: 10 }, color: '#888' },
+             ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
+               callback: function(v){return v.toFixed(1)+'%';} },
+             grid: { color: 'rgba(128,128,128,0.1)' } }
+      }
+    }
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// HEATMAP DE RETORNOS MENSAIS
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderHeatmap() {
+  if (!historyData) return;
+  const container = document.getElementById('heatmapContainer');
+  if (!container) return;
+
+  const dates = historyData.commonDates;
+  const cnpjs = Object.keys(historyData.funds);
+  const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+  // Build month windows
+  const months = {};
+  dates.forEach(function(d, i) {
+    var ym = d.slice(0,7);
+    if (!months[ym]) months[ym] = { start: i, end: i };
+    months[ym].end = i;
+  });
+  const monthKeys = Object.keys(months).sort();
+
+  // Monthly return per fund
+  const fundRets = {};
+  cnpjs.forEach(function(cnpj) {
+    const rets = historyData.funds[cnpj].returns;
+    fundRets[cnpj] = {};
+    monthKeys.forEach(function(ym) {
+      var s = months[ym].start, e = months[ym].end;
+      var cum = 1.0;
+      for (var i = s; i < e && i < rets.length; i++) cum *= (1 + rets[i]);
+      fundRets[cnpj][ym] = (cum - 1) * 100;
+    });
+  });
+
+  function heatColor(v) {
+    if (v == null) return 'transparent';
+    var abs = Math.min(Math.abs(v) / 8, 1);
+    return v > 0
+      ? 'rgba(26,122,82,' + (0.12 + abs * 0.72) + ')'
+      : 'rgba(184,50,50,'  + (0.12 + abs * 0.72) + ')';
+  }
+
+  var html = '<table class="heatmap-table"><thead><tr><th>Fundo</th>';
+  monthKeys.forEach(function(ym) {
+    var m = parseInt(ym.slice(5,7)), y = ym.slice(2,4);
+    html += '<th>' + MONTH_NAMES[m-1] + '<br><span style="opacity:0.5">' + y + '</span></th>';
+  });
+  html += '</tr></thead><tbody>';
+
+  cnpjs.forEach(function(cnpj) {
+    var nome = historyData.funds[cnpj].nome;
+    html += '<tr><td class="fund-label" title="' + nome + '">' + nome + '</td>';
+    monthKeys.forEach(function(ym) {
+      var v  = fundRets[cnpj][ym];
+      var bg = heatColor(v);
+      var tc = (v != null && Math.abs(v) > 4) ? '#fff' : 'var(--text)';
+      html += '<td style="background:' + bg + ';color:' + tc + '" title="' + nome + ' ' + ym + ': ' + (v != null ? v.toFixed(2)+'%' : 'N/D') + '">'
+            + (v != null ? v.toFixed(1) : '—') + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// SCORE DE CONSISTÊNCIA
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderConsistency() {
+  if (!historyData) return;
+  const container = document.getElementById('consistencyContainer');
+  if (!container) return;
+
+  const dates   = historyData.commonDates;
+  const cnpjs   = Object.keys(historyData.funds);
+  const cdiAnn  = (cdi.cagr36 != null ? cdi.cagr36 : 12) / 100;
+  const ibovAnn = (ibov.cagr36 != null ? ibov.cagr36 : 15) / 100;
+  const cdiD    = Math.pow(1 + cdiAnn,  1/252) - 1;
+  const ibovD   = Math.pow(1 + ibovAnn, 1/252) - 1;
+
+  const months = {};
+  dates.forEach(function(d, i) {
+    var ym = d.slice(0,7);
+    if (!months[ym]) months[ym] = { start: i, end: i };
+    months[ym].end = i;
+  });
+  const monthKeys = Object.keys(months).sort();
+  const nM = monthKeys.length;
+
+  const rows = cnpjs.map(function(cnpj) {
+    const rets = historyData.funds[cnpj].returns;
+    var pos = 0, aboveCdi = 0, aboveIbov = 0, worst = 0;
+    monthKeys.forEach(function(ym) {
+      var s = months[ym].start, e = months[ym].end;
+      var cum = 1, cdiCum = 1, ibovCum = 1;
+      for (var i = s; i < e && i < rets.length; i++) {
+        cum     *= (1 + rets[i]);
+        cdiCum  *= (1 + cdiD);
+        ibovCum *= (1 + ibovD);
+      }
+      var r = cum-1;
+      if (r > 0) pos++;
+      if (r > cdiCum-1) aboveCdi++;
+      if (r > ibovCum-1) aboveIbov++;
+      if (r < worst) worst = r;
+    });
+    const meta = FUND_META[cnpj] || {};
+    return {
+      nome: meta.nome || historyData.funds[cnpj].nome,
+      pctPos:  pos/nM*100, pctCdi: aboveCdi/nM*100,
+      pctIbov: aboveIbov/nM*100, worst: worst*100
+    };
+  });
+  rows.sort(function(a,b){ return b.pctPos - a.pctPos; });
+
+  function bar(pct, color) {
+    return '<div style="display:inline-block;width:'+pct.toFixed(0)+'%;height:4px;background:'+color+';border-radius:2px;vertical-align:middle;margin-right:4px"></div>';
+  }
+  function col(pct) { return pct > 60 ? 'var(--green)' : pct > 40 ? 'var(--amber)' : 'var(--red)'; }
+
+  var html = '<table class="consistency-table"><thead><tr>'
+    + '<th>Fundo</th><th title="% meses positivos">% pos.</th>'
+    + '<th title="% meses acima do CDI">vs CDI</th>'
+    + '<th title="% meses acima do IBOV">vs IBOV</th>'
+    + '<th title="Pior mês">Pior mês</th>'
+    + '</tr></thead><tbody>';
+
+  rows.forEach(function(r) {
+    html += '<tr><td>' + r.nome + '</td>'
+      + '<td style="color:' + col(r.pctPos)  + '">' + bar(r.pctPos,'var(--green)') + r.pctPos.toFixed(0)  + '%</td>'
+      + '<td style="color:' + col(r.pctCdi)  + '">' + r.pctCdi.toFixed(0)  + '%</td>'
+      + '<td style="color:' + col(r.pctIbov) + '">' + r.pctIbov.toFixed(0) + '%</td>'
+      + '<td style="color:var(--red)">' + r.worst.toFixed(1) + '%</td></tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// DRAWDOWN UNDERWATER POR FUNDO
+// ════════════════════════════════════════════════════════════════════════════
+
+let uwChart = null;
+
+function initUnderwaterSelect() {
+  if (!historyData) return;
+  const sel = document.getElementById('uwFundSelect');
+  if (!sel || sel.options.length > 0) return;
+  Object.keys(historyData.funds).forEach(function(cnpj) {
+    var opt = document.createElement('option');
+    opt.value = cnpj;
+    opt.textContent = historyData.funds[cnpj].nome;
+    sel.appendChild(opt);
+  });
+  renderUnderwaterChart();
+}
+
+function renderUnderwaterChart() {
+  if (!historyData || typeof Chart === 'undefined') return;
+  const sel = document.getElementById('uwFundSelect');
+  if (!sel) return;
+  const cnpj = sel.value;
+  const fd   = historyData.funds[cnpj];
+  if (!fd) return;
+
+  const dates = historyData.commonDates;
+  const rets  = fd.returns;
+  let cum = 1, peak = 1;
+  const uw = [0];
+  for (var i = 0; i < rets.length; i++) {
+    cum *= (1 + rets[i]);
+    if (cum > peak) peak = cum;
+    uw.push(parseFloat((((cum - peak) / peak) * 100).toFixed(3)));
+  }
+
+  // Recovery stats
+  const recoveries = [];
+  let inDD = false, trIdx = 0, trVal = 0;
+  for (var i = 0; i < uw.length; i++) {
+    if (uw[i] < -0.5 && !inDD) { inDD = true; trIdx = i; trVal = uw[i]; }
+    if (inDD && uw[i] < trVal)  { trVal = uw[i]; trIdx = i; }
+    if (inDD && uw[i] >= -0.1)  { recoveries.push(i - trIdx); inDD = false; trVal = 0; }
+  }
+  const avgRec = recoveries.length
+    ? Math.round(recoveries.reduce(function(a,b){return a+b;},0) / recoveries.length) : null;
+  const maxDD = Math.min.apply(null, uw).toFixed(1);
+
+  const ctx = document.getElementById('underwaterCanvas');
+  if (!ctx) return;
+  if (uwChart) { uwChart.destroy(); uwChart = null; }
+
+  uwChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: dates, datasets: [{
+      data: uw, borderColor: 'var(--red)', borderWidth: 1.2,
+      pointRadius: 0,
+      fill: { target: 'origin', above: 'transparent', below: 'rgba(184,50,50,0.18)' },
+      tension: 0.1
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        subtitle: { display: true,
+          text: 'Máx. drawdown: ' + maxDD + '%' + (avgRec ? '  ·  Recuperação média: ' + avgRec + ' dias' : '  ·  Em drawdown atual'),
+          font: { family: 'Courier New', size: 10 }, color: '#888', padding: { bottom: 6 } },
+        tooltip: { callbacks: {
+          label: function(c) { return 'Drawdown: ' + c.parsed.y.toFixed(2) + '%'; },
+          title: function(c) { return c[0].label; }
+        }}
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
+               maxRotation: 0, autoSkip: true, maxTicksLimit: 14 },
+             grid: { display: false } },
+        y: { ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
+               callback: function(v){ return v.toFixed(0)+'%'; } },
+             grid: { color: 'rgba(128,128,128,0.1)' } }
+      }
+    }
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// STRESS TEST — CENÁRIOS HISTÓRICOS ADVERSOS (AUTOMÁTICOS)
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderStressTest() {
+  if (!historyData) return;
+  const container = document.getElementById('stressContainer');
+  if (!container) return;
+
+  const dates = historyData.commonDates;
+  const cnpjs = Object.keys(historyData.funds);
+  const nFunds = cnpjs.length;
+  const n = dates.length;
+
+  // Build equal-weighted portfolio returns
+  const eqRets = [];
+  for (var i = 0; i < n - 1; i++) {
+    var r = 0;
+    cnpjs.forEach(function(cnpj) {
+      var rets = historyData.funds[cnpj].returns;
+      r += (rets[i] || 0) / nFunds;
+    });
+    eqRets.push(r);
+  }
+
+  // Find top-3 non-overlapping worst 20-day windows
+  var WINDOW = 20;
+  var windowRets = [];
+  for (var i = 0; i <= eqRets.length - WINDOW; i++) {
+    var cum = 1.0;
+    for (var j = i; j < i + WINDOW; j++) cum *= (1 + eqRets[j]);
+    windowRets.push({ start: i, end: i + WINDOW, ret: cum - 1 });
+  }
+  windowRets.sort(function(a,b){ return a.ret - b.ret; });
+
+  var scenarios = [];
+  for (var wi = 0; wi < windowRets.length && scenarios.length < 3; wi++) {
+    var w = windowRets[wi];
+    var overlaps = scenarios.some(function(s){ return w.start < s.end && w.end > s.start; });
+    if (!overlaps) scenarios.push(w);
+  }
+
+  var html = '';
+  scenarios.forEach(function(sc, si) {
+    var d0 = dates[sc.start];
+    var d1 = dates[Math.min(sc.end, dates.length-1)];
+    var fmtD = function(d){ var p=d.split('-'); return p[2]+'/'+p[1]+'/'+p[0].slice(2); };
+    html += '<div class="stress-scenario">'
+      + '<div class="stress-scenario-title">Cenário '+(si+1)+': '
+      + fmtD(d0)+' → '+fmtD(d1)
+      + ' &nbsp;·&nbsp; queda port. igual-ponderado: '
+      + (sc.ret*100).toFixed(1)+'%</div>'
+      + '<div class="stress-bars">';
+
+    // Sort funds by worst drawdown in scenario
+    var fundRows = cnpjs.map(function(cnpj) {
+      var rets = historyData.funds[cnpj].returns;
+      var cum  = 1.0;
+      for (var i = sc.start; i < sc.end && i < rets.length; i++) cum *= (1+rets[i]);
+      var dd = (cum-1)*100;
+      // Recovery after window
+      var recCum = 1.0, recDays = null;
+      for (var i = sc.end; i < rets.length; i++) {
+        recCum *= (1+rets[i]);
+        if (recCum >= (1/cum)) { recDays = i-sc.end; break; }
+      }
+      return { nome: historyData.funds[cnpj].nome, dd: dd, recDays: recDays };
+    });
+    fundRows.sort(function(a,b){ return a.dd - b.dd; });
+
+    fundRows.forEach(function(row) {
+      var barPct = Math.min(Math.abs(row.dd)*3, 100);
+      var vCol   = row.dd < 0 ? 'var(--red)' : 'var(--green)';
+      var recTxt = row.recDays !== null ? 'rec. '+row.recDays+'d' : 'não rec.';
+      html += '<div class="stress-bar-row">'
+        + '<span class="stress-bar-name" title="'+row.nome+'">'+row.nome+'</span>'
+        + '<div class="stress-bar-track"><div class="stress-bar-fill" style="width:'+barPct+'%"></div></div>'
+        + '<span class="stress-bar-val" style="color:'+vCol+'">'+row.dd.toFixed(1)+'%</span>'
+        + '<span class="stress-bar-val" style="font-size:0.58rem;color:var(--muted)">'+recTxt+'</span>'
+        + '</div>';
+    });
+
+    html += '</div></div>';
+  });
+
+  if (!html) html = '<span style="color:var(--muted);font-size:0.8rem">Dados insuficientes para identificar cenários.</span>';
+  container.innerHTML = html;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// SIMULADOR DE APORTES PERIÓDICOS COM IR
+// ════════════════════════════════════════════════════════════════════════════
+
+function initAportesSelect() {
+  const sel = document.getElementById('apFundSelect');
+  if (!sel || sel.options.length > 0 || !funds.length) return;
+  funds.filter(function(f){ return !f.error; }).forEach(function(f) {
+    var meta = FUND_META[f.cnpjFmt] || {};
+    var opt  = document.createElement('option');
+    opt.value = f.cnpjFmt;
+    opt.textContent = meta.nome || f.name;
+    sel.appendChild(opt);
+  });
+}
+
+
+// ── XIRR: taxa interna de retorno para fluxos irregulares ─────────────────
+// cashflows = [{t: years_from_now, amount: signed_value}]
+// amount negativo = saída (aporte), positivo = entrada (resgate)
+function xirr(cashflows, guess) {
+  guess = guess || 0.1;
+  var MAX_ITER = 100, TOLE = 1e-7;
+  var r = guess;
+  for (var it = 0; it < MAX_ITER; it++) {
+    var f = 0, df = 0;
+    for (var j = 0; j < cashflows.length; j++) {
+      var t = cashflows[j].t, c = cashflows[j].amount;
+      var disc = Math.pow(1 + r, -t);
+      f  += c * disc;
+      df -= t * c * disc / (1 + r);
+    }
+    if (Math.abs(df) < 1e-12) break;
+    var rNew = r - f / df;
+    if (Math.abs(rNew - r) < TOLE) { r = rNew; break; }
+    r = rNew;
+    if (r <= -0.9999) r = -0.9; // clamp
+  }
+  return r;
+}
+
+function renderAportes() {
+  const container = document.getElementById('aportesResult');
+  if (!container) return;
+
+  var aporteInicial    = parseFloat(document.getElementById('apAporteInicial').value)    || 0;
+  var aporteRecorrente = parseFloat(document.getElementById('apAporteRecorrente').value) || 0;
+  var freq             = document.getElementById('apFreq').value;
+  var anos             = parseInt(document.getElementById('apAnos').value)  || 10;
+  var cnpj             = document.getElementById('apFundSelect').value;
+  if (!cnpj) return;
+
+  var fData  = funds.find(function(f){ return f.cnpjFmt === cnpj; });
+  if (!fData) return;
+  var target = calcTargetReturn(fData);
+  if (!target) { container.innerHTML = '<span style="color:var(--muted)">Retorno alvo indisponível.</span>'; return; }
+
+  var meta = FUND_META[cnpj] || {};
+  var trib = meta.trib || 'RV';
+
+  var hoje = new Date();
+  var dataResgate = new Date(hoje.getTime() + anos * 365.25 * 86400000);
+
+  // Build aporte list: [{date, amount}]
+  var aportes = [];
+  if (aporteInicial > 0) aportes.push({ date: new Date(hoje), amount: aporteInicial });
+
+  if (freq === 'monthly' && aporteRecorrente > 0) {
+    for (var m = 1; m <= anos * 12; m++) {
+      var d = new Date(hoje);
+      d.setMonth(d.getMonth() + m);
+      if (d < dataResgate) aportes.push({ date: d, amount: aporteRecorrente });
+    }
+  } else if (freq === 'annual' && aporteRecorrente > 0) {
+    for (var y = 1; y <= anos; y++) {
+      var d = new Date(hoje);
+      d.setFullYear(d.getFullYear() + y);
+      if (d < dataResgate) aportes.push({ date: d, amount: aporteRecorrente });
+    }
+  }
+
+  if (!aportes.length) {
+    container.innerHTML = '<span style="color:var(--muted)">Defina ao menos um aporte.</span>';
+    return;
+  }
+
+  // Simulate each aporte independently (each has its own tax base and horizon)
+  var totAporte = 0, totBruto = 0, totCC = 0, totResgate_ = 0, totLiq = 0;
+
+  aportes.forEach(function(ap) {
+    var anosAp = (dataResgate - ap.date) / (365.25 * 86400000);
+    if (anosAp <= 0.01) return;
+    var sim = simularFundo(ap.amount, target.value, trib, anosAp);
+    totAporte   += sim.aporte;
+    totBruto    += sim.valorBruto;
+    totCC       += sim.irComeCotas;
+    totResgate_ += sim.irResgate;
+    totLiq      += sim.valorLiquido;
+  });
+
+  var totIR   = totCC + totResgate_;
+  var rendPot = totBruto - totAporte;
+  var custFisc = rendPot > 0 ? ((totIR / rendPot) * 100).toFixed(1) + '%' : '—';
+
+  // XIRR: TIR sobre os fluxos reais (cada aporte no seu momento, resgate no final)
+  // Fluxos: aportes são saídas (negativos), valor líquido final é entrada (positivo)
+  var xirrFlows = [];
+  aportes.forEach(function(ap) {
+    var t = (dataResgate - ap.date) / (365.25 * 86400000);
+    xirrFlows.push({ t: anos - t, amount: -ap.amount });
+  });
+  xirrFlows.push({ t: anos, amount: totLiq });
+  var xirrRate = null;
+  try { xirrRate = xirr(xirrFlows, 0.08); } catch(e) {}
+  var cagrLiq  = (xirrRate != null && isFinite(xirrRate) && xirrRate > -1)
+    ? ((xirrRate * 100).toFixed(1)) + '%'
+    : (totAporte > 0 && totLiq > totAporte
+        ? ((Math.pow(totLiq / totAporte, 1/anos) - 1)*100).toFixed(1)+'%'
+        : '—');
+  var mult = totAporte > 0 ? (totLiq / totAporte).toFixed(2) + 'x' : '—';
+
+  container.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0.9rem">'
+    + card('Total aportado', fmtBRL(totAporte), '')
+    + card('Valor líquido', fmtBRL(totLiq), 'var(--green)')
+    + card('IR total', fmtBRL(totIR), 'var(--red)')
+    + card('CAGR líquido', cagrLiq, 'var(--text)')
+    + '</div>'
+    + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:0.8rem">'
+    + card('Múltiplo do capital', mult, '')
+    + card('Custo fiscal', custFisc, 'var(--red)')
+    + card(trib==='TR' ? 'Come-cotas' : 'IR no resgate', fmtBRL(trib==='TR' ? totCC : totResgate_), 'var(--amber)')
+    + '</div>'
+    + '<div style="font-family:\'Courier New\',monospace;font-size:0.6rem;color:var(--muted)">'
+    + 'Retorno alvo: +'+target.value.toFixed(1)+'% a.a. &nbsp;·&nbsp; '
+    + 'Tributação: '+trib+' &nbsp;·&nbsp; '
+    + aportes.length+' aportes &nbsp;·&nbsp; '
+    + 'Prazo: '+anos+' anos'
+    + (target.sigma > 3 ? ' &nbsp;·&nbsp; ⚠ alta dispersão entre períodos (σ=' + target.sigma.toFixed(1) + 'pp)' : '')
+    + '</div>';
+
+  function card(label, value, color) {
+    return '<div style="padding:0.55rem 0.7rem;background:var(--bg);border-radius:6px;border:0.5px solid var(--border)">'
+      + '<div style="font-family:\'Courier New\',monospace;font-size:0.55rem;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.07em">'+label+'</div>'
+      + '<div style="font-family:\'Courier New\',monospace;font-size:0.88rem;font-weight:bold;color:'+(color||'var(--text)')+'">'+value+'</div>'
+      + '</div>';
+  }
+}
+
+
+updateHeaders();
+load();
+</script>
+</body>
+</html>
