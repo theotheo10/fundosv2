@@ -179,8 +179,8 @@
   }
   .tab-btn:hover { color: var(--text); }
   .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); }
-  .tab-pane { display: none; }
-  .tab-pane.active { display: block; }
+  .tab-pane { display: none; overflow-x: hidden; }
+  .tab-pane.active { display: block; overflow-x: hidden; }
 
   /* ── Portfolio ── */
   .port-layout {
@@ -673,11 +673,11 @@
   #chartCanvas { width:100%; height:100%; display:block; }
 
   /* ── Analysis tab ── */
-  .analysis-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; }
+  .analysis-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; min-width:0; }
   @media(max-width:700px){ .analysis-grid { grid-template-columns:1fr; } }
   .analysis-card {
     background:var(--surface); border:1px solid var(--border); border-radius:10px;
-    padding:1rem 1.1rem; min-height:80px;
+    padding:1rem 1.1rem; min-height:80px; min-width:0; overflow:hidden;
   }
   .analysis-card-title {
     font-family:'Courier New',monospace; font-size:0.6rem; text-transform:uppercase;
@@ -704,7 +704,7 @@
   .stress-scenario-title { font-family:'Courier New',monospace; font-size:0.62rem; color:var(--muted); margin-bottom:0.4rem; }
   .stress-bars { display:flex; flex-direction:column; gap:4px; }
   .stress-bar-row { display:flex; align-items:center; gap:6px; }
-  .stress-bar-name { font-size:0.65rem; color:var(--muted); width:90px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .stress-bar-name { font-size:0.65rem; color:var(--muted); width:110px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .stress-bar-track { flex:1; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
   .stress-bar-fill { height:100%; border-radius:3px; background:var(--red); }
   .stress-bar-fill.recovery { background:var(--green); }
@@ -718,6 +718,108 @@
     border-radius:4px; width:100%; outline:none;
   }
   .aportes-grid input:focus, .aportes-grid select:focus { border-color:var(--accent); }
+
+
+  /* ── Simulador Monte Carlo ── */
+  .mc-section {
+    margin-top: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .mc-header {
+    padding: 1rem 1.4rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: baseline; gap: 1.2rem; flex-wrap: wrap;
+  }
+  .mc-header-title {
+    font-size: 0.72rem; font-family: 'Courier New', monospace;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted);
+  }
+  .mc-body { padding: 1.2rem 1.4rem; }
+  .mc-controls-grid {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.7rem 1.5rem; margin-bottom: 1.2rem;
+  }
+  @media (max-width: 700px) { .mc-controls-grid { grid-template-columns: 1fr 1fr; } }
+  .mc-ctrl { display: flex; flex-direction: column; gap: 4px; }
+  .mc-ctrl label {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+  }
+  .mc-ctrl input[type=number], .mc-ctrl select {
+    font-family: 'Courier New', monospace; font-size: 0.82rem;
+    padding: 5px 8px; border: 0.5px solid var(--border);
+    background: var(--bg); color: var(--text);
+    border-radius: 5px; outline: none; width: 100%;
+  }
+  .mc-ctrl input[type=number]:focus, .mc-ctrl select:focus { border-color: var(--accent); }
+  .mc-target-row {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; align-items: center;
+  }
+  .mc-target-label { font-family: 'Courier New', monospace; font-size: 0.62rem; color: var(--muted); }
+  .mc-target-btn {
+    font-family: 'Courier New', monospace; font-size: 0.62rem; padding: 3px 10px;
+    border-radius: 12px; border: 0.5px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer; transition: all 0.12s;
+  }
+  .mc-target-btn:hover { border-color: var(--text); color: var(--text); }
+  .mc-target-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .mc-stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin-bottom: 1.2rem;
+  }
+  @media (max-width: 700px) { .mc-stats { grid-template-columns: repeat(2,1fr); } }
+  .mc-stat {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: 8px; padding: 0.7rem 0.9rem;
+    border-top: 2px solid var(--muted);
+  }
+  .mc-stat.green { border-top-color: var(--green); }
+  .mc-stat.amber { border-top-color: var(--amber); }
+  .mc-stat.red   { border-top-color: var(--red); }
+  .mc-stat.blue  { border-top-color: var(--blue); }
+  .mc-stat-label {
+    font-family: 'Courier New', monospace; font-size: 0.54rem;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 4px;
+  }
+  .mc-stat-val { font-family: 'Courier New', monospace; font-size: 0.95rem; font-weight: bold; }
+  .mc-stat.green .mc-stat-val { color: var(--green); }
+  .mc-stat.amber .mc-stat-val { color: var(--amber); }
+  .mc-stat.red   .mc-stat-val { color: var(--red); }
+  .mc-stat.blue  .mc-stat-val { color: var(--blue); }
+  .mc-stat-sub { font-family: 'Courier New', monospace; font-size: 0.58rem; color: var(--muted); margin-top: 3px; }
+  .mc-chart-wrap {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: 8px; padding: 1rem; margin-bottom: 1rem;
+  }
+  .mc-chart-legend {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;
+    font-family: 'Courier New', monospace; font-size: 0.6rem; color: var(--muted);
+    align-items: center;
+  }
+  .mc-leg-item { display: flex; align-items: center; gap: 5px; }
+  .mc-n-btns { display: flex; gap: 5px; margin-left: auto; }
+  .mc-n-btn {
+    font-family: 'Courier New', monospace; font-size: 0.58rem; padding: 2px 8px;
+    border-radius: 10px; border: 0.5px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+  }
+  .mc-n-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .mc-run-btn {
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+    padding: 6px 18px; border-radius: 6px;
+    background: var(--accent); border: 1px solid var(--accent); color: #fff;
+    cursor: pointer; font-weight: bold; transition: opacity 0.12s;
+  }
+  .mc-run-btn:hover { opacity: 0.85; }
+  .mc-run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .mc-source-row {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;
+  }
+  .mc-source-label { font-family: 'Courier New', monospace; font-size: 0.62rem; color: var(--muted); }
+  .mc-empty { font-family: 'Courier New', monospace; font-size: 0.72rem; color: var(--muted); padding: 1.5rem; text-align: center; }
 
 </style>
 </head>
@@ -884,6 +986,102 @@
     <div id="irBody" class="ir-empty">Selecione fundos e pesos no portfólio acima</div>
   </div>
 
+  <!-- ── Simulador de Aportes + Monte Carlo ── -->
+  <div class="mc-section" id="mcSection">
+    <div class="mc-header">
+      <span class="mc-header-title">Simulador de aportes periódicos · Monte Carlo</span>
+    </div>
+    <div class="mc-body">
+
+      <div class="mc-source-row">
+        <span class="mc-source-label">Simular:</span>
+        <button class="mc-target-btn active" id="mcSrcPortfolio" onclick="mcSetSource('portfolio')">Portfólio atual</button>
+        <button class="mc-target-btn" id="mcSrcFund" onclick="mcSetSource('fund')">Fundo específico</button>
+        <select id="mcFundSelect" style="display:none;font-family:'Courier New',monospace;font-size:0.72rem;padding:3px 8px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;outline:none;"></select>
+      </div>
+
+      <div class="mc-controls-grid">
+        <div class="mc-ctrl">
+          <label>Aporte inicial (R$)</label>
+          <input type="number" id="mcAporteInicial" value="100000" min="0" step="10000" oninput="mcScheduleRun()">
+        </div>
+        <div class="mc-ctrl">
+          <label>Aporte mensal (R$)</label>
+          <input type="number" id="mcAporteMensal" value="5000" min="0" step="500" oninput="mcScheduleRun()">
+        </div>
+        <div class="mc-ctrl">
+          <label>Prazo (anos)</label>
+          <input type="number" id="mcAnos" value="10" min="1" max="40" oninput="mcScheduleRun()">
+        </div>
+        <div class="mc-ctrl">
+          <label>Retorno a.a. <span id="mcRetLbl" style="color:var(--accent)">auto</span></label>
+          <input type="number" id="mcRet" value="" placeholder="auto (portfólio)" step="0.5" oninput="mcScheduleRun()">
+        </div>
+        <div class="mc-ctrl">
+          <label>Volatilidade a.a. <span id="mcVolLbl" style="color:var(--accent)">auto</span></label>
+          <input type="number" id="mcVol" value="" placeholder="auto (histórica)" step="0.5" oninput="mcScheduleRun()">
+        </div>
+        <div class="mc-ctrl">
+          <label>Inflação a.a. (%)</label>
+          <input type="number" id="mcInfl" value="4.5" min="0" max="30" step="0.5" oninput="mcScheduleRun()">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;">
+        <button class="mc-run-btn" id="mcRunBtn" onclick="mcRun()">Simular</button>
+        <div class="mc-n-btns">
+          <button class="mc-n-btn active" data-n="1000" onclick="mcSetN(this)">1k</button>
+          <button class="mc-n-btn" data-n="5000" onclick="mcSetN(this)">5k</button>
+          <button class="mc-n-btn" data-n="20000" onclick="mcSetN(this)">20k</button>
+        </div>
+        <span style="font-family:'Courier New',monospace;font-size:0.6rem;color:var(--muted)" id="mcNote">Simulações por Monte Carlo</span>
+      </div>
+
+      <div id="mcStats" class="mc-stats" style="display:none">
+        <div class="mc-stat green">
+          <div class="mc-stat-label">Mediana (P50)</div>
+          <div class="mc-stat-val" id="mcP50">—</div>
+          <div class="mc-stat-sub" id="mcP50Real">—</div>
+        </div>
+        <div class="mc-stat blue">
+          <div class="mc-stat-label">P75 — bom cenário</div>
+          <div class="mc-stat-val" id="mcP75">—</div>
+          <div class="mc-stat-sub" id="mcP75Real">—</div>
+        </div>
+        <div class="mc-stat amber">
+          <div class="mc-stat-label">P25 — cenário adverso</div>
+          <div class="mc-stat-val" id="mcP25">—</div>
+          <div class="mc-stat-sub" id="mcP25Real">—</div>
+        </div>
+        <div class="mc-stat red">
+          <div class="mc-stat-label">P10 — pior 10%</div>
+          <div class="mc-stat-val" id="mcP10">—</div>
+          <div class="mc-stat-sub" id="mcP10Real">—</div>
+        </div>
+      </div>
+
+      <div id="mcChartWrap" class="mc-chart-wrap" style="display:none">
+        <div class="mc-chart-legend">
+          <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(26,122,82,0.18)" rx="2"/></svg>P75–P90</div>
+          <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(26,74,138,0.18)" rx="2"/></svg>P25–P75</div>
+          <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(184,50,50,0.15)" rx="2"/></svg>P10–P25</div>
+          <div class="mc-leg-item"><svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#1a4a8a" stroke-width="2"/></svg>Mediana</div>
+          <div class="mc-leg-item"><svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#e05c2a" stroke-width="1.5" stroke-dasharray="4,3"/></svg>Taxa fixa</div>
+        </div>
+        <div style="position:relative;height:300px;"><canvas id="mcChart"></canvas></div>
+      </div>
+
+      <div id="mcIrWrap" style="display:none">
+        <div style="font-family:'Courier New',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.6rem">Impacto do IR (sobre o cenário mediano)</div>
+        <div id="mcIrResult"></div>
+      </div>
+
+      <div id="mcEmpty" class="mc-empty">Configure o portfólio acima e clique Simular</div>
+
+    </div>
+  </div>
+
+
 </div><!-- /tab-portfolio -->
 
 
@@ -897,8 +1095,8 @@
       <option value="start">Início da série</option>
     </select></label>
     <label>Mostrar: <select id="chartMode" onchange="renderNormalizedChart()">
-      <option value="normalized">Cota normalizada (base 100)</option>
-      <option value="drawdown">Underwater (drawdown)</option>
+      <option value="normalized">Retorno acumulado (%)</option>
+      <option value="drawdown">Underwater — drawdown do pico</option>
     </select></label>
     <label><input type="checkbox" id="chartShowBmk" onchange="renderNormalizedChart()" checked> IBOV</label>
   </div>
@@ -920,7 +1118,7 @@
     </div>
 
     <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title">Heatmap de retornos mensais</div>
+      <div class="analysis-card-title">Retornos anuais</div>
       <div class="heatmap-wrap"><div id="heatmapContainer"></div></div>
     </div>
 
@@ -929,10 +1127,10 @@
       <div id="consistencyContainer"></div>
     </div>
 
-    <div class="analysis-card">
+    <div class="analysis-card" style="display:flex;flex-direction:column;">
       <div class="analysis-card-title">Drawdown histórico (underwater)</div>
       <select id="uwFundSelect" style="font-family:'Courier New',monospace;font-size:0.68rem;padding:3px 8px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;width:100%;margin-bottom:0.6rem;outline:none;" onchange="renderUnderwaterChart()"></select>
-      <div style="position:relative;height:260px;width:100%"><canvas id="underwaterCanvas"></canvas></div>
+      <div style="position:relative;flex:1;min-height:320px;width:100%"><canvas id="underwaterCanvas"></canvas></div>
     </div>
 
     <div class="analysis-card" style="grid-column:1/-1">
@@ -940,28 +1138,13 @@
       <div id="stressContainer"></div>
     </div>
 
-    <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title">Simulador de aportes periódicos (com IR)</div>
-      <div class="aportes-grid">
-        <div><label>Aporte inicial (R$)</label><input type="number" id="apAporteInicial" value="100000" min="0"></div>
-        <div><label>Aporte recorrente (R$)</label><input type="number" id="apAporteRecorrente" value="5000" min="0"></div>
-        <div><label>Frequência</label><select id="apFreq"><option value="monthly">Mensal</option><option value="annual">Anual</option><option value="none">Sem aportes recorrentes</option></select></div>
-        <div><label>Prazo (anos)</label><input type="number" id="apAnos" value="10" min="1" max="30"></div>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:1rem;">
-        <span style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">Fundo:</span>
-        <select id="apFundSelect" style="font-family:'Courier New',monospace;font-size:0.72rem;padding:3px 8px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;outline:none;flex:1;"></select>
-        <button onclick="renderAportes()" style="font-family:'Courier New',monospace;font-size:0.68rem;padding:4px 14px;border:0.5px solid var(--accent);border-radius:4px;background:transparent;color:var(--accent);cursor:pointer;">calcular</button>
-      </div>
-      <div id="aportesResult"></div>
-    </div>
+
 
   </div>
 
 </div><!-- /tab-analise -->
 
 <div class="legend">
-  <div class="legend-item"><span class="legend-key">Alpha</span> <span>retorno do fundo menos IBOV (equity) ou CDI (multimercado) na janela ordenada</span></div>
   <div class="legend-status">
     <span class="status-dot loading" id="statusDot"></span><span id="statusText">Carregando…</span>
     <span id="statusDate"></span>
@@ -971,22 +1154,27 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 const FUND_META = {
-  "22.232.927/0001-90": { nome:"Tarpon GT",         inception:"2010-07-12", initialQuota:1.2136, maxQuota:30.3767845,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"BTG",      obs:"" },
-  "17.400.251/0001-66": { nome:"Organon",            inception:"2013-02-22", initialQuota:1.0000, maxQuota:23.4157589,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
-  "18.302.338/0001-63": { nome:"Ártica Long Term",   inception:"2013-06-27", initialQuota:0.7647, maxQuota:20.9451521,  tipo:"Long Only",    trib:"RV", expo:"Majoritariamente Brasil",  banco:"BTG / C6", obs:"" },
-  "37.495.383/0001-26": { nome:"Genoa Arpa",         inception:"2021-04-30", initialQuota:1.0000, maxQuota:2.3753795,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"C6",       obs:"" },
-  "42.698.666/0001-05": { nome:"Artax Ultra",        inception:"2022-05-31", initialQuota:1.0000, maxQuota:2.0535150,   tipo:"Long Biased",  trib:"RV", expo:"Internacional",            banco:"Itaú",     obs:"Melhor versão: Itaú Artax Endurance (tributação RV)" },
-  "24.623.392/0001-03": { nome:"Guepardo Long Bias", inception:"2016-07-11", initialQuota:1.0000, maxQuota:8.5831314,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
-  "28.747.685/0001-53": { nome:"Kapitalo Tarkus",    inception:"2017-11-06", initialQuota:1.0000, maxQuota:4.2435095,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"XP",       obs:"" },
-  "10.500.884/0001-05": { nome:"Real Investor",      inception:"2012-02-29", initialQuota:3.6300, maxQuota:31.0097067,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
-  "35.744.790/0001-02": { nome:"Schroder Tech L&S",  inception:"2020-04-01", initialQuota:1.0000, maxQuota:2.8658328,   tipo:"Multimercado", trib:"TR", expo:"Internacional",            banco:"BTG",      obs:"" },
-  "38.954.217/0001-03": { nome:"Pátria Long Biased", inception:"2020-10-30", initialQuota:1.0000, maxQuota:3.0035117,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
-  "32.073.525/0001-43": { nome:"Absolute Pace",      inception:"2018-12-27", initialQuota:1.0000, maxQuota:4.2214960,   tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
-  "21.689.246/0001-92": { nome:"Arbor",              inception:"2015-03-23", initialQuota:1.0000, maxQuota:8.2977230,   tipo:"Long Only",    trib:"RV", expo:"Internacional",            banco:"BTG",      obs:"" },
-  "14.438.229/0001-17": { nome:"Charles River",      inception:"2011-11-07", initialQuota:1.0000, maxQuota:13.4070715,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"C6",       obs:"" },
-  "17.397.315/0001-17": { nome:"SPX Falcon",         inception:"2012-09-17", initialQuota:1.0000, maxQuota:7.3045380,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"Itaú",     obs:"" },
+  "22.232.927/0001-90": { nome:"Tarpon GT",         short:"Tarpon",   inception:"2010-07-12", initialQuota:1.2136, maxQuota:30.3767845,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"BTG",      obs:"" },
+  "17.400.251/0001-66": { nome:"Organon",            short:"Organon",  inception:"2013-02-22", initialQuota:1.0000, maxQuota:23.4157589,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "18.302.338/0001-63": { nome:"Ártica Long Term",   short:"Ártica",   inception:"2013-06-27", initialQuota:0.7647, maxQuota:20.9451521,  tipo:"Long Only",    trib:"RV", expo:"Majoritariamente Brasil",  banco:"BTG / C6", obs:"" },
+  "37.495.383/0001-26": { nome:"Genoa Arpa",         short:"Genoa",    inception:"2021-04-30", initialQuota:1.0000, maxQuota:2.3753795,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"C6",       obs:"" },
+  "42.698.666/0001-05": { nome:"Artax Ultra",        short:"Artax",    inception:"2022-05-31", initialQuota:1.0000, maxQuota:2.0535150,   tipo:"Long Biased",  trib:"RV", expo:"Internacional",            banco:"Itaú",     obs:"Melhor versão: Itaú Artax Endurance (tributação RV)" },
+  "24.623.392/0001-03": { nome:"Guepardo Long Bias", short:"Guepardo", inception:"2016-07-11", initialQuota:1.0000, maxQuota:8.5831314,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "28.747.685/0001-53": { nome:"Kapitalo Tarkus",    short:"Kapitalo", inception:"2017-11-06", initialQuota:1.0000, maxQuota:4.2435095,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"XP",       obs:"" },
+  "10.500.884/0001-05": { nome:"Real Investor",      short:"Real",     inception:"2012-02-29", initialQuota:3.6300, maxQuota:31.0097067,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "35.744.790/0001-02": { nome:"Schroder Tech L&S",  short:"Schroder", inception:"2020-04-01", initialQuota:1.0000, maxQuota:2.8658328,   tipo:"Multimercado", trib:"TR", expo:"Internacional",            banco:"BTG",      obs:"" },
+  "38.954.217/0001-03": { nome:"Pátria Long Biased", short:"Pátria",   inception:"2020-10-30", initialQuota:1.0000, maxQuota:3.0035117,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "32.073.525/0001-43": { nome:"Absolute Pace",      short:"Pace",     inception:"2018-12-27", initialQuota:1.0000, maxQuota:4.2214960,   tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
+  "21.689.246/0001-92": { nome:"Arbor",              short:"Arbor",    inception:"2015-03-23", initialQuota:1.0000, maxQuota:8.2977230,   tipo:"Long Only",    trib:"RV", expo:"Internacional",            banco:"BTG",      obs:"" },
+  "14.438.229/0001-17": { nome:"Charles River",      short:"Charles",  inception:"2011-11-07", initialQuota:1.0000, maxQuota:13.4070715,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"C6",       obs:"" },
+  "17.397.315/0001-17": { nome:"SPX Falcon",         short:"Falcon",   inception:"2012-09-17", initialQuota:1.0000, maxQuota:7.3045380,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"Itaú",     obs:"" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva" };
+
+function shortName(cnpj) {
+  const meta = FUND_META[cnpj];
+  return (meta && meta.short) ? meta.short : (meta && meta.nome) ? meta.nome.split(' ')[0] : cnpj;
+}
 
 function toggleTheme() {
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -1285,7 +1473,7 @@ function buildDetailPanel(f, isExp) {
             ${fmtDrawdown(calcDrawdown(f))}
           </div>
           ${f.isDelayed ? `<div style="grid-column:1/-1;margin-top:0.4rem;padding:0.35rem 0.5rem;background:var(--amber-light);border-radius:5px;border:0.5px solid var(--amber)">
-            <div style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--amber);margin-bottom:2px">Cota com atraso</div>
+            <div style="font-family:Courier New,monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--amber);margin-bottom:2px">Cota com atraso</div>
             <div style="font-size:0.72rem;color:var(--text)">Última cota disponível: <strong>${f.latestDate}</strong><br>Referência dos demais fundos: ${window.anchorDate||'—'}<br>CAGRs calculados até ${f.latestDate} (${f.delayDays}d antes da referência)</div>
           </div>` : ''}
         </div>
@@ -1369,7 +1557,7 @@ function render() {
           <span class="rank ${rc}">${i+1}</span>
           <div><div class="fund-name">${nome}</div><div class="fund-cnpj">${f.cnpjFmt}</div></div>
         </div></td>
-        <td colspan="7" style="text-align:center;font-family:'Courier New',monospace;font-size:0.72rem;color:var(--red)">dados não encontrados na CVM</td>
+        <td colspan="7" style="text-align:center;font-family:Courier New,monospace;font-size:0.72rem;color:var(--red)">dados não encontrados na CVM</td>
       </tr>
       <tr class="detail-row"><td colspan="7"></td></tr>`;
       return;
@@ -1483,6 +1671,7 @@ async function load() {
     if (data.cdi)  cdi  = data.cdi;
     updateHeaders();
     render();
+    initMCSelect();
 
   } catch(e) {
     document.getElementById('statusDot').className = 'status-dot error';
@@ -1557,7 +1746,7 @@ async function loadHistory() {
     // Init all analysis features
     initChartToggles();
     initUnderwaterSelect();
-    initAportesSelect();
+    initMCSelect();
     // Pre-render analysis if already on those tabs
     const activeTab = document.querySelector('.tab-pane.active')?.id;
     if (activeTab === 'tab-graficos') renderNormalizedChart();
@@ -1921,7 +2110,7 @@ ${tipLines}${dispNote}${rawNote}</div>
     return;
   }
   const corr  = historyData.correlation;
-  const names = selected.map(c => historyData.funds[c].nome.split(' ')[0]);
+  const names = selected.map(c => shortName(c));
   const th    = '<tr><th></th>' + names.map(n => `<th>${n}</th>`).join('') + '</tr>';
   const rows  = selected.map((ca, i) =>
     `<tr><th>${names[i]}</th>` +
@@ -2229,7 +2418,7 @@ function renderIR() {
       <td>
         ${row.trib === 'RV'
           ? `<div class="ir-custo-cell">
-               <span class="ir-val-neg" style="font-family:'Courier New',monospace;font-weight:bold">${fmtPctIr(row.aliqEconomica)}</span>
+               <span class="ir-val-neg" style="font-family:Courier New,monospace;font-weight:bold">${fmtPctIr(row.aliqEconomica)}</span>
                <div class="ir-custo-tip">
                  <strong>O que significa este número?</strong>
                  De cada R$&nbsp;100 que esse fundo poderia ter rendido
@@ -2844,7 +3033,7 @@ function runOptimizer() {
                        `retorno ${best.ret.toFixed(1)}%`;
       status.textContent =
         `${nCombos} combinações avaliadas · melhor: ${objLabel} · ` +
-        best.cnpjs.map((c,i) => `${historyData.funds[c].nome.split(' ')[0]} ${Math.round(best.w[i]*100)}%`).join(' · ');
+        best.cnpjs.map((c,i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
 
       applyOptimizedPortfolio(best.cnpjs, best.w);
 
@@ -2869,9 +3058,11 @@ function setFilter(dim, val, btn) {
 }
 
 // Período customizado
-let customPeriodStart = null;
-let customPeriodEnd   = null;
-let originalFundCAGRs = null;   // snapshot before override
+let customPeriodStart    = null;
+let customPeriodEnd      = null;
+let originalFundCAGRs    = null;   // snapshot before override
+let customPeriodIBOV     = null;   // accumulated IBOV return for the custom period
+let customPeriodCDI      = null;   // accumulated CDI return for the custom period
 
 function onPeriodChange() {
   const s = document.getElementById('periodStart').value;
@@ -2913,8 +3104,12 @@ function clearPeriod() {
     });
     originalFundCAGRs = null;
   }
-  const th = document.getElementById('th-cagr12');
-  if (th) th.textContent = '12M \u2195';
+  TH_LABELS['cagr12'] = '12M';
+  currentAlphaWindow = 'cagr36';
+  currentSort = 'cagr36';
+  sortDir = 1;
+  customPeriodIBOV = null;
+  customPeriodCDI  = null;
   // Restore ibov/cdi from data.json
   load();
 }
@@ -2938,8 +3133,26 @@ function recalcFromHistory() {
     f.cagr60 = null;
   });
 
-  const th12 = document.getElementById('th-cagr12');
-  if (th12) th12.textContent = 'Período';
+  // Compute period-specific benchmark returns (accumulated, not annualized)
+  // We use the annualized cagr36 rate converted to exact period length via daily compounding.
+  // This is the same proxy used in the chart for IBOV (uniform daily return).
+  // For CDI the same approach applies — not perfect (Selic varies) but correctly scaled.
+  const periodDays = (new Date(customPeriodEnd) - new Date(customPeriodStart)) / 86400000;
+  if (ibov.cagr36 != null) {
+    const ibovDaily = Math.pow(1 + ibov.cagr36 / 100, 1 / 252) - 1;
+    const tradingDays = Math.round(periodDays * 252 / 365.25);
+    customPeriodIBOV = (Math.pow(1 + ibovDaily, tradingDays) - 1) * 100;
+  }
+  if (cdi.cagr36 != null) {
+    const cdiDaily = Math.pow(1 + cdi.cagr36 / 100, 1 / 252) - 1;
+    const tradingDays = Math.round(periodDays * 252 / 365.25);
+    customPeriodCDI = (Math.pow(1 + cdiDaily, tradingDays) - 1) * 100;
+  }
+  currentAlphaWindow = 'cagr12';  // f.cagr12 holds the period return
+  currentSort = 'cagr12';         // default sort by period column
+  sortDir = 1;
+  TH_LABELS['cagr12'] = 'Período';
+  updateHeaders();
   render();
 }
 
@@ -2949,6 +3162,10 @@ let currentAlphaWindow = 'cagr36';
 
 function getBenchmarkCAGR(cnpj, window) {
   const meta = FUND_META[cnpj] || {};
+  // In custom period mode, use period-specific accumulated benchmark returns
+  if (customPeriodStart && customPeriodEnd) {
+    return (meta.tipo === 'Multimercado') ? customPeriodCDI : customPeriodIBOV;
+  }
   return (meta.tipo === 'Multimercado') ? cdi[window] : ibov[window];
 }
 
@@ -2997,7 +3214,7 @@ function initChartToggles() {
     btn.style.background = CHART_COLORS[i % CHART_COLORS.length];
     btn.style.borderColor = CHART_COLORS[i % CHART_COLORS.length];
     btn.style.color = '#fff';
-    btn.textContent = historyData.funds[cnpj].nome.split(' ')[0];
+    btn.textContent = shortName(cnpj);
     btn.onclick = (function(c, idx) {
       return function() {
         chartFundActive[c] = !chartFundActive[c];
@@ -3030,18 +3247,20 @@ function renderNormalizedChart() {
   const modeEl   = document.getElementById('chartMode');
   const rebaseEl = document.getElementById('chartRebaseDate');
   const bmkEl    = document.getElementById('chartShowBmk');
-  const mode     = modeEl   ? modeEl.value   : 'normalized';
-  const rebase   = rebaseEl ? rebaseEl.value  : '36m';
-  const showBmk  = bmkEl    ? bmkEl.checked   : true;
+  const mode     = modeEl   ? modeEl.value  : 'normalized';
+  const rebase   = rebaseEl ? rebaseEl.value : '36m';
+  const showBmk  = bmkEl    ? bmkEl.checked  : true;
 
   const dates  = historyData.commonDates;
   const iStart = getRebaseIndex(dates, rebase);
   const sliced = dates.slice(iStart);
 
-  // Monthly tick labels only
+  // X-axis labels: show month/year on first of each month and at start/end
   const tickLabels = sliced.map(function(d, i) {
-    if (i === 0 || d.slice(8) === '01' || i === sliced.length - 1)
-      return d.slice(5,7) + '/' + d.slice(2,4);
+    if (i === 0 || d.slice(8) === '01') {
+      var mo = d.slice(5,7), yr = d.slice(2,4);
+      return mo + '/' + yr;
+    }
     return '';
   });
 
@@ -3053,17 +3272,20 @@ function renderNormalizedChart() {
     const fd    = historyData.funds[cnpj];
     const rets  = fd.returns;
     const color = CHART_COLORS[ci % CHART_COLORS.length];
+    const label = shortName(cnpj);
 
     if (mode === 'normalized') {
-      let val = 100;
-      const pts = [100];
+      // % acumulado a partir de zero
+      let cum = 1;
+      const pts = [0];
       for (let i = iStart; i < iStart + sliced.length - 1 && i < rets.length; i++) {
-        val *= (1 + rets[i]);
-        pts.push(parseFloat(val.toFixed(4)));
+        cum *= (1 + rets[i]);
+        pts.push(parseFloat(((cum - 1) * 100).toFixed(3)));
       }
-      datasets.push({ label: fd.nome, data: pts, borderColor: color,
+      datasets.push({ label: label, data: pts, borderColor: color,
         borderWidth: 1.5, pointRadius: 0, tension: 0, fill: false });
     } else {
+      // Underwater: drawdown from peak
       let cum = 1, peak = 1;
       const pts = [0];
       for (let i = iStart; i < iStart + sliced.length - 1 && i < rets.length; i++) {
@@ -3071,23 +3293,23 @@ function renderNormalizedChart() {
         if (cum > peak) peak = cum;
         pts.push(parseFloat((((cum - peak) / peak) * 100).toFixed(3)));
       }
-      datasets.push({ label: fd.nome, data: pts, borderColor: color,
+      datasets.push({ label: label, data: pts, borderColor: color,
         borderWidth: 1.2, pointRadius: 0, tension: 0,
         fill: { target: 'origin', above: 'transparent', below: color + '22' } });
     }
   });
 
-  // IBOV approx: use ibov.cagr36 to build daily series
+  // IBOV proxy
   if (showBmk && mode === 'normalized') {
     const ibovAnnual = (ibov.cagr36 != null ? ibov.cagr36 : 15) / 100;
     const ibovDaily  = Math.pow(1 + ibovAnnual, 1 / 252) - 1;
-    let val = 100;
-    const pts = [100];
+    let cum = 1;
+    const pts = [0];
     for (let i = 0; i < sliced.length - 1; i++) {
-      val *= (1 + ibovDaily);
-      pts.push(parseFloat(val.toFixed(4)));
+      cum *= (1 + ibovDaily);
+      pts.push(parseFloat(((cum - 1) * 100).toFixed(3)));
     }
-    datasets.push({ label: 'IBOV (retorno uniforme — proxy linear)', data: pts,
+    datasets.push({ label: 'IBOV (proxy)', data: pts,
       borderColor: 'rgba(140,140,140,0.55)', borderWidth: 1.5,
       borderDash: [5,3], pointRadius: 0, tension: 0, fill: false });
   }
@@ -3098,31 +3320,64 @@ function renderNormalizedChart() {
 
   normalizedChart = new Chart(ctx, {
     type: 'line',
-    data: { labels: tickLabels, datasets: datasets },
+    data: { labels: sliced, datasets: datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: { display: false },
         decimation: { enabled: true, algorithm: 'lttb', samples: 200, threshold: 200 },
-        tooltip: { callbacks: {
-          label: function(c) {
-            var v = c.parsed.y;
-            return c.dataset.label + ': ' + (mode === 'normalized' ? v.toFixed(1) : v.toFixed(2) + '%');
+        tooltip: {
+          backgroundColor: 'rgba(26,25,22,0.92)',
+          titleColor: '#aaa',
+          bodyColor: '#e8e6e0',
+          titleFont: { family: 'Courier New', size: 11 },
+          bodyFont:  { family: 'Courier New', size: 11 },
+          padding: 10,
+          itemSort: function(a, b) { return b.parsed.y - a.parsed.y; },
+          callbacks: {
+            title: function(items) {
+              if (!items.length) return '';
+              var d = items[0].label;
+              var parts = d.split('-');
+              if (parts.length === 3) {
+                var months = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+                return parts[2] + ' ' + months[parseInt(parts[1])-1] + ' ' + parts[0];
+              }
+              return d;
+            },
+            label: function(c) {
+              var v = c.parsed.y;
+              var sign = v >= 0 ? '+' : '';
+              if (mode === 'normalized') return '  ' + c.dataset.label + ':  ' + sign + v.toFixed(1) + '%';
+              return '  ' + c.dataset.label + ':  ' + v.toFixed(2) + '%';
+            }
           }
-        }}
+        }
       },
       scales: {
-        x: { ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
-               maxRotation: 0, autoSkip: true, maxTicksLimit: 18 },
-             grid: { display: false } },
-        y: { ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
-               callback: function(v) { return mode === 'normalized' ? v.toFixed(0) : v.toFixed(1) + '%'; } },
-             grid: { color: 'rgba(128,128,128,0.1)' } }
+        x: {
+          ticks: {
+            font: { family: 'Courier New', size: 10 }, color: '#888',
+            maxRotation: 0, autoSkip: false,
+            callback: function(val, idx) { return tickLabels[idx] || ''; }
+          },
+          grid: { display: false }
+        },
+        y: {
+          ticks: {
+            font: { family: 'Courier New', size: 10 }, color: '#888',
+            callback: function(v) {
+              return (v >= 0 ? '+' : '') + v.toFixed(0) + '%';
+            }
+          },
+          grid: { color: 'rgba(128,128,128,0.1)' }
+        }
       }
     }
   });
 }
+
 
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -3211,7 +3466,6 @@ function renderHeatmap() {
 
   const dates = historyData.commonDates;
   const cnpjs = Object.keys(historyData.funds);
-  const MONTH_NAMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
   // Build month windows
   const months = {};
@@ -3222,46 +3476,103 @@ function renderHeatmap() {
   });
   const monthKeys = Object.keys(months).sort();
 
-  // Monthly return per fund
-  const fundRets = {};
+  // Monthly returns per fund
+  const fundMonthRets = {};
   cnpjs.forEach(function(cnpj) {
     const rets = historyData.funds[cnpj].returns;
-    fundRets[cnpj] = {};
+    fundMonthRets[cnpj] = {};
     monthKeys.forEach(function(ym) {
       var s = months[ym].start, e = months[ym].end;
       var cum = 1.0;
       for (var i = s; i < e && i < rets.length; i++) cum *= (1 + rets[i]);
-      fundRets[cnpj][ym] = (cum - 1) * 100;
+      fundMonthRets[cnpj][ym] = (cum - 1) * 100;
     });
   });
 
+  // Aggregate to annual returns + stats
+  const years = [...new Set(monthKeys.map(function(ym){ return ym.slice(0,4); }))].sort();
+
+  function annualRet(cnpj, year) {
+    var yms = monthKeys.filter(function(ym){ return ym.slice(0,4) === year; });
+    if (!yms.length) return null;
+    var cum = 1.0;
+    yms.forEach(function(ym){ cum *= (1 + (fundMonthRets[cnpj][ym] || 0) / 100); });
+    return (cum - 1) * 100;
+  }
+
+  function stats(cnpj) {
+    var vals = monthKeys.map(function(ym){ return fundMonthRets[cnpj][ym]; }).filter(function(v){ return v != null; });
+    if (!vals.length) return { best: null, worst: null, pctPos: null };
+    return {
+      best:   Math.max.apply(null, vals),
+      worst:  Math.min.apply(null, vals),
+      pctPos: (vals.filter(function(v){ return v > 0; }).length / vals.length * 100)
+    };
+  }
+
+  // Color scale: same as before but applied to annual returns (cap at ±30%)
   function heatColor(v) {
     if (v == null) return 'transparent';
-    var abs = Math.min(Math.abs(v) / 8, 1);
+    var abs = Math.min(Math.abs(v) / 30, 1);
     return v > 0
       ? 'rgba(26,122,82,' + (0.12 + abs * 0.72) + ')'
       : 'rgba(184,50,50,'  + (0.12 + abs * 0.72) + ')';
   }
+  function textColor(v) {
+    if (v == null) return 'var(--text)';
+    return Math.abs(v) > 15 ? '#fff' : 'var(--text)';
+  }
 
-  var html = '<table class="heatmap-table"><thead><tr><th>Fundo</th>';
-  monthKeys.forEach(function(ym) {
-    var m = parseInt(ym.slice(5,7)), y = ym.slice(2,4);
-    html += '<th>' + MONTH_NAMES[m-1] + '<br><span style="opacity:0.5">' + y + '</span></th>';
+  // Determine current year label (partial = YTD)
+  var lastDate = monthKeys[monthKeys.length - 1] || '';
+  var currentYear = lastDate.slice(0,4);
+
+  var html = '<table class="heatmap-table" style="min-width:0;width:100%"><thead><tr>'
+    + '<th style="text-align:left;min-width:90px">Fundo</th>';
+  years.forEach(function(y) {
+    var label = (y === currentYear) ? y + ' <span style="font-size:0.5rem;opacity:0.6">YTD</span>' : y;
+    html += '<th style="min-width:52px">' + label + '</th>';
   });
+  html += '<th style="min-width:44px" title="Melhor mês">Mel.</th>';
+  html += '<th style="min-width:44px" title="Pior mês">Pior</th>';
+  html += '<th style="min-width:44px" title="% meses positivos">+%</th>';
   html += '</tr></thead><tbody>';
 
-  cnpjs.forEach(function(cnpj) {
-    var nome = historyData.funds[cnpj].nome;
-    html += '<tr><td class="fund-label" title="' + nome + '">' + nome + '</td>';
-    monthKeys.forEach(function(ym) {
-      var v  = fundRets[cnpj][ym];
-      var bg = heatColor(v);
-      var tc = (v != null && Math.abs(v) > 4) ? '#fff' : 'var(--text)';
-      html += '<td style="background:' + bg + ';color:' + tc + '" title="' + nome + ' ' + ym + ': ' + (v != null ? v.toFixed(2)+'%' : 'N/D') + '">'
-            + (v != null ? v.toFixed(1) : '—') + '</td>';
+  // Sort funds by total return over available period
+  var sortedCnpjs = cnpjs.slice().sort(function(a, b) {
+    var ra = 0, rb = 0;
+    years.forEach(function(y) {
+      var va = annualRet(a, y), vb = annualRet(b, y);
+      if (va != null) ra += va;
+      if (vb != null) rb += vb;
     });
+    return rb - ra;
+  });
+
+  sortedCnpjs.forEach(function(cnpj) {
+    var nome = (FUND_META[cnpj] && FUND_META[cnpj].short) || historyData.funds[cnpj].nome.split(' ')[0];
+    var st = stats(cnpj);
+    html += '<tr><td class="fund-label" title="' + historyData.funds[cnpj].nome + '" style="font-size:0.68rem">' + nome + '</td>';
+    years.forEach(function(y) {
+      var v = annualRet(cnpj, y);
+      var bg = heatColor(v);
+      var tc = textColor(v);
+      var txt = v != null ? (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : '—';
+      html += '<td style="background:' + bg + ';color:' + tc + ';font-size:0.7rem" title="' + historyData.funds[cnpj].nome + ' ' + y + '">' + txt + '</td>';
+    });
+    // Best month
+    var bTxt = st.best != null ? (st.best >= 0 ? '+' : '') + st.best.toFixed(1) + '%' : '—';
+    html += '<td style="color:var(--green);font-size:0.68rem">' + bTxt + '</td>';
+    // Worst month
+    var wTxt = st.worst != null ? st.worst.toFixed(1) + '%' : '—';
+    html += '<td style="color:var(--red);font-size:0.68rem">' + wTxt + '</td>';
+    // % positive months
+    var pTxt = st.pctPos != null ? st.pctPos.toFixed(0) + '%' : '—';
+    var pColor = st.pctPos > 60 ? 'var(--green)' : st.pctPos > 40 ? 'var(--amber)' : 'var(--red)';
+    html += '<td style="color:' + pColor + ';font-size:0.68rem">' + pTxt + '</td>';
     html += '</tr>';
   });
+
   html += '</tbody></table>';
   container.innerHTML = html;
 }
@@ -3276,13 +3587,10 @@ function renderConsistency() {
   const container = document.getElementById('consistencyContainer');
   if (!container) return;
 
-  const dates   = historyData.commonDates;
-  const cnpjs   = Object.keys(historyData.funds);
-  const cdiAnn  = (cdi.cagr36 != null ? cdi.cagr36 : 12) / 100;
-  const ibovAnn = (ibov.cagr36 != null ? ibov.cagr36 : 15) / 100;
-  const cdiD    = Math.pow(1 + cdiAnn,  1/252) - 1;
-  const ibovD   = Math.pow(1 + ibovAnn, 1/252) - 1;
+  const dates = historyData.commonDates;
+  const cnpjs = Object.keys(historyData.funds);
 
+  // Build month windows
   const months = {};
   dates.forEach(function(d, i) {
     var ym = d.slice(0,7);
@@ -3294,50 +3602,89 @@ function renderConsistency() {
 
   const rows = cnpjs.map(function(cnpj) {
     const rets = historyData.funds[cnpj].returns;
-    var pos = 0, aboveCdi = 0, aboveIbov = 0, worst = 0;
+    var pos = 0, worst = 0, best = 0;
+
+    // Monthly returns
+    var monthRets = [];
     monthKeys.forEach(function(ym) {
       var s = months[ym].start, e = months[ym].end;
-      var cum = 1, cdiCum = 1, ibovCum = 1;
-      for (var i = s; i < e && i < rets.length; i++) {
-        cum     *= (1 + rets[i]);
-        cdiCum  *= (1 + cdiD);
-        ibovCum *= (1 + ibovD);
-      }
-      var r = cum-1;
+      var cum = 1;
+      for (var i = s; i < e && i < rets.length; i++) cum *= (1 + rets[i]);
+      var r = cum - 1;
+      monthRets.push(r);
       if (r > 0) pos++;
-      if (r > cdiCum-1) aboveCdi++;
-      if (r > ibovCum-1) aboveIbov++;
       if (r < worst) worst = r;
+      if (r > best)  best  = r;
     });
+
+    // Max drawdown from daily returns
+    var cum2 = 1, peak = 1, maxDD = 0;
+    for (var i = 0; i < rets.length; i++) {
+      cum2 *= (1 + rets[i]);
+      if (cum2 > peak) peak = cum2;
+      var dd = (cum2 - peak) / peak;
+      if (dd < maxDD) maxDD = dd;
+    }
+
+    // Winning streak: longest run of consecutive positive months
+    var streak = 0, maxStreak = 0;
+    monthRets.forEach(function(r) {
+      if (r > 0) { streak++; if (streak > maxStreak) maxStreak = streak; }
+      else streak = 0;
+    });
+
     const meta = FUND_META[cnpj] || {};
     return {
-      nome: meta.nome || historyData.funds[cnpj].nome,
-      pctPos:  pos/nM*100, pctCdi: aboveCdi/nM*100,
-      pctIbov: aboveIbov/nM*100, worst: worst*100
+      cnpj:      cnpj,
+      nome:      meta.nome || historyData.funds[cnpj].nome,
+      pctPos:    pos / nM * 100,
+      best:      best * 100,
+      worst:     worst * 100,
+      maxDD:     maxDD * 100,
+      maxStreak: maxStreak,
     };
   });
-  rows.sort(function(a,b){ return b.pctPos - a.pctPos; });
 
-  function bar(pct, color) {
-    return '<div style="display:inline-block;width:'+pct.toFixed(0)+'%;height:4px;background:'+color+';border-radius:2px;vertical-align:middle;margin-right:4px"></div>';
+  rows.sort(function(a, b) { return b.pctPos - a.pctPos; });
+
+  function colPos(pct) { return pct > 62 ? 'var(--green)' : pct > 50 ? 'var(--amber)' : 'var(--red)'; }
+  function miniBar(pct) {
+    return '<div style="display:inline-block;width:' + Math.min(pct,100).toFixed(0) + '%;height:3px;background:var(--green);border-radius:2px;vertical-align:middle;margin-right:5px"></div>';
   }
-  function col(pct) { return pct > 60 ? 'var(--green)' : pct > 40 ? 'var(--amber)' : 'var(--red)'; }
 
   var html = '<table class="consistency-table"><thead><tr>'
-    + '<th>Fundo</th><th title="% meses positivos">% pos.</th>'
-    + '<th title="% meses acima do CDI">vs CDI</th>'
-    + '<th title="% meses acima do IBOV">vs IBOV</th>'
-    + '<th title="Pior mês">Pior mês</th>'
+    + '<th style="text-align:left">Fundo</th>'
+    + '<th title="% de meses com retorno positivo">% pos.</th>'
+    + '<th title="Melhor mês individual">Mel. mês</th>'
+    + '<th title="Pior mês individual">Pior mês</th>'
+    + '<th title="Maior drawdown histórico no período">Max DD</th>'
+    + '<th title="Maior sequência de meses positivos consecutivos">Seq. +</th>'
     + '</tr></thead><tbody>';
 
   rows.forEach(function(r) {
-    html += '<tr><td>' + r.nome + '</td>'
-      + '<td style="color:' + col(r.pctPos)  + '">' + bar(r.pctPos,'var(--green)') + r.pctPos.toFixed(0)  + '%</td>'
-      + '<td style="color:' + col(r.pctCdi)  + '">' + r.pctCdi.toFixed(0)  + '%</td>'
-      + '<td style="color:' + col(r.pctIbov) + '">' + r.pctIbov.toFixed(0) + '%</td>'
-      + '<td style="color:var(--red)">' + r.worst.toFixed(1) + '%</td></tr>';
+    var pctCol = colPos(r.pctPos);
+    html += '<tr>'
+      + '<td>' + r.nome + '</td>'
+      + '<td style="color:' + pctCol + '">'
+        + miniBar(r.pctPos)
+        + r.pctPos.toFixed(0) + '%</td>'
+      + '<td style="color:var(--green)">'
+        + (r.best >= 0 ? '+' : '') + r.best.toFixed(1) + '%</td>'
+      + '<td style="color:var(--red)">'
+        + r.worst.toFixed(1) + '%</td>'
+      + '<td style="color:var(--red)">'
+        + r.maxDD.toFixed(1) + '%</td>'
+      + '<td style="color:var(--muted)">'
+        + r.maxStreak + 'm</td>'
+      + '</tr>';
   });
-  html += '</tbody></table>';
+
+  html += '</tbody></table>'
+    + '<div style="margin-top:0.6rem;font-family:Courier New,monospace;font-size:0.58rem;color:var(--muted)">'
+    + 'Período: ' + dates[0].slice(0,7) + ' → ' + dates[dates.length-1].slice(0,7)
+    + ' · Comparativo vs CDI e IBOV na tabela de retornos anuais acima'
+    + '</div>';
+
   container.innerHTML = html;
 }
 
@@ -3494,7 +3841,7 @@ function renderStressTest() {
         recCum *= (1+rets[i]);
         if (recCum >= (1/cum)) { recDays = i-sc.end; break; }
       }
-      return { nome: historyData.funds[cnpj].nome, dd: dd, recDays: recDays };
+      return { nome: shortName(cnpj), fullNome: historyData.funds[cnpj].nome, dd: dd, recDays: recDays };
     });
     fundRows.sort(function(a,b){ return a.dd - b.dd; });
 
@@ -3503,7 +3850,7 @@ function renderStressTest() {
       var vCol   = row.dd < 0 ? 'var(--red)' : 'var(--green)';
       var recTxt = row.recDays !== null ? 'rec. '+row.recDays+'d' : 'não rec.';
       html += '<div class="stress-bar-row">'
-        + '<span class="stress-bar-name" title="'+row.nome+'">'+row.nome+'</span>'
+        + '<span class="stress-bar-name" title="'+(row.fullNome||row.nome)+'">'+row.nome+'</span>'
         + '<div class="stress-bar-track"><div class="stress-bar-fill" style="width:'+barPct+'%"></div></div>'
         + '<span class="stress-bar-val" style="color:'+vCol+'">'+row.dd.toFixed(1)+'%</span>'
         + '<span class="stress-bar-val" style="font-size:0.58rem;color:var(--muted)">'+recTxt+'</span>'
@@ -3513,28 +3860,17 @@ function renderStressTest() {
     html += '</div></div>';
   });
 
+  var note = '<div style="margin-top:0.8rem;font-family:\'Courier New\',monospace;font-size:0.58rem;color:var(--muted)">'
+    + 'Cenários identificados automaticamente no período disponível: '
+    + dates[0].slice(0,7) + ' → ' + dates[dates.length-1].slice(0,7)
+    + ' (3 anos — limitado pela janela do history.json)</div>';
   if (!html) html = '<span style="color:var(--muted);font-size:0.8rem">Dados insuficientes para identificar cenários.</span>';
-  container.innerHTML = html;
+  container.innerHTML = html + note;
 }
 
 
-// ════════════════════════════════════════════════════════════════════════════
-// SIMULADOR DE APORTES PERIÓDICOS COM IR
-// ════════════════════════════════════════════════════════════════════════════
 
-function initAportesSelect() {
-  const sel = document.getElementById('apFundSelect');
-  if (!sel || sel.options.length > 0 || !funds.length) return;
-  funds.filter(function(f){ return !f.error; }).forEach(function(f) {
-    var meta = FUND_META[f.cnpjFmt] || {};
-    var opt  = document.createElement('option');
-    opt.value = f.cnpjFmt;
-    opt.textContent = meta.nome || f.name;
-    sel.appendChild(opt);
-  });
-}
-
-
+// ── XIRR (usado pelo simulador Monte Carlo) ──────────────────────────────
 // ── XIRR: taxa interna de retorno para fluxos irregulares ─────────────────
 // cashflows = [{t: years_from_now, amount: signed_value}]
 // amount negativo = saída (aporte), positivo = entrada (resgate)
@@ -3559,113 +3895,445 @@ function xirr(cashflows, guess) {
   return r;
 }
 
-function renderAportes() {
-  const container = document.getElementById('aportesResult');
-  if (!container) return;
 
-  var aporteInicial    = parseFloat(document.getElementById('apAporteInicial').value)    || 0;
-  var aporteRecorrente = parseFloat(document.getElementById('apAporteRecorrente').value) || 0;
-  var freq             = document.getElementById('apFreq').value;
-  var anos             = parseInt(document.getElementById('apAnos').value)  || 10;
-  var cnpj             = document.getElementById('apFundSelect').value;
-  if (!cnpj) return;
 
-  var fData  = funds.find(function(f){ return f.cnpjFmt === cnpj; });
-  if (!fData) return;
-  var target = calcTargetReturn(fData);
-  if (!target) { container.innerHTML = '<span style="color:var(--muted)">Retorno alvo indisponível.</span>'; return; }
+// ════════════════════════════════════════════════════════════════════════════
+// MONTE CARLO — SIMULADOR DE APORTES PERIÓDICOS
+// ════════════════════════════════════════════════════════════════════════════
 
-  var meta = FUND_META[cnpj] || {};
-  var trib = meta.trib || 'RV';
+const MCPortState = {
+  N: 1000,
+  chartInst: null,
+  debounce: null,
+  source: 'portfolio',  // 'portfolio' | 'fund'
+};
 
-  var hoje = new Date();
-  var dataResgate = new Date(hoje.getTime() + anos * 365.25 * 86400000);
+// ── Helpers ───────────────────────────────────────────────────────────────
 
-  // Build aporte list: [{date, amount}]
-  var aportes = [];
-  if (aporteInicial > 0) aportes.push({ date: new Date(hoje), amount: aporteInicial });
+function mcFmtShort(v) {
+  if (!isFinite(v)) return v < 0 ? '-∞' : '∞';
+  const neg = v < 0;
+  const a = Math.abs(v);
+  let s;
+  if (a >= 1e9)      s = 'R$\u00a0' + (a/1e9).toFixed(a>=100e9?0:1).replace('.',',') + '\u00a0B';
+  else if (a >= 1e6) s = 'R$\u00a0' + (a/1e6).toFixed(a>=100e6?0:1).replace('.',',') + '\u00a0M';
+  else if (a >= 1e3) s = 'R$\u00a0' + (a/1e3).toFixed(a>=100e3?0:1).replace('.',',') + '\u00a0k';
+  else               s = 'R$\u00a0' + Math.round(a).toLocaleString('pt-BR');
+  return neg ? '\u2212' + s : s;
+}
 
-  if (freq === 'monthly' && aporteRecorrente > 0) {
-    for (var m = 1; m <= anos * 12; m++) {
-      var d = new Date(hoje);
-      d.setMonth(d.getMonth() + m);
-      if (d < dataResgate) aportes.push({ date: d, amount: aporteRecorrente });
+// Box-Muller normal sample
+function mcRandn() {
+  const u1 = Math.random() || 1e-10;
+  const u2 = Math.random() || 1e-10;
+  return Math.sqrt(-2 * Math.log(u1)) * Math.cos(6.283185307179586 * u2);
+}
+
+// Annual params → monthly log-normal
+function mcA2M(rA, sA) {
+  return {
+    mu_m:  Math.log(1 + rA / 100) / 12,
+    sigm:  (sA / 100) / Math.sqrt(12),
+  };
+}
+
+// Deterministic accumulation path (annual compounding, monthly aportes)
+function mcDetPath(P, M, rAnnual, years) {
+  const rm = Math.pow(1 + rAnnual / 100, 1 / 12) - 1;
+  let b = P;
+  const path = [P];
+  for (let y = 1; y <= years; y++) {
+    for (let m = 0; m < 12; m++) b = b * (1 + rm) + M;
+    path.push(b);
+  }
+  return path;
+}
+
+// Monte Carlo accumulation: N paths, annual steps stored
+function mcSimulate(P, M, rAnnual, sigmaAnnual, years, N) {
+  const { mu_m, sigm } = mcA2M(rAnnual, sigmaAnnual);
+  // all[y] = Float32Array of N balances at end of year y
+  const all = Array.from({ length: years + 1 }, () => new Float32Array(N));
+  for (let n = 0; n < N; n++) {
+    let b = P;
+    all[0][n] = b;
+    for (let y = 1; y <= years; y++) {
+      for (let m = 0; m < 12; m++) {
+        b = b * Math.exp(mu_m + sigm * mcRandn()) + M;
+      }
+      all[y][n] = b < 0 ? 0 : b;
     }
-  } else if (freq === 'annual' && aporteRecorrente > 0) {
-    for (var y = 1; y <= anos; y++) {
-      var d = new Date(hoje);
-      d.setFullYear(d.getFullYear() + y);
-      if (d < dataResgate) aportes.push({ date: d, amount: aporteRecorrente });
+  }
+  return all;
+}
+
+// Percentile from unsorted typed array
+function mcPct(arr, p) {
+  const s = arr.slice().sort();
+  const i = (p / 100) * (s.length - 1);
+  const lo = Math.floor(i), hi = Math.ceil(i);
+  return s[lo] + (s[hi] - s[lo]) * (i - lo);
+}
+
+// ── Source toggle ─────────────────────────────────────────────────────────
+
+function mcSetSource(src) {
+  MCPortState.source = src;
+  document.getElementById('mcSrcPortfolio').classList.toggle('active', src === 'portfolio');
+  document.getElementById('mcSrcFund').classList.toggle('active', src === 'fund');
+  document.getElementById('mcFundSelect').style.display = src === 'fund' ? '' : 'none';
+  // Update placeholder text
+  const retInput = document.getElementById('mcRet');
+  const volInput = document.getElementById('mcVol');
+  if (src === 'portfolio') {
+    retInput.placeholder = 'auto (portfólio)';
+    volInput.placeholder = 'auto (histórica)';
+  } else {
+    retInput.placeholder = 'auto (fundo)';
+    volInput.placeholder = 'auto (histórica)';
+  }
+  mcUpdateParamLabels();
+}
+
+function mcSetN(btn) {
+  MCPortState.N = parseInt(btn.dataset.n);
+  document.querySelectorAll('.mc-n-btn').forEach(b => b.classList.toggle('active', b === btn));
+}
+
+function mcScheduleRun() {
+  clearTimeout(MCPortState.debounce);
+  MCPortState.debounce = setTimeout(function() {}, 0); // just update labels for now
+  mcUpdateParamLabels();
+}
+
+function mcUpdateParamLabels() {
+  const params = mcGetParams();
+  document.getElementById('mcRetLbl').textContent = params.fromAuto ? 'auto' : '';
+  document.getElementById('mcVolLbl').textContent = params.volFromAuto ? 'auto' : '';
+}
+
+// ── Parameter resolution ──────────────────────────────────────────────────
+
+function mcGetParams() {
+  const retInput = parseFloat(document.getElementById('mcRet').value);
+  const volInput = parseFloat(document.getElementById('mcVol').value);
+
+  let retorno = null, volatilidade = null;
+  let fromAuto = false, volFromAuto = false;
+
+  if (MCPortState.source === 'portfolio') {
+    // From current portfolio target return and historical vol
+    const weights = getWeights();
+    const total   = Object.values(weights).reduce((a,b) => a+b, 0);
+    const selected = Object.keys(weights);
+
+    if (selected.length > 0 && total > 0 && !isNaN(retInput) && retInput > 0) {
+      retorno = retInput;
+    } else if (selected.length > 0 && total > 0) {
+      const portTarget = calcPortfolioTargetReturn(
+        selected,
+        Object.fromEntries(selected.map(c => [c, weights[c] / total])),
+        historyData
+      );
+      retorno = portTarget ? portTarget.expReturn : null;
+      fromAuto = true;
+    }
+
+    // Portfolio historical vol from historyData
+    if (!isNaN(volInput) && volInput > 0) {
+      volatilidade = volInput;
+    } else if (historyData && selected.length > 0 && total > 0) {
+      const wNorm = Object.fromEntries(selected.map(c => [c, weights[c] / total]));
+      // Build weighted daily returns
+      const n = historyData.funds[selected[0]].returns.length;
+      const portRets = new Float64Array(n);
+      for (const cnpj of selected) {
+        const rets = historyData.funds[cnpj].returns;
+        const w    = wNorm[cnpj];
+        for (let i = 0; i < n; i++) portRets[i] += rets[i] * w;
+      }
+      const mean = portRets.reduce((a,b) => a+b, 0) / n;
+      const vari = portRets.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
+      volatilidade = Math.sqrt(vari * 252) * 100;
+      volFromAuto = true;
+    }
+  } else {
+    // Single fund
+    const cnpj  = document.getElementById('mcFundSelect').value;
+    const fData = cnpj ? funds.find(f => f.cnpjFmt === cnpj) : null;
+
+    if (!isNaN(retInput) && retInput > 0) {
+      retorno = retInput;
+    } else if (fData) {
+      const t = calcTargetReturn(fData);
+      retorno = t ? t.value : null;
+      fromAuto = true;
+    }
+
+    if (!isNaN(volInput) && volInput > 0) {
+      volatilidade = volInput;
+    } else if (historyData && cnpj && historyData.funds[cnpj]) {
+      const rets = historyData.funds[cnpj].returns;
+      const n    = rets.length;
+      const mean = rets.reduce((a,b) => a+b, 0) / n;
+      const vari = rets.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
+      volatilidade = Math.sqrt(vari * 252) * 100;
+      volFromAuto = true;
     }
   }
 
-  if (!aportes.length) {
-    container.innerHTML = '<span style="color:var(--muted)">Defina ao menos um aporte.</span>';
+  return {
+    P:            parseFloat(document.getElementById('mcAporteInicial').value) || 100000,
+    M:            parseFloat(document.getElementById('mcAporteMensal').value)  || 0,
+    anos:         parseInt(document.getElementById('mcAnos').value)            || 10,
+    infl:         parseFloat(document.getElementById('mcInfl').value)          || 4.5,
+    retorno:      retorno,
+    volatilidade: volatilidade,
+    fromAuto,
+    volFromAuto,
+  };
+}
+
+// ── Run ───────────────────────────────────────────────────────────────────
+
+function mcRun() {
+  const btn = document.getElementById('mcRunBtn');
+  const note = document.getElementById('mcNote');
+  btn.disabled = true;
+  note.textContent = 'calculando…';
+
+  setTimeout(function() {
+    try {
+      _mcRunCore();
+    } catch(e) {
+      note.textContent = 'Erro: ' + e.message;
+    }
+    btn.disabled = false;
+  }, 20);
+}
+
+function _mcRunCore() {
+  const p = mcGetParams();
+  const note = document.getElementById('mcNote');
+
+  if (!p.retorno) {
+    note.textContent = 'Configure o portfólio (ou escolha um fundo) para obter o retorno alvo.';
+    return;
+  }
+  if (!p.volatilidade) {
+    note.textContent = 'Volatilidade indisponível — carregue o histórico primeiro (aba Portfólio).';
     return;
   }
 
-  // Simulate each aporte independently (each has its own tax base and horizon)
-  var totAporte = 0, totBruto = 0, totCC = 0, totResgate_ = 0, totLiq = 0;
+  const N     = MCPortState.N;
+  const years = p.anos;
 
-  aportes.forEach(function(ap) {
-    var anosAp = (dataResgate - ap.date) / (365.25 * 86400000);
-    if (anosAp <= 0.01) return;
-    var sim = simularFundo(ap.amount, target.value, trib, anosAp);
-    totAporte   += sim.aporte;
-    totBruto    += sim.valorBruto;
-    totCC       += sim.irComeCotas;
-    totResgate_ += sim.irResgate;
-    totLiq      += sim.valorLiquido;
+  // Run simulation
+  const all = mcSimulate(p.P, p.M, p.retorno, p.volatilidade, years, N);
+  const det = mcDetPath(p.P, p.M, p.retorno, years);
+
+  // Final year percentiles
+  const finalCol = all[years];
+  const p10 = mcPct(finalCol, 10);
+  const p25 = mcPct(finalCol, 25);
+  const p50 = mcPct(finalCol, 50);
+  const p75 = mcPct(finalCol, 75);
+  const p90 = mcPct(finalCol, 90);
+
+  // Real values (adjusted for inflation)
+  const inflFactor = Math.pow(1 + p.infl / 100, years);
+  function realVal(v) { return mcFmtShort(v / inflFactor) + ' hoje'; }
+
+  // Update stat cards
+  document.getElementById('mcStats').style.display = '';
+  document.getElementById('mcP50').textContent = mcFmtShort(p50);
+  document.getElementById('mcP50Real').textContent = realVal(p50);
+  document.getElementById('mcP75').textContent = mcFmtShort(p75);
+  document.getElementById('mcP75Real').textContent = realVal(p75);
+  document.getElementById('mcP25').textContent = mcFmtShort(p25);
+  document.getElementById('mcP25Real').textContent = realVal(p25);
+  document.getElementById('mcP10').textContent = mcFmtShort(p10);
+  document.getElementById('mcP10Real').textContent = realVal(p10);
+
+  // Build percentile paths for chart
+  const labels = Array.from({ length: years + 1 }, (_, i) => {
+    const yr = new Date().getFullYear() + i;
+    return i === 0 ? 'Hoje' : String(yr);
   });
 
-  var totIR   = totCC + totResgate_;
-  var rendPot = totBruto - totAporte;
-  var custFisc = rendPot > 0 ? ((totIR / rendPot) * 100).toFixed(1) + '%' : '—';
-
-  // XIRR: TIR sobre os fluxos reais (cada aporte no seu momento, resgate no final)
-  // Fluxos: aportes são saídas (negativos), valor líquido final é entrada (positivo)
-  var xirrFlows = [];
-  aportes.forEach(function(ap) {
-    var t = (dataResgate - ap.date) / (365.25 * 86400000);
-    xirrFlows.push({ t: anos - t, amount: -ap.amount });
-  });
-  xirrFlows.push({ t: anos, amount: totLiq });
-  var xirrRate = null;
-  try { xirrRate = xirr(xirrFlows, 0.08); } catch(e) {}
-  var cagrLiq  = (xirrRate != null && isFinite(xirrRate) && xirrRate > -1)
-    ? ((xirrRate * 100).toFixed(1)) + '%'
-    : (totAporte > 0 && totLiq > totAporte
-        ? ((Math.pow(totLiq / totAporte, 1/anos) - 1)*100).toFixed(1)+'%'
-        : '—');
-  var mult = totAporte > 0 ? (totLiq / totAporte).toFixed(2) + 'x' : '—';
-
-  container.innerHTML =
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:0.9rem">'
-    + card('Total aportado', fmtBRL(totAporte), '')
-    + card('Valor líquido', fmtBRL(totLiq), 'var(--green)')
-    + card('IR total', fmtBRL(totIR), 'var(--red)')
-    + card('CAGR líquido', cagrLiq, 'var(--text)')
-    + '</div>'
-    + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:0.8rem">'
-    + card('Múltiplo do capital', mult, '')
-    + card('Custo fiscal', custFisc, 'var(--red)')
-    + card(trib==='TR' ? 'Come-cotas' : 'IR no resgate', fmtBRL(trib==='TR' ? totCC : totResgate_), 'var(--amber)')
-    + '</div>'
-    + '<div style="font-family:\'Courier New\',monospace;font-size:0.6rem;color:var(--muted)">'
-    + 'Retorno alvo: +'+target.value.toFixed(1)+'% a.a. &nbsp;·&nbsp; '
-    + 'Tributação: '+trib+' &nbsp;·&nbsp; '
-    + aportes.length+' aportes &nbsp;·&nbsp; '
-    + 'Prazo: '+anos+' anos'
-    + (target.sigma > 3 ? ' &nbsp;·&nbsp; ⚠ alta dispersão entre períodos (σ=' + target.sigma.toFixed(1) + 'pp)' : '')
-    + '</div>';
-
-  function card(label, value, color) {
-    return '<div style="padding:0.55rem 0.7rem;background:var(--bg);border-radius:6px;border:0.5px solid var(--border)">'
-      + '<div style="font-family:\'Courier New\',monospace;font-size:0.55rem;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.07em">'+label+'</div>'
-      + '<div style="font-family:\'Courier New\',monospace;font-size:0.88rem;font-weight:bold;color:'+(color||'var(--text)')+'">'+value+'</div>'
-      + '</div>';
+  function pctPath(pctVal) {
+    return Array.from({ length: years + 1 }, (_, y) => Math.round(mcPct(all[y], pctVal)));
   }
+
+  const pp10 = pctPath(10), pp25 = pctPath(25), pp50 = pctPath(50);
+  const pp75 = pctPath(75), pp90 = pctPath(90);
+  const detRound = det.map(v => Math.round(v));
+
+  // Render band chart
+  document.getElementById('mcChartWrap').style.display = '';
+  document.getElementById('mcEmpty').style.display = 'none';
+  _mcRenderChart(labels, pp10, pp25, pp50, pp75, pp90, detRound);
+
+  // IR summary for median scenario
+  mcRenderIRSummary(p, p50, p25, p75);
+
+  const src = MCPortState.source === 'portfolio' ? 'portfólio' : 'fundo';
+  note.textContent = N.toLocaleString('pt-BR') + ' simulações · '
+    + src + ' · ret. ' + p.retorno.toFixed(1) + '% a.a. · vol. ' + p.volatilidade.toFixed(1) + '% a.a.';
 }
+
+function _mcRenderChart(labels, p10, p25, p50, p75, p90, det) {
+  const ctx = document.getElementById('mcChart');
+  if (!ctx) return;
+
+  const datasets = [
+    // Red zone P10–P25
+    { label:'P10', data:p10, borderColor:'transparent', backgroundColor:'rgba(184,50,50,0.14)', fill:'+1', tension:0, pointRadius:0 },
+    { label:'P25', data:p25, borderColor:'transparent', backgroundColor:'rgba(184,50,50,0.14)', fill:false, tension:0, pointRadius:0 },
+    // Blue zone P25–P75
+    { label:'P25b', data:p25, borderColor:'transparent', backgroundColor:'rgba(26,74,138,0.16)', fill:'+1', tension:0, pointRadius:0 },
+    { label:'P75',  data:p75, borderColor:'transparent', backgroundColor:'rgba(26,74,138,0.16)', fill:false, tension:0, pointRadius:0 },
+    // Green zone P75–P90
+    { label:'P75b', data:p75, borderColor:'transparent', backgroundColor:'rgba(26,122,82,0.14)', fill:'+1', tension:0, pointRadius:0 },
+    { label:'P90',  data:p90, borderColor:'transparent', backgroundColor:'rgba(26,122,82,0.14)', fill:false, tension:0, pointRadius:0 },
+    // Median
+    { label:'Mediana', data:p50, borderColor:'#1a4a8a', backgroundColor:'transparent', fill:false, tension:0, pointRadius:0, borderWidth:2 },
+    // Deterministic
+    { label:'Taxa fixa', data:det, borderColor:'#e05c2a', backgroundColor:'transparent', fill:false, tension:0, pointRadius:0, borderWidth:1.5, borderDash:[4,3] },
+  ];
+
+  if (MCPortState.chartInst) {
+    MCPortState.chartInst.data.labels   = labels;
+    MCPortState.chartInst.data.datasets = datasets;
+    MCPortState.chartInst.update('none');
+    return;
+  }
+
+  MCPortState.chartInst = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(26,25,22,0.92)',
+          titleColor: '#aaa', bodyColor: '#e8e6e0',
+          titleFont: { family: 'Courier New', size: 11 },
+          bodyFont:  { family: 'Courier New', size: 11 },
+          padding: 10,
+          callbacks: {
+            title: function(items) { return items[0]?.label || ''; },
+            label: function(c) {
+              const map = {
+                'P10':'P10 (pior 10%)', 'P25':'P25', 'P25b':null,
+                'P75':null, 'P75b':null, 'P90':'P90 (melhor 10%)',
+                'Mediana':'Mediana (P50)', 'Taxa fixa':'Taxa fixa (sem vol.)'
+              };
+              const lbl = map[c.dataset.label];
+              if (!lbl) return null;
+              return '  ' + lbl + ':  ' + mcFmtShort(c.parsed.y);
+            },
+            filter: function(item) {
+              return !['P25b','P75b','P75'].includes(item.dataset.label);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
+                   maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+          grid: { display: false }
+        },
+        y: {
+          ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
+                   callback: function(v) { return mcFmtShort(v); } },
+          grid: { color: 'rgba(128,128,128,0.08)' }
+        }
+      }
+    }
+  });
+}
+
+// ── IR summary for median scenario ────────────────────────────────────────
+
+function mcRenderIRSummary(p, mediana, p25, p75) {
+  const wrap = document.getElementById('mcIrWrap');
+  const el   = document.getElementById('mcIrResult');
+  if (!wrap || !el) return;
+
+  // Determine tax regime
+  let trib = 'RV';
+  if (MCPortState.source === 'fund') {
+    const cnpj = document.getElementById('mcFundSelect').value;
+    const meta  = FUND_META[cnpj] || {};
+    trib = meta.trib || 'RV';
+  } else {
+    // Portfolio: use most common trib from selected funds
+    const weights  = getWeights();
+    const selected = Object.keys(weights);
+    const trCount  = selected.filter(c => (FUND_META[c]||{}).trib === 'TR').length;
+    trib = trCount > selected.length / 2 ? 'TR' : 'RV';
+  }
+
+  // Simulate IR on median scenario using simularFundo
+  // Total invested = P + M*12*anos
+  const totInvested = p.P + p.M * 12 * p.anos;
+
+  // For portfolio we simulate as a single equivalent fund
+  const sim = simularFundo(p.P, p.retorno, trib, p.anos);
+
+  // For the monthly aportes part, approximate: each aporte as separate sim
+  // We already have XIRR logic in renderAportes — just show the key numbers
+  const valorLiq = sim.valorLiquido;
+  const irTotal  = sim.irTotal;
+  const custFisc = sim.aliqEconomica;
+
+  const cagrLiq = p.P > 0 && valorLiq > p.P
+    ? ((Math.pow(valorLiq / p.P, 1 / p.anos) - 1) * 100).toFixed(1) + '%'
+    : '—';
+
+  wrap.style.display = '';
+  el.innerHTML =
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">'
+    + mcIrCard('Aporte inicial', fmtBRL(p.P), '')
+    + mcIrCard('Valor líquido', fmtBRL(valorLiq), 'var(--green)')
+    + mcIrCard('IR total', fmtBRL(irTotal), 'var(--red)')
+    + mcIrCard('CAGR líquido', cagrLiq, 'var(--text)')
+    + '</div>'
+    + '<div style="font-family:\'Courier New\',monospace;font-size:0.6rem;color:var(--muted);margin-top:0.6rem">'
+    + 'IR calculado sobre o cenário mediano · Tributação: ' + trib
+    + (trib === 'TR' ? ' · Come-cotas: ' + fmtBRL(sim.irComeCotas) : '')
+    + ' · Custo fiscal: ' + custFisc.toFixed(1) + '%'
+    + '</div>';
+}
+
+function mcIrCard(label, value, color) {
+  return '<div style="padding:0.55rem 0.7rem;background:var(--bg);border-radius:6px;border:0.5px solid var(--border)">'
+    + '<div style="font-family:\'Courier New\',monospace;font-size:0.55rem;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.07em">' + label + '</div>'
+    + '<div style="font-family:\'Courier New\',monospace;font-size:0.88rem;font-weight:bold;color:' + (color || 'var(--text)') + '">' + value + '</div>'
+    + '</div>';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+function initMCSelect() {
+  const sel = document.getElementById('mcFundSelect');
+  if (!sel || sel.options.length > 0 || !funds.length) return;
+  funds.filter(function(f) { return !f.error; }).forEach(function(f) {
+    const meta = FUND_META[f.cnpjFmt] || {};
+    const opt  = document.createElement('option');
+    opt.value  = f.cnpjFmt;
+    opt.textContent = meta.nome || f.name;
+    sel.appendChild(opt);
+  });
+}
+
+// ── Stub for old renderAportes (now unused from análise tab) ──────────────
+function renderAportes() {}
+function initAportesSelect() { initMCSelect(); }
 
 
 updateHeaders();
