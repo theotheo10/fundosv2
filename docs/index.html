@@ -1134,7 +1134,7 @@
   .metric-card-new .lbl .tip-icon {
     display: inline-flex; align-items: center; justify-content: center;
     width: 12px; height: 12px; border-radius: 50%;
-    background: var(--border); color: var(--muted);
+    background: var(--border); color: var(--muted); cursor: help;
     font-size: 0.5rem; cursor: help; flex-shrink: 0;
   }
   .metric-card-new .val {
@@ -6970,12 +6970,21 @@ function renderAdvMetricsTable() {
 function initRollingAlphaSelect() {
   const sel = document.getElementById('rollingAlphaSelect');
   if (!sel || !historyData || sel.options.length > 1) return;
-  Object.keys(historyData.funds).forEach(function(cnpj) {
+  const cnpjs = Object.keys(historyData.funds).sort(function(a, b) {
+    const na = (FUND_META[a] || {}).nome || historyData.funds[a].nome || a;
+    const nb = (FUND_META[b] || {}).nome || historyData.funds[b].nome || b;
+    return na.localeCompare(nb);
+  });
+  cnpjs.forEach(function(cnpj) {
     const opt = document.createElement('option');
     opt.value = cnpj;
     opt.textContent = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome || cnpj;
     sel.appendChild(opt);
   });
+  if (cnpjs.length > 0) {
+    sel.value = cnpjs[0];
+    renderRollingAlpha();
+  }
 }
 
 function renderRollingAlpha() {
