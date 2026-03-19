@@ -1,0 +1,62 @@
+name: Adicionar fundo ao histórico
+
+on:
+  workflow_dispatch:
+    inputs:
+      cnpj:
+        description: 'CNPJ do fundo (só números, ex: 22232927000190)'
+        required: true
+      nome:
+        description: 'Nome completo do fundo (como aparece na CVM)'
+        required: true
+      nome_curto:
+        description: 'Nome curto para exibição no site (ex: Tarpon)'
+        required: true
+      tipo:
+        description: 'Tipo: Long Only | Long Biased | Multimercado'
+        required: true
+        default: 'Long Only'
+      trib:
+        description: 'Tributação: RV | TR'
+        required: true
+        default: 'RV'
+      expo:
+        description: 'Exposição: Brasil | Internacional | Majoritariamente Brasil'
+        required: true
+        default: 'Brasil'
+      banco:
+        description: 'Custodiante (ex: BTG, Itaú, XP)'
+        required: true
+
+jobs:
+  add-fund:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Adicionar fundo ao histórico
+        run: |
+          python scripts/add_fund.py \
+            "${{ github.event.inputs.cnpj }}" \
+            "${{ github.event.inputs.nome }}" \
+            "${{ github.event.inputs.nome_curto }}" \
+            "${{ github.event.inputs.tipo }}" \
+            "${{ github.event.inputs.trib }}" \
+            "${{ github.event.inputs.expo }}" \
+            "${{ github.event.inputs.banco }}"
+
+      - name: Commit e push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/history.json docs/data.json scripts/fetch_data.py docs/index.html
+          git diff --staged --quiet || git commit -m "feat: adiciona fundo ${{ github.event.inputs.nome_curto }} (${{ github.event.inputs.cnpj }})"
+          git push
