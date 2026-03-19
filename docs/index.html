@@ -1659,7 +1659,7 @@
       </div>
       <div class="port-corr-panel">
         <div class="port-section-label" style="margin-bottom:0.3rem" data-tip="Quanto os fundos se movem juntos. Correlação alta (próxima de 1) significa que os fundos caem juntos — diversificação fraca. Correlação baixa ou negativa = proteção real. Clique em qualquer célula para ver o gráfico de retornos diários.">Correlação</div>
-        <div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5">Vermelho = caem juntos · Verde = independentes · Clique para detalhe</div>
+        <div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5">Vermelho = correlação alta (caem juntos) · Verde = baixa/negativa (diversificação) · Clique para detalhe</div>
         <div id="portCorr" class="port-empty">Selecione ao menos 2 fundos</div>
         <div id="concAlert"></div>
       </div>
@@ -6019,11 +6019,12 @@ function buildCorrHeatmap(selected) {
 
   // Helper: color cell by correlation value
   function cellStyle(v) {
+    // High positive correlation = red (risk), low/negative = green (diversification)
     const abs = Math.abs(v);
-    const bg  = v > 0
-      ? `rgba(184,50,50,${(abs*0.55).toFixed(2)})`
-      : `rgba(26,122,82,${(abs*0.55).toFixed(2)})`;
-    const col = abs > 0.72 ? '#fff' : abs < 0.3 ? 'var(--text)' : 'var(--text)';
+    const bg  = v >= 0
+      ? `rgba(184,50,50,${(v*0.65).toFixed(2)})`
+      : `rgba(26,122,82,${(Math.abs(v)*0.65).toFixed(2)})`;
+    const col = abs > 0.65 ? '#fff' : 'var(--text)';
     return `background:${bg};color:${col}`;
   }
 
