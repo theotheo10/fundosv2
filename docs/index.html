@@ -3016,13 +3016,19 @@ function updatePortfolio() {
 
   function cagrFromSlice(startIdx, endIdx) {
     if (endIdx <= startIdx) return null;
+    // Clamp to valid range
+    const safeStart = Math.max(0, Math.min(startIdx, dates.length - 1));
+    const safeEnd   = Math.max(0, Math.min(endIdx,   dates.length - 1));
+    if (safeEnd <= safeStart) return null;
     let cum = 1.0;
-    for (let i = startIdx; i < endIdx; i++) cum *= (1 + portReturns[i]);
-    const d0 = dates[startIdx], d1 = dates[Math.min(endIdx, dates.length - 1)];
+    for (let i = startIdx; i < endIdx; i++) {
+      if (i < portReturns.length) cum *= (1 + portReturns[i]);
+    }
+    const d0 = dates[safeStart];
+    const d1 = dates[safeEnd];
+    if (!d0 || !d1) return null;
     const years = (new Date(d1) - new Date(d0)) / (365.25 * 86400000);
-    const result = years > 0 ? (Math.pow(cum, 1 / years) - 1) * 100 : null;
-    console.log('[CAGR DEBUG] startIdx:', startIdx, 'endIdx:', endIdx, 'n:', n, 'firstRealIdx:', firstRealIdx, 'd0:', d0, 'd1:', d1, 'years:', years.toFixed(3), 'cum:', cum.toFixed(4), 'result:', result?.toFixed(1));
-    return result;
+    return years > 0.05 ? (Math.pow(cum, 1 / years) - 1) * 100 : null;
   }
 
   const d12   = subtractMonthsStr(anchor, 12);
@@ -6112,14 +6118,14 @@ function openCorrScatter(ca, cb) {
   const nB = (FUND_META[cb]||{}).nome || cb;
   const corr = (historyData.correlation?.[ca]?.[cb] ?? 0);
   title.textContent = `${shortName(ca)} × ${shortName(cb)}`;
-  const realN = retsA.filter((r,i) => r !== 0 && retsB[i] !== 0).length;
-  stats.innerHTML = `Pearson ρ = <strong style="color:${Math.abs(corr)>0.7?'var(--red)':Math.abs(corr)<0.35?'var(--green)':'var(--text)'}">${corr.toFixed(3)}</strong> · retornos diários · ${realN} pregões em comum`;
 
   modal.style.display = 'flex';
 
   // Build scatter data from daily returns
   const retsA = historyData.funds[ca]?.returns || [];
   const retsB = historyData.funds[cb]?.returns || [];
+  const realN = retsA.filter((r,i) => isReal(r) && isReal(retsB[i])).length;
+  stats.innerHTML = `Pearson ρ = <strong style="color:${Math.abs(corr)>0.7?'var(--red)':Math.abs(corr)<0.35?'var(--green)':'var(--text)'}">${corr.toFixed(3)}</strong> · retornos diários · ${realN} pregões em comum`;
   const n = Math.min(retsA.length, retsB.length);
 
   // Only use days where BOTH funds have real non-zero returns (exclude pre-inception zeros)
