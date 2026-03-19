@@ -2007,6 +2007,7 @@ const FUND_META = {
   "21.689.246/0001-92": { nome:"Arbor",              short:"Arbor",    inception:"2015-03-23", initialQuota:1.0000, maxQuota:8.2977230,   tipo:"Long Only",    trib:"RV", expo:"Internacional",            banco:"BTG",      obs:"" },
   "14.438.229/0001-17": { nome:"Charles River",      short:"Charles",  inception:"2011-11-07", initialQuota:1.0000, maxQuota:13.4070715,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"C6",       obs:"" },
   "17.397.315/0001-17": { nome:"SPX Falcon",         short:"Falcon",   inception:"2012-09-17", initialQuota:1.0000, maxQuota:7.3045380,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"Itaú",     obs:"" },
+  "46.351.969/0001-08": { nome:"Opportunity Global", short:"Opportunity", inception:"2022-12-16", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva" };
 
@@ -2650,14 +2651,18 @@ async function loadHistory() {
 
 function buildFundSelector() {
   if (!historyData) return;
-  const cnpjs = Object.keys(historyData.funds).sort((a,b) =>
-    historyData.funds[a].nome.localeCompare(historyData.funds[b].nome));
+  const cnpjs = Object.keys(historyData.funds).sort((a,b) => {
+    const na = (FUND_META[a] || {}).nome || historyData.funds[a].nome;
+    const nb = (FUND_META[b] || {}).nome || historyData.funds[b].nome;
+    return na.localeCompare(nb);
+  });
 
   const html = cnpjs.map((cnpj, i) => {
-    const nome = historyData.funds[cnpj].nome;
+    const _meta = FUND_META[cnpj] || {};
+    const nome  = _meta.nome || historyData.funds[cnpj].nome;
     return `<div class="fund-row-port inactive" id="frow-${i}">
       <input type="checkbox" id="chk-${i}" data-cnpj="${cnpj}" onchange="onCheckChange(${i})">
-      <label class="fund-row-name" for="chk-${i}" title="${nome}">${nome}</label>
+      <label class="fund-row-name" for="chk-${i}" data-tip="${nome}">${nome}</label>
       <input type="range" class="fund-slider" id="sl-${i}" data-cnpj="${cnpj}"
         min="0" max="100" value="0" step="1" disabled
         oninput="onSliderInput(${i})">
@@ -2939,7 +2944,7 @@ function updatePortfolio() {
     allocPanel.style.display = 'block';
 
     const rows = selected.map((cnpj, i) => {
-      const nome   = historyData.funds[cnpj].nome;
+      const nome   = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome;
       const pct    = weights[cnpj];
       const brl    = patrimonio * pct / 100;
       const color  = PORT_COLORS[i % PORT_COLORS.length];
@@ -4603,7 +4608,7 @@ function initUnderwaterSelect() {
   Object.keys(historyData.funds).forEach(function(cnpj) {
     var opt = document.createElement('option');
     opt.value = cnpj;
-    opt.textContent = historyData.funds[cnpj].nome;
+    opt.textContent = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome;
     sel.appendChild(opt);
   });
   renderUnderwaterChart();
@@ -6261,7 +6266,7 @@ initChartToggles = function() {
     btn.style.background = color;
     btn.style.borderColor = color;
     btn.style.color = '#fff';
-    btn.textContent = historyData.funds[cnpj].nome.split(' ')[0];
+    btn.textContent = (FUND_META[cnpj] || {}).short || historyData.funds[cnpj].nome.split(' ')[0];
     // Use shortName if available
     if (typeof shortName === 'function') btn.textContent = shortName(cnpj);
     btn.onclick = (function(c, col) {
@@ -6495,7 +6500,7 @@ function initRollingAlphaSelect() {
   Object.keys(historyData.funds).forEach(function(cnpj) {
     const opt = document.createElement('option');
     opt.value = cnpj;
-    opt.textContent = historyData.funds[cnpj].nome || cnpj;
+    opt.textContent = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome || cnpj;
     sel.appendChild(opt);
   });
 }
@@ -6623,7 +6628,7 @@ function renderRollingAlpha() {
     }
   });
 
-  const nome = historyData.funds[cnpj].nome;
+  const nome = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome;
   if (note) note.innerHTML = `Alpha 12M rolante de <strong>${nome}</strong> vs. IBOV proxy (cagr36 anualizado diariamente). Cada ponto = retorno anualizado dos últimos 252 pregões do fundo menos o do IBOV.`;
 }
 
