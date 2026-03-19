@@ -435,6 +435,7 @@ def update_history(anchor: datetime.date) -> None:
     # ── Carregar histórico existente ────────────────────────────────────────
     quotas: dict = {f["cnpjFmt"]: {} for f in FUNDS}
     last_date_in_history = None
+    existing_fund_cnpjs: set = set()
 
     if hist_path.exists():
         try:
@@ -442,6 +443,7 @@ def update_history(anchor: datetime.date) -> None:
             for cnpj, fd in existing.get("funds", {}).items():
                 if cnpj in quotas:
                     quotas[cnpj] = dict(zip(fd["dates"], fd["quotas"]))
+                    existing_fund_cnpjs.add(cnpj)
             # Data mais recente no arquivo atual
             all_dates = sorted(existing.get("commonDates", []))
             if all_dates:
@@ -452,6 +454,15 @@ def update_history(anchor: datetime.date) -> None:
                 print("  history.json existe mas está vazio — iniciando backfill")
         except Exception as e:
             print(f"  Erro ao ler history.json: {e} — iniciando backfill completo")
+
+    # ── Detectar fundos novos (não presentes no history.json anterior) ───────
+    all_fund_cnpjs = {f["cnpjFmt"] for f in FUNDS}
+    new_funds = all_fund_cnpjs - existing_fund_cnpjs
+    if new_funds:
+        new_names = [f["name"] for f in FUNDS if f["cnpjFmt"] in new_funds]
+        print(f"  ⚠ Fundos novos detectados (sem histórico): {', '.join(new_names)}")
+        print(f"    → Forçando backfill completo para incluí-los")
+        last_date_in_history = None  # força backfill completo de todos os meses
 
     # ── Determinar meses a buscar ────────────────────────────────────────────
     to_fetch = months_to_fetch(last_date_in_history, anchor)
