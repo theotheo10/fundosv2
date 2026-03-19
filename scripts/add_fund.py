@@ -4,18 +4,6 @@ add_fund.py — Adiciona um fundo novo ao histórico do site.
 
 Uso (chamado pelo GitHub Actions):
     python scripts/add_fund.py CNPJ NOME NOME_EXIBICAO NOME_CURTO TIPO TRIB EXPO BANCO
-
-Campos:
-    NOME          — nome completo CVM (para fetch_data.py)
-    NOME_EXIBICAO — nome no ranking/painéis (ex: "Opportunity Global")
-    NOME_CURTO    — nome em gráficos/seletores compactos (ex: "Opportunity")
-
-O script:
-  1. Busca o histórico completo do fundo na CVM
-  2. Acrescenta ao history.json sem tocar nos outros fundos
-  3. Recalcula correlações por par (interseção dinâmica)
-  4. Adiciona o fundo à lista FUNDS no fetch_data.py
-  5. Adiciona a entrada FUND_META no index.html
 """
 
 import sys, json, zipfile, io, math, datetime, urllib.request
@@ -82,7 +70,6 @@ def fetch_full_history(cnpj_digits: str, cnpj_fmt: str) -> dict[str, float]:
     today  = datetime.date.today()
     quotas: dict[str, float] = {}
 
-    # Pré-2021: anuais
     for year in range(CVM_OLDEST_YEAR, FIRST_MONTHLY):
         url     = f"https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/HIST/inf_diario_fi_{year}.zip"
         content = fetch_zip(url)
@@ -91,10 +78,7 @@ def fetch_full_history(cnpj_digits: str, cnpj_fmt: str) -> dict[str, float]:
             if rows:
                 quotas.update(rows)
                 print(f"  {year}: +{len(rows)} cotas (total {len(quotas)})")
-            elif quotas:
-                pass  # fundo pode ainda não ter existido
 
-    # 2021+: mensais
     y, m = FIRST_MONTHLY, 1
     while (y, m) <= (today.year, today.month):
         url     = f"https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_{y}{m:02d}.zip"
@@ -111,47 +95,102 @@ def fetch_full_history(cnpj_digits: str, cnpj_fmt: str) -> dict[str, float]:
     return quotas
 
 
-# ── Interpolação geométrica ────────────────────────────────────────────────────
+# ── Interpolação geométrica APENAS dentro do período de vida do fundo ──────────
 
 def interpolate(quotas: dict[str, float], all_dates: list[str]) -> dict[str, float]:
+    """
+    Interpola geometricamente apenas entre datas onde o fundo JÁ EXISTIA.
+    Nunca preenche datas antes do primeiro registro real ou após o último.
+    Isso evita divisão por zero e retornos fictícios fora do mandato do fundo.
+    """
     if not quotas:
         return quotas
-    sorted_known = sorted(quotas.keys())
-    fund_start   = sorted_known[0]
-    fund_end     = sorted_known[-1]
+    sorted_known = sorted(k for k, v in quotas.items() if v > 0)
+    if not sorted_known:
+        return quotas
+    fund_start = sorted_known[0]
+    fund_end   = sorted_known[-1]
 
     for d in all_dates:
-        if d < fund_start or d > fund_end or d in quotas:
-            continue
+        if d < fund_start or d > fund_end:
+            continue   # fora do período — não interpola
+        if d in quotas and quotas[d] > 0:
+            continue   # já tem dado real e válido
+
         prev_d = next((x for x in reversed(sorted_known) if x < d), None)
         next_d = next((x for x in sorted_known           if x > d), None)
-        if prev_d and next_d:
+
+        if prev_d and next_d and quotas.get(prev_d, 0) > 0 and quotas.get(next_d, 0) > 0:
             t0    = datetime.date.fromisoformat(prev_d)
             t1    = datetime.date.fromisoformat(next_d)
             td    = datetime.date.fromisoformat(d)
             alpha = (td - t0).days / max((t1 - t0).days, 1)
             quotas[d] = round(quotas[prev_d] * ((quotas[next_d] / quotas[prev_d]) ** alpha), 8)
-        elif prev_d:
+        elif prev_d and quotas.get(prev_d, 0) > 0:
             quotas[d] = quotas[prev_d]
 
     return quotas
 
 
-# ── Pearson ────────────────────────────────────────────────────────────────────
+# ── Retornos diários seguros ───────────────────────────────────────────────────
 
-def pearson(a: list, b: list) -> float:
-    n = len(a)
-    if n < 30: return 0.0
-    ma, mb = sum(a)/n, sum(b)/n
-    num = sum((a[i]-ma)*(b[i]-mb) for i in range(n))
-    sa  = math.sqrt(sum((x-ma)**2 for x in a))
-    sb  = math.sqrt(sum((x-mb)**2 for x in b))
+def safe_returns(qs: dict[str, float], dates: list[str]) -> list[float]:
+    """
+    Calcula retornos diários apenas onde ambas as cotas são positivas.
+    Retorna 0.0 quando qualquer uma das cotas é zero/ausente (gap seguro).
+    """
+    rets = []
+    for i in range(1, len(dates)):
+        q0 = qs.get(dates[i-1], 0.0)
+        q1 = qs.get(dates[i],   0.0)
+        if q0 > 0 and q1 > 0:
+            rets.append((q1 / q0) - 1)
+        else:
+            rets.append(0.0)
+    return rets
+
+
+# ── Pearson sobre interseção segura ───────────────────────────────────────────
+
+def pearson_safe(ca: str, cb: str,
+                 all_quotas: dict[str, dict[str, float]]) -> float:
+    """
+    Correlação de Pearson usando apenas datas onde AMBOS os fundos têm
+    cota real e positiva (dentro do período de vida de cada um).
+    Evita distorções causadas por zeros ou extrapolações.
+    """
+    qs_a = all_quotas.get(ca, {})
+    qs_b = all_quotas.get(cb, {})
+
+    # Datas com cota real e positiva em ambos
+    valid_a = {d for d, v in qs_a.items() if v > 0}
+    valid_b = {d for d, v in qs_b.items() if v > 0}
+    common  = sorted(valid_a & valid_b)
+
+    if len(common) < 30:
+        return 0.0
+
+    ra = [(qs_a[common[i]] / qs_a[common[i-1]]) - 1 for i in range(1, len(common))
+          if qs_a.get(common[i-1], 0) > 0 and qs_a.get(common[i], 0) > 0]
+    rb = [(qs_b[common[i]] / qs_b[common[i-1]]) - 1 for i in range(1, len(common))
+          if qs_b.get(common[i-1], 0) > 0 and qs_b.get(common[i], 0) > 0]
+
+    n = min(len(ra), len(rb))
+    if n < 30:
+        return 0.0
+
+    ra, rb = ra[:n], rb[:n]
+    ma, mb = sum(ra)/n, sum(rb)/n
+    num = sum((ra[i]-ma)*(rb[i]-mb) for i in range(n))
+    sa  = math.sqrt(sum((x-ma)**2 for x in ra))
+    sb  = math.sqrt(sum((x-mb)**2 for x in rb))
     return round(num/(sa*sb), 4) if sa*sb > 0 else 0.0
 
 
 # ── Atualizar history.json ─────────────────────────────────────────────────────
 
-def update_history(cnpj_fmt: str, nome_exibicao: str, new_quotas: dict[str, float]) -> None:
+def update_history(cnpj_fmt: str, nome_exibicao: str,
+                   new_quotas: dict[str, float]) -> None:
     print(f"\n── Atualizando history.json")
 
     hist = {}
@@ -161,26 +200,27 @@ def update_history(cnpj_fmt: str, nome_exibicao: str, new_quotas: dict[str, floa
     # Carregar cotas existentes
     all_fund_quotas: dict[str, dict[str, float]] = {}
     for cnpj, fd in hist.get("funds", {}).items():
-        all_fund_quotas[cnpj] = dict(zip(fd["dates"], fd["quotas"]))
+        qs = dict(zip(fd["dates"], fd["quotas"]))
+        # Garantir que não há zeros que vieram de versões anteriores
+        all_fund_quotas[cnpj] = {d: v for d, v in qs.items() if v > 0}
     all_fund_quotas[cnpj_fmt] = new_quotas
 
-    # Union de todas as datas
-    all_dates = sorted({d for qs in all_fund_quotas.values() for d in qs})
+    # Union de todas as datas com cota real em pelo menos um fundo
+    all_dates = sorted({d for qs in all_fund_quotas.values() for d, v in qs.items() if v > 0})
     print(f"  Total datas (union): {len(all_dates)} ({all_dates[0]} → {all_dates[-1]})")
 
-    # Interpola lacunas
+    # Interpola lacunas dentro do período de cada fundo
     for cnpj, qs in all_fund_quotas.items():
         all_fund_quotas[cnpj] = interpolate(qs, all_dates)
 
-    # Reconstruir funds_out
+    # Reconstruir funds_out com retornos seguros
     funds_out = {}
     for cnpj, qs in all_fund_quotas.items():
-        fund_dates  = sorted(qs.keys())
+        # Usar apenas datas com cota positiva deste fundo
+        fund_dates  = sorted(d for d, v in qs.items() if v > 0)
         fund_quotas = [qs[d] for d in fund_dates]
-        returns = []
-        for i in range(1, len(fund_dates)):
-            q0, q1 = qs.get(fund_dates[i-1]), qs.get(fund_dates[i])
-            returns.append((q1/q0)-1 if q0 and q1 else 0.0)
+        returns     = safe_returns(qs, fund_dates)
+
         cum = pk = 1.0; mdd = 0.0
         for r in returns:
             cum *= (1+r)
@@ -200,26 +240,16 @@ def update_history(cnpj_fmt: str, nome_exibicao: str, new_quotas: dict[str, floa
             "end":         fund_dates[-1],
         }
 
-    # Correlações por par (interseção dinâmica)
+    # Correlações: interseção segura por par
     cnpjs = list(funds_out.keys())
     corr  = {}
     for ca in cnpjs:
         corr[ca] = {}
-        dates_a = set(funds_out[ca]["dates"])
-        qs_a    = all_fund_quotas[ca]
         for cb in cnpjs:
             if ca == cb:
                 corr[ca][cb] = 1.0
-                continue
-            dates_b = set(funds_out[cb]["dates"])
-            qs_b    = all_fund_quotas[cb]
-            common  = sorted(dates_a & dates_b)
-            if len(common) < 30:
-                corr[ca][cb] = 0.0
-                continue
-            ra = [(qs_a[common[i]]/qs_a[common[i-1]])-1 for i in range(1, len(common))]
-            rb = [(qs_b[common[i]]/qs_b[common[i-1]])-1 for i in range(1, len(common))]
-            corr[ca][cb] = pearson(ra, rb)
+            else:
+                corr[ca][cb] = pearson_safe(ca, cb, all_fund_quotas)
 
     n_years = (datetime.date.fromisoformat(all_dates[-1]) -
                datetime.date.fromisoformat(all_dates[0])).days / 365.25 if all_dates else 0
@@ -269,7 +299,6 @@ def update_index(cnpj_fmt: str, nome_exibicao: str, nome_curto: str,
         print(f"  Fundo já está em FUND_META — sem alteração")
         return
 
-    # FUND_META: nome = nome_exibicao, short = nome_curto
     new_meta = (
         f'  "{cnpj_fmt}": {{ nome:"{nome_exibicao}", short:"{nome_curto}", '
         f'inception:"{inception_date}", initialQuota:{initial_quota}, maxQuota:{initial_quota}, '
@@ -281,7 +310,6 @@ def update_index(cnpj_fmt: str, nome_exibicao: str, nome_curto: str,
         1
     )
 
-    # Lista FUNDS do JS
     src = src.replace(
         '];\n\nlet sortKey',
         f'  {{ cnpjFmt: "{cnpj_fmt}", name: "{nome_exibicao}", short: "{nome_curto}" }},\n];\n\nlet sortKey',
@@ -300,9 +328,9 @@ def main():
         sys.exit(1)
 
     cnpj_digits   = sys.argv[1].strip().replace(".", "").replace("/", "").replace("-", "")
-    nome          = sys.argv[2].strip()   # nome completo CVM
-    nome_exibicao = sys.argv[3].strip()   # ranking/painéis
-    nome_curto    = sys.argv[4].strip()   # gráficos/seletores
+    nome          = sys.argv[2].strip()
+    nome_exibicao = sys.argv[3].strip()
+    nome_curto    = sys.argv[4].strip()
     tipo          = sys.argv[5].strip()
     trib          = sys.argv[6].strip()
     expo          = sys.argv[7].strip()
