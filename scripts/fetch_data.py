@@ -833,11 +833,11 @@ def compute_fund_betas(history_path: Path, index_rets: dict) -> dict:
                 break
             for row in range(col+1, 3):
                 f = M[row][col] / M[col][col]
-                M[row] = [M[row][j] - f*M[col][j] for j in range(5)]
+                M[row] = [M[row][j] - f*M[col][j] for j in range(4)]
         # Back substitution
         sol = [0.0]*3
         for row in range(2, -1, -1):
-            sol[row] = (M[row][4] - sum(M[row][j]*sol[j] for j in range(row+1, 3))) / (M[row][row] if abs(M[row][row]) > 1e-12 else 1e-12)
+            sol[row] = (M[row][3] - sum(M[row][j]*sol[j] for j in range(row+1, 3))) / (M[row][row] if abs(M[row][row]) > 1e-12 else 1e-12)
 
         alpha_d, b_ibov, b_sp = sol
         alpha_ann = (math.pow(1 + alpha_d, 252) - 1) * 100
