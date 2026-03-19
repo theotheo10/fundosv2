@@ -695,6 +695,171 @@ def fetch_sp500(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a
         print(f"  ✗ S&P500 falhou: {e}")
         return {"cagr12": None, "cagr36": None, "cagr60": None}
 
+
+
+def fetch_daily_index_returns(anchor: datetime.date, history_start_year: int) -> dict:
+    """
+    Fetches full daily return series for IBOV and S&P500 BRL from history_start_year to anchor.
+    Used for beta regression against fund daily returns in history.json.
+    Returns: {"ibov": {date: return}, "sp500_brl": {date: return}}
+    """
+    start = datetime.date(history_start_year, 1, 1) - datetime.timedelta(days=5)
+    period1 = int(datetime.datetime.combine(start, datetime.time(), tzinfo=datetime.timezone.utc).timestamp())
+    period2 = int(datetime.datetime.combine(anchor + datetime.timedelta(days=5), datetime.time(), tzinfo=datetime.timezone.utc).timestamp())
+
+    def _yahoo_prices(ticker):
+        url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+               f"?interval=1d&period1={period1}&period2={period2}")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+        result = data["chart"]["result"][0]
+        ts     = result["timestamp"]
+        closes = result["indicators"]["quote"][0]["close"]
+        return {datetime.datetime.utcfromtimestamp(t).date().isoformat(): p
+                for t, p in zip(ts, closes) if p is not None}
+
+    def prices_to_returns(prices: dict) -> dict:
+        dates = sorted(prices.keys())
+        rets  = {}
+        for i in range(1, len(dates)):
+            d0, d1 = dates[i-1], dates[i]
+            if prices[d0] and prices[d1] and prices[d0] > 0:
+                rets[d1] = prices[d1] / prices[d0] - 1
+        return rets
+
+    try:
+        ibov_px   = _yahoo_prices("%5EBVSP")
+        sp_px     = _yahoo_prices("%5EGSPC")
+        fx_px     = _yahoo_prices("BRL%3DX")   # USD/BRL
+
+        ibov_rets = prices_to_returns(ibov_px)
+
+        # S&P in BRL = SP_price * USD/BRL rate
+        sp_brl_px = {}
+        for d in sp_px:
+            sp = sp_px[d]
+            fx = fx_px.get(d)
+            if fx is None:
+                # fallback to nearest available FX
+                fx_dates = sorted(fx_px.keys())
+                cands = [x for x in fx_dates if x <= d]
+                fx = fx_px[cands[-1]] if cands else None
+            if sp and fx and fx > 0:
+                sp_brl_px[d] = sp * fx
+        sp_brl_rets = prices_to_returns(sp_brl_px)
+
+        print(f"  Daily returns: IBOV {len(ibov_rets)}d, S&P BRL {len(sp_brl_rets)}d")
+        return {"ibov": ibov_rets, "sp500_brl": sp_brl_rets}
+    except Exception as e:
+        print(f"  ✗ daily index returns failed: {e}")
+        return {"ibov": {}, "sp500_brl": {}}
+
+
+def compute_fund_betas(history_path: Path, index_rets: dict) -> dict:
+    """
+    OLS regression: R_fund = alpha + beta_ibov * R_ibov + beta_sp500 * R_sp500_brl + epsilon
+    Uses fund daily returns from history.json aligned with index returns.
+    Returns per-fund beta dict saved into data.json.
+    """
+    if not history_path.exists() or not index_rets["ibov"]:
+        return {}
+
+    try:
+        hist = json.loads(history_path.read_text())
+    except Exception:
+        return {}
+
+    ibov_r   = index_rets["ibov"]
+    sp500_r  = index_rets["sp500_brl"]
+    results  = {}
+
+    for cnpj, fd in hist.get("funds", {}).items():
+        dates   = fd.get("dates", [])
+        returns = fd.get("returns", [])
+        if len(dates) < 120 or len(returns) < 120:
+            continue
+
+        # Align fund returns with index returns
+        # returns[i] corresponds to dates[i] (return FROM dates[i-1] TO dates[i])
+        X_ibov, X_sp, Y = [], [], []
+        for i in range(1, len(dates)):
+            d    = dates[i]
+            r_f  = returns[i - 1]
+            r_i  = ibov_r.get(d)
+            r_s  = sp500_r.get(d)
+            if r_i is None or r_s is None:
+                continue
+            if r_f == 0.0 and i < 30:
+                continue  # skip pre-inception zeros
+            X_ibov.append(r_i)
+            X_sp.append(r_s)
+            Y.append(r_f)
+
+        n = len(Y)
+        if n < 60:
+            results[cnpj] = {"beta_ibov": None, "beta_sp500": None, "alpha": None, "r2": None, "n": n}
+            continue
+
+        # OLS with two factors: Y = a + b1*X1 + b2*X2
+        # Normal equations: [X'X] [b] = [X'Y]
+        # X matrix: [1, X_ibov, X_sp500]
+        n_f = float(n)
+        s1  = sum(X_ibov)
+        s2  = sum(X_sp)
+        sy  = sum(Y)
+        s11 = sum(x*x for x in X_ibov)
+        s22 = sum(x*x for x in X_sp)
+        s12 = sum(X_ibov[i]*X_sp[i] for i in range(n))
+        s1y = sum(X_ibov[i]*Y[i] for i in range(n))
+        s2y = sum(X_sp[i]*Y[i] for i in range(n))
+
+        # 3x3 system via Cramer / direct solve
+        # [n,   s1,  s2 ] [a ]   [sy ]
+        # [s1,  s11, s12] [b1] = [s1y]
+        # [s2,  s12, s22] [b2]   [s2y]
+        A = [[n_f, s1,  s2 ],
+             [s1,  s11, s12],
+             [s2,  s12, s22]]
+        b = [sy, s1y, s2y]
+
+        # Gaussian elimination
+        import copy
+        M = [row[:] + [b[i]] for i, row in enumerate(A)]
+        for col in range(3):
+            pivot = max(range(col, 3), key=lambda r: abs(M[r][col]))
+            M[col], M[pivot] = M[pivot], M[col]
+            if abs(M[col][col]) < 1e-12:
+                break
+            for row in range(col+1, 3):
+                f = M[row][col] / M[col][col]
+                M[row] = [M[row][j] - f*M[col][j] for j in range(5)]
+        # Back substitution
+        sol = [0.0]*3
+        for row in range(2, -1, -1):
+            sol[row] = (M[row][4] - sum(M[row][j]*sol[j] for j in range(row+1, 3))) / (M[row][row] if abs(M[row][row]) > 1e-12 else 1e-12)
+
+        alpha_d, b_ibov, b_sp = sol
+        alpha_ann = (math.pow(1 + alpha_d, 252) - 1) * 100
+
+        # R-squared
+        y_mean = sy / n_f
+        ss_tot = sum((y - y_mean)**2 for y in Y)
+        y_hat  = [alpha_d + b_ibov*X_ibov[i] + b_sp*X_sp[i] for i in range(n)]
+        ss_res = sum((Y[i] - y_hat[i])**2 for i in range(n))
+        r2     = 1 - ss_res/ss_tot if ss_tot > 0 else 0
+
+        results[cnpj] = {
+            "beta_ibov":  round(b_ibov, 4),
+            "beta_sp500": round(b_sp,   4),
+            "alpha_ann":  round(alpha_ann, 2),
+            "r2":         round(r2, 4),
+            "n_obs":      n,
+        }
+        print(f"  {cnpj[-14:]}: β_ibov={b_ibov:.3f} β_sp={b_sp:.3f} α={alpha_ann:.1f}% R²={r2:.3f} n={n}")
+
+    return results
+
 def main() -> None:
     today = datetime.date.today()
     print(f"Executando para {today.isoformat()}")
@@ -745,12 +910,18 @@ def main() -> None:
     print(f"\n── S&P 500")
     sp500 = fetch_sp500(anchor, a12, a36, a60)
 
+    print(f"\n── Betas (regressão OLS vs IBOV e S&P BRL)")
+    index_rets = fetch_daily_index_returns(anchor, HISTORY_START_YEAR)
+    fund_betas = compute_fund_betas(hist_path, index_rets)
+    print(f"  Betas calculados: {len(fund_betas)} fundos")
+
     data_out = {
         "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "anchorDate":  anchor.isoformat(),
         "ibov":        ibov,
         "cdi":         cdi,
         "sp500":       sp500,
+        "fund_betas":  fund_betas,
         "funds":       results,
     }
 
