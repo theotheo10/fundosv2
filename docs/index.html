@@ -1485,7 +1485,7 @@
 <div class="header">
   <div>
     <h1>Ranking de Fundos</h1>
-    <div class="subtitle">dados diários da CVM · atualizado automaticamente</div>
+    <div class="subtitle">dados diários da CVM</div>
   </div>
   <div class="header-controls">
     <div class="header-status" id="headerStatus">
@@ -1642,7 +1642,6 @@
       <div class="port-metrics-panel">
         <div class="port-section-label" style="margin-bottom:0.8rem">Métricas do portfólio</div>
         <div id="portMetrics" class="port-empty">Selecione ao menos um fundo e defina os pesos</div>
-        <div id="portStressContainer"></div>
       </div>
       <div class="port-alloc-panel" id="portAllocPanel" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.5rem">
@@ -1662,6 +1661,7 @@
         <div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5">Vermelho = correlação alta (caem juntos) · Verde = baixa/negativa (diversificação) · Clique para detalhe</div>
         <div id="portCorr" class="port-empty">Selecione ao menos 2 fundos</div>
         <div id="concAlert"></div>
+        <div id="portStressContainer"></div>
       </div>
     </div>
 
@@ -1913,40 +1913,80 @@
   <div class="chart-fund-toggles" id="chartFundToggles"></div>
   <div style="position:relative;height:380px;width:100%"><canvas id="chartCanvas"></canvas></div>
 
+  <!-- ── Alpha vs. IBOV por janela ───────────────────────────────────── -->
+  <div style="margin-top:2rem;border-top:0.5px solid var(--border);padding-top:1.4rem">
+    <div style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.25rem">Retorno acumulado vs. IBOV</div>
+    <div style="font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted);margin-bottom:1rem">Excesso de retorno de cada fundo vs. IBOV nas três janelas principais.</div>
+    <div style="display:flex;gap:8px;margin-bottom:1rem">
+      <button class="chart-fund-toggle active" id="alphaBarBtn12" onclick="setAlphaBarWindow('12')" style="font-size:0.6rem;padding:3px 10px">12M</button>
+      <button class="chart-fund-toggle" id="alphaBarBtn36" onclick="setAlphaBarWindow('36')" style="font-size:0.6rem;padding:3px 10px">36M</button>
+      <button class="chart-fund-toggle" id="alphaBarBtn60" onclick="setAlphaBarWindow('60')" style="font-size:0.6rem;padding:3px 10px">60M</button>
+    </div>
+    <div style="position:relative;height:280px;width:100%"><canvas id="alphaBarCanvas"></canvas></div>
+  </div>
+
+  <!-- ── Distribuição de retornos mensais ────────────────────────────── -->
+  <div style="margin-top:2rem;border-top:0.5px solid var(--border);padding-top:1.4rem">
+    <div style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.25rem">Distribuição de retornos mensais</div>
+    <div style="font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted);margin-bottom:0.8rem">Histograma de retornos mensais — forma da distribuição, assimetria e frequência de meses extremos.</div>
+    <div style="margin-bottom:0.8rem">
+      <select class="fund-selector-analise" id="distFundSelect" onchange="renderDistChart()" style="min-width:200px"></select>
+    </div>
+    <div style="position:relative;height:220px;width:100%"><canvas id="distCanvas"></canvas></div>
+    <div id="distStats" style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-top:0.5rem;line-height:1.8"></div>
+  </div>
+
+  <!-- ── Correlação rolling 12M ───────────────────────────────────────── -->
+  <div style="margin-top:2rem;border-top:0.5px solid var(--border);padding-top:1.4rem">
+    <div style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.25rem">Correlação rolling 12M</div>
+    <div style="font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted);margin-bottom:0.8rem">Evolução da correlação entre dois fundos ao longo do tempo — detecta se a diversificação se manteve estável ou colapsou em crises.</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:0.8rem;flex-wrap:wrap">
+      <select class="fund-selector-analise" id="corrRollA" onchange="renderRollingCorrChart()" style="min-width:160px"></select>
+      <span style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">×</span>
+      <select class="fund-selector-analise" id="corrRollB" onchange="renderRollingCorrChart()" style="min-width:160px"></select>
+    </div>
+    <div style="position:relative;height:200px;width:100%"><canvas id="corrRollCanvas"></canvas></div>
+    <div id="corrRollStats" style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-top:0.5rem;line-height:1.8"></div>
+  </div>
+
 </div><!-- /tab-graficos -->
 
 <div id="tab-analise" class="tab-pane">
 
   <div class="analysis-grid">
 
-    <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title">Stress test — cenários históricos adversos</div>
-      <div id="stressContainer"></div>
-    </div>
-
+    <!-- 1. Visão panorâmica do universo -->
     <div class="analysis-card" style="grid-column:1/-1">
       <div class="analysis-card-title">Risco × Retorno</div>
       <div id="scatterLoading" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem">calculando…</div>
       <div style="position:relative;height:320px;width:100%"><canvas id="scatterCanvas"></canvas></div>
     </div>
 
+    <!-- 2. Histórico de performance -->
     <div class="analysis-card" style="grid-column:1/-1">
       <div class="analysis-card-title">Retornos anuais</div>
       <div class="heatmap-wrap"><div id="heatmapContainer"></div></div>
     </div>
 
+    <!-- 3. Risco do universo em crises -->
+    <div class="analysis-card" style="grid-column:1/-1">
+      <div class="analysis-card-title">Comportamento em crises históricas</div>
+      <div id="stressContainer"></div>
+    </div>
+
+    <!-- 4. Qualidade dos retornos — consistência + drawdown side-by-side -->
     <div class="analysis-card">
       <div class="analysis-card-title">Consistência</div>
       <div id="consistencyContainer"></div>
     </div>
 
     <div class="analysis-card" style="display:flex;flex-direction:column;">
-      <div class="analysis-card-title">Drawdown histórico</div>
+      <div class="analysis-card-title">Drawdown histórico por fundo</div>
       <select id="uwFundSelect" style="font-family:'Courier New',monospace;font-size:0.68rem;padding:3px 8px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;width:100%;margin-bottom:0.6rem;outline:none;" onchange="renderUnderwaterChart()"></select>
       <div style="position:relative;flex:1;min-height:320px;width:100%"><canvas id="underwaterCanvas"></canvas></div>
     </div>
 
-
+    <!-- 5. Aprofundamento analítico -->
     <div class="analysis-card" style="grid-column:1/-1">
       <div class="analysis-card-title" data-tip="Métricas de risco ajustado que complementam o Sharpe e capturam dimensões ignoradas por ele: assimetria de retornos, magnitude da queda máxima e eficiência do alpha gerado.">Métricas de risco avançadas</div>
       <div id="advMetricsContainer">
@@ -1954,6 +1994,7 @@
       </div>
     </div>
 
+    <!-- 6. Drill-down por fundo -->
     <div class="analysis-card" style="grid-column:1/-1">
       <div class="analysis-card-title" data-tip="O alpha de 12 meses (retorno acima do IBOV) recalculado mensalmente ao longo do histórico disponível. Revela se o gestor gera alpha de forma consistente ou se o número único esconde volatilidade significativa de resultados.">Alpha rolante 12M — evolução do excesso de retorno vs. IBOV</div>
       <div style="margin-bottom:0.7rem">
@@ -1969,6 +2010,7 @@
       <div id="rollingAlphaEmpty" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">Selecione um fundo para ver a evolução do alpha rolante.</div>
     </div>
 
+    <!-- 7. Síntese visual do universo -->
     <div class="analysis-card" style="grid-column:1/-1">
       <div class="analysis-card-title" data-tip="Fronteira eficiente: curva que representa o melhor retorno possível para cada nível de volatilidade, dada a combinação dos fundos disponíveis. Portfólios abaixo da fronteira são sub-ótimos — é possível ter mais retorno com o mesmo risco, ou menos risco com o mesmo retorno.">Fronteira eficiente — universo de fundos disponíveis</div>
       <div style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted);margin-bottom:0.6rem">
@@ -2623,6 +2665,10 @@ async function load() {
     updateHeaders();
     render();
     initMCSelect();
+    // Alpha bar chart uses data.json (no historyData needed)
+    if (document.getElementById('tab-graficos')?.classList.contains('active')) {
+      renderAlphaBarChart();
+    }
     // Restore portfolio weights after fund selector is built
     restorePortfolio(loadPrefs());
 
@@ -2655,6 +2701,9 @@ function switchTab(name) {
     loadHistory();
   } else if (name === 'graficos' && historyData) {
     renderNormalizedChart();
+    renderAlphaBarChart();
+    renderDistChart();
+    renderRollingCorrChart();
   } else if (name === 'analise' && historyData) {
     // Stagger heavy renders so browser can paint between each one
     renderScatter();
@@ -2702,6 +2751,8 @@ async function loadHistory() {
     initChartToggles();
     initUnderwaterSelect();
     initMCSelect();
+    initDistSelect();
+    initCorrRollSelects();
     // Pre-render analysis if already on those tabs
     const activeTab = document.querySelector('.tab-pane.active')?.id;
     if (activeTab === 'tab-graficos') renderNormalizedChart();
@@ -4429,12 +4480,21 @@ function renderNormalizedChart() {
   const iStart = getRebaseIndex(dates, rebase);
   const sliced = dates.slice(iStart);
 
-  // X-axis labels: show month/year on first of each month and at start/end
+  // X-axis labels: adaptive density based on period length
+  const nMonths = sliced.length / 21;  // approx trading days per month
   const tickLabels = sliced.map(function(d, i) {
-    if (i === 0 || d.slice(8) === '01') {
-      var mo = d.slice(5,7), yr = d.slice(2,4);
-      return mo + '/' + yr;
+    if (i === 0) { var mo = d.slice(5,7), yr = d.slice(2,4); return mo + '/' + yr; }
+    // For long periods (>18 months): show only January of each year
+    if (nMonths > 18) {
+      return (d.slice(5,7) === '01' && d.slice(8) === '01') ? d.slice(2,4) : '';
     }
+    // For medium periods (6–18 months): show first of each month
+    if (nMonths > 6) {
+      if (d.slice(8) === '01') { var mo2 = d.slice(5,7), yr2 = d.slice(2,4); return mo2 + '/' + yr2; }
+      return '';
+    }
+    // For short periods (<6 months): show every month
+    if (d.slice(8) === '01') { var mo3 = d.slice(5,7), yr3 = d.slice(2,4); return mo3 + '/' + yr3; }
     return '';
   });
 
@@ -4538,7 +4598,8 @@ function renderNormalizedChart() {
         x: {
           ticks: {
             font: { family: 'Courier New', size: 10 }, color: '#888',
-            maxRotation: 0, autoSkip: false,
+            maxRotation: 0, autoSkip: true,
+            maxTicksLimit: nMonths > 36 ? 6 : nMonths > 18 ? 8 : nMonths > 6 ? 12 : 18,
             callback: function(val, idx) { return tickLabels[idx] || ''; }
           },
           grid: { display: false }
@@ -4558,6 +4619,405 @@ function renderNormalizedChart() {
 }
 
 
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// GRÁFICO 2: ALPHA VS. IBOV POR JANELA (barras horizontais)
+// ════════════════════════════════════════════════════════════════════════════
+
+let _alphaBarChart = null;
+let _alphaBarWindow = '12';
+
+function setAlphaBarWindow(w) {
+  _alphaBarWindow = w;
+  ['12','36','60'].forEach(function(k) {
+    const btn = document.getElementById('alphaBarBtn' + k);
+    if (btn) btn.classList.toggle('active', k === w);
+  });
+  renderAlphaBarChart();
+}
+
+function renderAlphaBarChart() {
+  if (!funds.length || typeof Chart === 'undefined') return;
+  const ctx = document.getElementById('alphaBarCanvas');
+  if (!ctx) return;
+
+  const key = 'cagr' + _alphaBarWindow;
+  const bmk = _alphaBarWindow === '12' ? ibov.cagr12 : _alphaBarWindow === '36' ? ibov.cagr36 : ibov.cagr60;
+  if (bmk == null) return;
+
+  // Build sorted data
+  const rows = funds
+    .filter(function(f) { return f[key] != null && !f.error; })
+    .map(function(f, i) {
+      const alpha = f[key] - bmk;
+      const meta = FUND_META[f.cnpjFmt] || {};
+      return {
+        label: meta.short || f.name.split(' ')[0],
+        alpha: parseFloat(alpha.toFixed(2)),
+        color: getFundColor ? getFundColor(f.cnpjFmt) : CHART_COLORS[i % CHART_COLORS.length],
+      };
+    })
+    .sort(function(a, b) { return b.alpha - a.alpha; });
+
+  const labels = rows.map(function(r) { return r.label; });
+  const data   = rows.map(function(r) { return r.alpha; });
+  const colors = rows.map(function(r) { return r.alpha >= 0 ? r.color + 'cc' : r.color + '88'; });
+  const borders= rows.map(function(r) { return r.color; });
+
+  if (_alphaBarChart) { _alphaBarChart.destroy(); _alphaBarChart = null; }
+
+  _alphaBarChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colors,
+        borderColor: borders,
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(26,25,22,0.92)',
+          titleColor: '#aaa', bodyColor: '#e8e6e0',
+          titleFont: { family: 'Courier New', size: 11 },
+          bodyFont:  { family: 'Courier New', size: 11 },
+          padding: 10,
+          callbacks: {
+            label: function(c) {
+              const v = c.parsed.x;
+              return '  Alpha vs. IBOV: ' + (v >= 0 ? '+' : '') + v.toFixed(1) + ' pp';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
+                   callback: function(v) { return (v >= 0 ? '+' : '') + v.toFixed(0) + ' pp'; } },
+          grid: { color: 'rgba(128,128,128,0.08)' },
+          // Zero line
+          border: { display: false },
+        },
+        y: {
+          ticks: { font: { family: 'Courier New', size: 10 }, color: '#888' },
+          grid: { display: false },
+        }
+      }
+    }
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// GRÁFICO 3: DISTRIBUIÇÃO DE RETORNOS MENSAIS
+// ════════════════════════════════════════════════════════════════════════════
+
+let _distChart = null;
+
+function initDistSelect() {
+  const sel = document.getElementById('distFundSelect');
+  if (!sel || !historyData || sel.options.length > 0) return;
+  const cnpjs = Object.keys(historyData.funds).sort(function(a, b) {
+    const na = (FUND_META[a] || {}).nome || historyData.funds[a].nome || a;
+    const nb = (FUND_META[b] || {}).nome || historyData.funds[b].nome || b;
+    return na.localeCompare(nb);
+  });
+  cnpjs.forEach(function(cnpj) {
+    const opt = document.createElement('option');
+    opt.value = cnpj;
+    opt.textContent = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome || cnpj;
+    sel.appendChild(opt);
+  });
+  if (cnpjs.length > 0) { sel.value = cnpjs[0]; renderDistChart(); }
+}
+
+function renderDistChart() {
+  if (!historyData || typeof Chart === 'undefined') return;
+  const sel = document.getElementById('distFundSelect');
+  if (!sel || !sel.value) return;
+  const cnpj = sel.value;
+  const ctx  = document.getElementById('distCanvas');
+  if (!ctx) return;
+
+  const dates = historyData.commonDates;
+  const rets  = historyData.funds[cnpj]?.returns || [];
+  const color = getFundColor ? getFundColor(cnpj) : '#1a4a8a';
+
+  // Build month windows → monthly returns
+  const months = {};
+  dates.forEach(function(d, i) {
+    const ym = d.slice(0,7);
+    if (!months[ym]) months[ym] = { start: i, end: i };
+    months[ym].end = i;
+  });
+
+  const monthRets = [];
+  Object.keys(months).sort().forEach(function(ym) {
+    const s = months[ym].start, e = months[ym].end;
+    // Skip pre-inception (all zeros in window)
+    let hasReal = false;
+    for (let i = s; i < e && i < rets.length; i++) {
+      if (isReal(rets[i])) { hasReal = true; break; }
+    }
+    if (!hasReal) return;
+    let cum = 1.0;
+    for (let i = s; i < e && i < rets.length; i++) cum *= (1 + (rets[i] || 0));
+    monthRets.push(parseFloat(((cum - 1) * 100).toFixed(2)));
+  });
+
+  if (monthRets.length < 6) return;
+
+  // Stats
+  const n    = monthRets.length;
+  const mean = monthRets.reduce(function(s,r){return s+r;},0)/n;
+  const std  = Math.sqrt(monthRets.reduce(function(s,r){return s+(r-mean)*(r-mean);},0)/(n-1));
+  const sorted = [...monthRets].sort(function(a,b){return a-b;});
+  const skew = monthRets.reduce(function(s,r){return s+Math.pow((r-mean)/std,3);},0)/n;
+  const pos  = monthRets.filter(function(r){return r>0;}).length;
+
+  // Histogram bins — fixed width of 2pp
+  const minR = Math.floor(Math.min(...monthRets) / 2) * 2 - 2;
+  const maxR = Math.ceil(Math.max(...monthRets) / 2) * 2 + 2;
+  const bins = [];
+  for (let b = minR; b < maxR; b += 2) {
+    const count = monthRets.filter(function(r){return r >= b && r < b+2;}).length;
+    bins.push({ label: (b >= 0 ? '+' : '') + b + '%', center: b+1, count: count, pos: b >= 0 });
+  }
+
+  if (_distChart) { _distChart.destroy(); _distChart = null; }
+
+  _distChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: bins.map(function(b){return b.label;}),
+      datasets: [{
+        data: bins.map(function(b){return b.count;}),
+        backgroundColor: bins.map(function(b){
+          return b.pos ? color + 'bb' : 'rgba(184,50,50,0.6)';
+        }),
+        borderColor: bins.map(function(b){
+          return b.pos ? color : 'rgba(184,50,50,1)';
+        }),
+        borderWidth: 1,
+        borderRadius: 2,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(26,25,22,0.92)',
+          titleColor: '#aaa', bodyColor: '#e8e6e0',
+          titleFont: { family: 'Courier New', size: 11 },
+          bodyFont:  { family: 'Courier New', size: 11 },
+          padding: 10,
+          callbacks: {
+            title: function(items) { return items[0].label + ' a ' + (bins[items[0].dataIndex].center + 1) + '%'; },
+            label: function(c) { return '  ' + c.parsed.y + ' meses'; }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
+                       maxRotation: 0, autoSkip: true, maxTicksLimit: 16 },
+             grid: { display: false } },
+        y: { ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
+                       stepSize: 1, callback: function(v){return Number.isInteger(v)?v:'';} },
+             grid: { color: 'rgba(128,128,128,0.08)' } }
+      }
+    }
+  });
+
+  // Stats line
+  const statsEl = document.getElementById('distStats');
+  if (statsEl) {
+    statsEl.innerHTML =
+      n + ' meses · média <strong>' + (mean >= 0?'+':'') + mean.toFixed(1) + '%</strong>' +
+      ' · desvio ' + std.toFixed(1) + '%' +
+      ' · assimetria ' + (skew >= 0 ? '+' : '') + skew.toFixed(2) +
+      (Math.abs(skew) > 0.3 ? (skew > 0 ? ' <span style="color:var(--green)">(inclinada para cima)</span>' : ' <span style="color:var(--red)">(inclinada para baixo)</span>') : '') +
+      ' · meses positivos ' + pos + '/' + n + ' (' + (pos/n*100).toFixed(0) + '%)';
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// GRÁFICO 4: CORRELAÇÃO ROLLING 12M ENTRE DOIS FUNDOS
+// ════════════════════════════════════════════════════════════════════════════
+
+let _corrRollChart = null;
+
+function initCorrRollSelects() {
+  const selA = document.getElementById('corrRollA');
+  const selB = document.getElementById('corrRollB');
+  if (!selA || !selB || !historyData || selA.options.length > 0) return;
+
+  const cnpjs = Object.keys(historyData.funds).sort(function(a, b) {
+    const na = (FUND_META[a] || {}).nome || historyData.funds[a].nome || a;
+    const nb = (FUND_META[b] || {}).nome || historyData.funds[b].nome || b;
+    return na.localeCompare(nb);
+  });
+
+  cnpjs.forEach(function(cnpj) {
+    const nome = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome || cnpj;
+    [selA, selB].forEach(function(sel) {
+      const opt = document.createElement('option');
+      opt.value = cnpj; opt.textContent = nome;
+      sel.appendChild(opt);
+    });
+  });
+
+  // Default: first two funds
+  if (cnpjs.length >= 2) {
+    selA.value = cnpjs[0];
+    selB.value = cnpjs[1];
+    renderRollingCorrChart();
+  }
+}
+
+function renderRollingCorrChart() {
+  if (!historyData || typeof Chart === 'undefined') return;
+  const selA = document.getElementById('corrRollA');
+  const selB = document.getElementById('corrRollB');
+  const ctx  = document.getElementById('corrRollCanvas');
+  if (!selA || !selB || !ctx) return;
+
+  const ca = selA.value, cb = selB.value;
+  if (!ca || !cb || ca === cb) return;
+
+  const retsA = historyData.funds[ca]?.returns || [];
+  const retsB = historyData.funds[cb]?.returns || [];
+  const dates = historyData.commonDates;
+  const n = Math.min(retsA.length, retsB.length);
+  const WINDOW = 252;
+
+  if (n < WINDOW + 30) {
+    document.getElementById('corrRollStats').textContent = 'Histórico insuficiente para correlação rolling.';
+    return;
+  }
+
+  const rolling = [], rollDates = [];
+  for (let i = 0; i <= n - WINDOW; i++) {
+    // Only use days where both funds have real returns
+    const pairsA = [], pairsB = [];
+    for (let j = i; j < i + WINDOW; j++) {
+      if (isReal(retsA[j]) && isReal(retsB[j])) {
+        pairsA.push(retsA[j]); pairsB.push(retsB[j]);
+      }
+    }
+    if (pairsA.length < 60) { rolling.push(null); rollDates.push(dates[i + WINDOW]); continue; }
+    const mA = pairsA.reduce(function(s,r){return s+r;},0)/pairsA.length;
+    const mB = pairsB.reduce(function(s,r){return s+r;},0)/pairsB.length;
+    const num = pairsA.reduce(function(s,r,k){return s+(r-mA)*(pairsB[k]-mB);},0);
+    const sA  = Math.sqrt(pairsA.reduce(function(s,r){return s+(r-mA)*(r-mA);},0));
+    const sB  = Math.sqrt(pairsB.reduce(function(s,r){return s+(r-mB)*(r-mB);},0));
+    rolling.push(sA*sB > 0 ? parseFloat((num/(sA*sB)).toFixed(3)) : null);
+    rollDates.push(dates[i + WINDOW]);
+  }
+
+  const valid = rolling.filter(function(r){return r!==null;});
+  const latest = valid[valid.length-1];
+  const mean   = valid.reduce(function(s,r){return s+r;},0)/valid.length;
+  const minC   = Math.min(...valid), maxC = Math.max(...valid);
+
+  const nomeA = (FUND_META[ca]||{}).short || selA.options[selA.selectedIndex]?.text.split(' ')[0];
+  const nomeB = (FUND_META[cb]||{}).short || selB.options[selB.selectedIndex]?.text.split(' ')[0];
+
+  // Color the line by correlation level
+  const ptColors = rolling.map(function(r) {
+    if (r === null) return 'transparent';
+    return r > 0.7 ? 'rgba(184,50,50,0.8)' : r > 0.4 ? 'rgba(160,92,0,0.8)' : 'rgba(26,122,82,0.8)';
+  });
+
+  if (_corrRollChart) { _corrRollChart.destroy(); _corrRollChart = null; }
+
+  _corrRollChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: rollDates,
+      datasets: [
+        // Reference lines
+        { type: 'line', label: 'ρ = 0.7', data: rollDates.map(function(){return 0.7;}),
+          borderColor: 'rgba(184,50,50,0.2)', borderWidth: 1, borderDash: [4,3],
+          pointRadius: 0, fill: false, tension: 0 },
+        { type: 'line', label: 'ρ = 0', data: rollDates.map(function(){return 0;}),
+          borderColor: 'rgba(128,128,128,0.2)', borderWidth: 1, borderDash: [2,4],
+          pointRadius: 0, fill: false, tension: 0 },
+        // Rolling correlation
+        { label: 'Correlação 12M', data: rolling,
+          borderColor: 'rgba(26,74,138,0.85)', borderWidth: 1.5,
+          backgroundColor: function(ctx2) {
+            const chart = ctx2.chart, {ctx: c, chartArea} = chart;
+            if (!chartArea) return 'rgba(26,74,138,0.06)';
+            const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            grad.addColorStop(0, 'rgba(184,50,50,0.12)');
+            grad.addColorStop(0.5, 'rgba(26,74,138,0.06)');
+            grad.addColorStop(1, 'rgba(26,122,82,0.08)');
+            return grad;
+          },
+          fill: true, tension: 0.3, pointRadius: 0, spanGaps: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(26,25,22,0.92)',
+          titleColor: '#aaa', bodyColor: '#e8e6e0',
+          titleFont: { family: 'Courier New', size: 11 },
+          bodyFont:  { family: 'Courier New', size: 11 },
+          padding: 10,
+          callbacks: {
+            title: function(items) { return items[0]?.label || ''; },
+            label: function(c) {
+              if (c.datasetIndex < 2) return null;
+              const v = c.parsed.y;
+              if (v === null) return null;
+              const interp = v > 0.7 ? 'alta — diversificação limitada' : v > 0.4 ? 'moderada' : v < 0 ? 'negativa — hedge natural' : 'baixa — boa diversificação';
+              return '  ρ = ' + v.toFixed(2) + ' (' + interp + ')';
+            },
+            filter: function(i) { return i.datasetIndex === 2; }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
+                       maxRotation: 0, autoSkip: true, maxTicksLimit: 8 },
+             grid: { display: false } },
+        y: { min: -1, max: 1,
+             ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
+                      callback: function(v) { return v.toFixed(1); },
+                      stepSize: 0.25 },
+             grid: { color: 'rgba(128,128,128,0.08)' } }
+      }
+    }
+  });
+
+  const statsEl = document.getElementById('corrRollStats');
+  if (statsEl && valid.length > 0) {
+    const interp = latest > 0.7 ? '<span style="color:var(--red)">alta</span>' :
+                   latest > 0.4 ? '<span style="color:var(--amber)">moderada</span>' :
+                   latest < 0 ? '<span style="color:var(--green)">negativa</span>' :
+                   '<span style="color:var(--green)">baixa</span>';
+    statsEl.innerHTML =
+      nomeA + ' × ' + nomeB + ' · ' +
+      'atual <strong>ρ = ' + latest.toFixed(2) + '</strong> (' + interp + ')' +
+      ' · média histórica ' + mean.toFixed(2) +
+      ' · range [' + minC.toFixed(2) + ', ' + maxC.toFixed(2) + ']' +
+      ' · ' + rolling.length + ' janelas de 12M';
+  }
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // RADAR RISCO × RETORNO (SCATTER)
