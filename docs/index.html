@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ranking de Fundos — CAGR</title>
+<title>Ranking de Fundos</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -24,6 +24,13 @@
     --red: #e05050;   --red-light: #2a0f0f;
     --accent: #f07040;
   }
+  /* Native title tooltips get a cursor hint */
+  [title] { cursor: help; }
+  /* Exceptions: interactive elements keep their own cursor */
+  button[title], a[title], input[title], select[title],
+  .sortable[title], .filter-chip[title], .opt-btn[title] { cursor: pointer; }
+  .fund-row-port[title] { cursor: default; }
+
   body {
     font-family: 'Georgia', serif;
     background: var(--bg); color: var(--text);
@@ -821,6 +828,619 @@
   .mc-source-label { font-family: 'Courier New', monospace; font-size: 0.62rem; color: var(--muted); }
   .mc-empty { font-family: 'Courier New', monospace; font-size: 0.72rem; color: var(--muted); padding: 1.5rem; text-align: center; }
 
+
+  /* ── MC Advanced / Fat tails / Retirada ── */
+  .mc-advanced-toggle {
+    font-family:'Courier New',monospace; font-size:0.65rem;
+    padding:3px 12px; border-radius:20px;
+    border:0.5px solid var(--border); background:transparent;
+    color:var(--muted); cursor:pointer; transition:all 0.15s;
+  }
+  .mc-advanced-toggle:hover { border-color:var(--text); color:var(--text); }
+  .mc-advanced-toggle.active { border-color:var(--accent); color:var(--accent); }
+  .mc-advanced-panel {
+    margin-bottom:1rem; padding:0.9rem 1.1rem;
+    background:var(--bg); border:0.5px solid var(--border);
+    border-radius:8px; display:none;
+  }
+  .mc-advanced-panel.open { display:block; }
+  .mc-fat-label {
+    display:flex; align-items:center; gap:8px;
+    font-family:'Courier New',monospace; font-size:0.68rem; color:var(--muted);
+    cursor:pointer; user-select:none;
+  }
+  .mc-fat-label input { accent-color:var(--accent); width:13px; height:13px; cursor:pointer; }
+  .mc-fat-note {
+    font-family:'Courier New',monospace; font-size:0.62rem; color:var(--muted);
+    line-height:1.6; margin-top:0.5rem; opacity:0.8;
+  }
+
+  /* ── Retirada / Withdrawal phase ── */
+  .mc-retire-section {
+    margin-top:1.2rem; border-top:1px solid var(--border); padding-top:1.2rem;
+  }
+  .mc-retire-title {
+    font-family:'Courier New',monospace; font-size:0.6rem;
+    text-transform:uppercase; letter-spacing:0.12em;
+    color:var(--muted); margin-bottom:0.8rem;
+    display:flex; align-items:center; gap:0.6rem;
+  }
+  .mc-retire-title::after {
+    content:''; flex:1; height:0.5px; background:var(--border);
+  }
+  .mc-retire-controls {
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.7rem 1.5rem;
+    margin-bottom:1rem;
+  }
+  .mc-verdict {
+    border-radius:8px; padding:0.7rem 1rem;
+    font-family:'Courier New',monospace; font-size:0.72rem;
+    line-height:1.6; margin-bottom:1rem; display:none;
+  }
+  .mc-verdict.green { background:var(--green-light); color:var(--green); border:0.5px solid var(--green); }
+  .mc-verdict.amber { background:var(--amber-light); color:var(--amber); border:0.5px solid var(--amber); }
+  .mc-verdict.red   { background:var(--red-light);   color:var(--red);   border:0.5px solid var(--red);   }
+  .mc-survival-wrap {
+    background:var(--bg); border:0.5px solid var(--border);
+    border-radius:8px; padding:1rem; margin-bottom:0.8rem;
+  }
+  .mc-survival-title {
+    font-family:'Courier New',monospace; font-size:0.58rem;
+    text-transform:uppercase; letter-spacing:0.1em;
+    color:var(--muted); margin-bottom:0.6rem;
+  }
+  /* ── Sequence of returns ── */
+  .mc-seq-toggle {
+    font-family:'Courier New',monospace; font-size:0.63rem;
+    padding:2px 10px; border-radius:12px;
+    border:0.5px solid var(--border); background:transparent;
+    color:var(--muted); cursor:pointer; margin-left:auto;
+  }
+  .mc-seq-toggle:hover { border-color:var(--accent); color:var(--accent); }
+  .mc-seq-panel { display:none; margin-top:0.8rem; }
+  .mc-seq-panel.open { display:block; }
+
+  /* ── Alerta de concentração ── */
+  .conc-alert {
+    display:flex; align-items:flex-start; gap:0.5rem;
+    background:var(--amber-light); color:var(--amber);
+    border:0.5px solid var(--amber); border-radius:7px;
+    padding:0.6rem 0.9rem; margin-top:0.7rem;
+    font-family:'Courier New',monospace; font-size:0.65rem; line-height:1.6;
+  }
+  .conc-alert.red-alert { background:var(--red-light); color:var(--red); border-color:var(--red); }
+
+  /* ── Timeline de come-cotas ── */
+  .ir-cc-timeline {
+    margin-top:1rem; padding:0.9rem 1rem;
+    background:var(--bg); border:0.5px solid var(--border); border-radius:8px;
+  }
+  .ir-cc-title {
+    font-family:'Courier New',monospace; font-size:0.58rem;
+    text-transform:uppercase; letter-spacing:0.1em;
+    color:var(--muted); margin-bottom:0.6rem;
+  }
+
+  /* ── Heatmap correlação interativo ── */
+  .corr-heatmap { overflow-x:auto; }
+  .corr-heatmap table { border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.62rem; }
+  .corr-heatmap th {
+    padding:5px 7px; color:var(--muted); font-weight:normal;
+    border-bottom:1px solid var(--border); white-space:nowrap; text-align:center;
+  }
+  .corr-heatmap th:first-child { text-align:left; }
+  .corr-heatmap td {
+    padding:4px 7px; text-align:center; cursor:pointer;
+    transition:outline 0.1s; white-space:nowrap;
+  }
+  .corr-heatmap td:hover { outline:2px solid var(--accent); outline-offset:-2px; }
+  .corr-scatter-modal {
+    position:fixed; inset:0; background:rgba(0,0,0,0.45);
+    display:flex; align-items:center; justify-content:center;
+    z-index:9999; backdrop-filter:blur(2px);
+  }
+  .corr-scatter-inner {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:12px; padding:1.2rem 1.4rem;
+    width:min(500px,90vw); max-height:90vh; overflow:auto;
+  }
+  .corr-scatter-title {
+    font-family:'Courier New',monospace; font-size:0.65rem;
+    text-transform:uppercase; letter-spacing:0.1em;
+    color:var(--muted); margin-bottom:0.8rem;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .corr-scatter-close {
+    cursor:pointer; color:var(--muted); font-size:1.1rem;
+    background:none; border:none; padding:0; line-height:1;
+  }
+  .corr-scatter-close:hover { color:var(--text); }
+
+  /* ── Exportar CSV ── */
+  .export-btn {
+    font-family:'Courier New',monospace; font-size:0.6rem;
+    padding:2px 10px; border-radius:10px;
+    border:0.5px solid var(--border); background:transparent;
+    color:var(--muted); cursor:pointer; transition:all 0.12s;
+  }
+  .export-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+
+  /* ── UI Polish ── */
+
+  /* Faster expand animation */
+  .detail-panel { transition: max-height 0.18s ease; }
+
+  /* Sticky header */
+  thead { position: sticky; top: 0; z-index: 10; }
+  thead th { box-shadow: 0 1px 0 var(--border); }
+
+  /* Tab fade transition */
+  .tab-pane { opacity: 0; transition: opacity 0.15s ease; }
+  .tab-pane.active { opacity: 1; }
+
+  /* Active period mode — tinted border to signal non-standard */
+  .table-wrap.period-active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+  .period-bar.period-active-bar {
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
+    border-radius: 8px; padding: 0.4rem 0.7rem; margin-bottom: 0.5rem;
+    border: 0.5px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+
+  /* Fund color dot — same colors as chart, shown in ranking */
+  .fund-color-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    flex-shrink: 0; margin-right: 6px; opacity: 0.85;
+  }
+
+  /* CAGR context bar — subtle behind cell */
+  .cagr-cell-wrap { position: relative; display: inline-block; }
+  .cagr-context-bar {
+    position: absolute; bottom: 0; left: 0; height: 2px;
+    border-radius: 1px; opacity: 0.35;
+  }
+
+  /* Primary sort column highlight */
+  td.sorted-col { background: color-mix(in srgb, var(--accent) 3%, transparent); }
+  thead th.sorted-desc, thead th.sorted-asc { 
+    background: color-mix(in srgb, var(--accent) 4%, var(--bg));
+  }
+
+  /* Portfolio: selected fund row left accent */
+  .fund-row-port:not(.inactive) {
+    border-left: 2px solid transparent;
+    padding-left: calc(1.2rem - 2px);
+  }
+  .fund-row-port:not(.inactive).has-weight {
+    border-left-color: var(--accent);
+  }
+
+  /* Optimizer calculating animation */
+  @keyframes dotPulse {
+    0%,100% { opacity: 0.2; }
+    50%      { opacity: 1; }
+  }
+  .calc-dot { animation: dotPulse 1s infinite; display: inline-block; }
+  .calc-dot:nth-child(2) { animation-delay: 0.2s; }
+  .calc-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  /* Status chip in header */
+  .header-status {
+    display: flex; align-items: center; gap: 6px;
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    color: var(--muted); padding: 4px 10px; border-radius: 20px;
+    border: 0.5px solid var(--border); white-space: nowrap;
+    transition: border-color 0.2s;
+  }
+  .header-status.ok     { border-color: color-mix(in srgb, var(--green) 30%, var(--border)); }
+  .header-status.warn   { border-color: color-mix(in srgb, var(--amber) 30%, var(--border)); }
+  .header-status.error  { border-color: color-mix(in srgb, var(--red)   30%, var(--border)); }
+  .header-status .status-dot { margin: 0; }
+
+  /* Header controls row */
+  .header-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  /* Empty state hint */
+  .port-empty-hint {
+    padding: 2rem 1.4rem; text-align: center;
+    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    color: var(--muted); line-height: 1.9;
+  }
+  .port-empty-hint strong { color: var(--text); }
+  .port-empty-hint .hint-action {
+    display: inline-block; margin-top: 0.8rem; padding: 4px 14px;
+    border: 0.5px solid var(--border); border-radius: 20px;
+    font-size: 0.62rem; cursor: pointer; transition: all 0.12s;
+  }
+  .port-empty-hint .hint-action:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Análise: stress test first — already handled by order change in HTML */
+
+  /* Analysis section titles — remove "Radar" confusion */
+  /* already handled by text change */
+
+  /* Improved dark mode surface depth */
+  [data-theme=dark] .port-metric { background: color-mix(in srgb, var(--surface) 60%, var(--bg)); }
+  [data-theme=dark] .mc-chart-wrap { background: color-mix(in srgb, var(--surface) 70%, var(--bg)); }
+  [data-theme=dark] .analysis-card { background: color-mix(in srgb, var(--surface) 80%, var(--bg)); }
+
+  /* Number pulse on update */
+  @keyframes numUpdate {
+    0%   { opacity: 0.4; transform: translateY(-2px); }
+    100% { opacity: 1;   transform: translateY(0); }
+  }
+  .num-updated { animation: numUpdate 0.25s ease; }
+
+  /* Fund name in ranking — primary row gets slightly larger sort column value */
+  .sorted-primary .cagr-val { font-size: 0.94rem; }
+
+  /* Benchmark inline pill */
+  .alpha-inline {
+    display: inline-block;
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    padding: 1px 5px; border-radius: 4px;
+    margin-left: 5px; vertical-align: middle;
+    font-weight: normal;
+  }
+  .alpha-inline.pos {
+    background: var(--green-light); color: var(--green);
+    border: 0.5px solid color-mix(in srgb, var(--green) 25%, transparent);
+  }
+  .alpha-inline.neg {
+    background: var(--red-light); color: var(--red);
+    border: 0.5px solid color-mix(in srgb, var(--red) 25%, transparent);
+  }
+  .alpha-inline.neu { background: var(--border); color: var(--muted); }
+
+
+  /* ── Novas métricas ── */
+  .metrics-grid-new {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .metric-card-new {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 8px;
+    padding: 0.65rem 0.85rem;
+    position: relative;
+  }
+  .metric-card-new:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .metric-card-new .lbl {
+    font-family: 'Courier New', monospace;
+    font-size: 0.52rem; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--muted);
+    margin-bottom: 3px; display: flex; align-items: center; gap: 4px;
+  }
+  .metric-card-new .lbl .tip-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--border); color: var(--muted);
+    font-size: 0.5rem; cursor: help; flex-shrink: 0;
+  }
+  .metric-card-new .val {
+    font-family: 'Courier New', monospace;
+    font-size: 1.05rem; font-weight: bold; line-height: 1.1;
+  }
+  .metric-card-new .sub {
+    font-family: 'Courier New', monospace;
+    font-size: 0.58rem; color: var(--muted); margin-top: 2px;
+  }
+  .metric-card-new .val.pos { color: var(--green); }
+  .metric-card-new .val.neg { color: var(--red); }
+  .metric-card-new .val.neu { color: var(--text); }
+  .metric-card-new .val.muted { color: var(--muted); font-weight: normal; }
+
+  /* ── Rolling Alpha chart ── */
+  .rolling-alpha-section {
+    margin-top: 1rem; padding: 0;
+  }
+  .rolling-alpha-header {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin-bottom: 0.5rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .rolling-alpha-header .tip-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: var(--border); color: var(--muted);
+    font-size: 0.52rem; cursor: help;
+  }
+
+  /* ── Análise cards novos ── */
+  .fund-metrics-panel {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: 10px; padding: 1rem 1.2rem; margin-bottom: 1rem;
+  }
+  .fund-metrics-panel-title {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin-bottom: 0.8rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .fund-selector-analise {
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+    padding: 3px 8px; border: 0.5px solid var(--border);
+    background: var(--surface); color: var(--text);
+    border-radius: 4px; outline: none; width: 100%; margin-bottom: 0.8rem;
+    cursor: pointer;
+  }
+  .fund-selector-analise:focus { border-color: var(--accent); }
+
+  /* ── Rolling alpha sparkline ── */
+  .rolling-chart-wrap {
+    position: relative; height: 100px;
+    margin-bottom: 0.5rem;
+  }
+  .rolling-range-note {
+    display: flex; justify-content: space-between;
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    color: var(--muted); margin-top: 2px;
+  }
+
+  /* ── Propensity bar ── */
+  .propensity-bar-wrap {
+    display: flex; align-items: center; gap: 8px; margin-top: 4px;
+  }
+  .propensity-bar-track {
+    flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden;
+  }
+  .propensity-bar-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+  .propensity-label {
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+    font-weight: bold; white-space: nowrap;
+  }
+
+  /* ── Gauge / score ── */
+  .metric-gauge {
+    display: inline-block; width: 32px; height: 5px;
+    border-radius: 3px; vertical-align: middle;
+    background: var(--border); overflow: hidden;
+    margin-right: 5px;
+  }
+  .metric-gauge-fill {
+    height: 100%; border-radius: 3px;
+  }
+
+  /* ── Tooltip nativo melhorado ── */
+  [title] { cursor: help; }
+  button[title], .sortable[title], .filter-chip[title],
+  .opt-btn[title], label[title] { cursor: pointer; }
+
+  /* ── Fund ranking: persistência badge ── */
+  .persist-badge {
+    display: inline-block; font-family: 'Courier New', monospace;
+    font-size: 0.52rem; padding: 1px 4px; border-radius: 3px;
+    vertical-align: middle; margin-left: 4px; line-height: 1.6;
+  }
+  .persist-badge.diverge {
+    background: var(--amber-light); color: var(--amber);
+    border: 0.5px solid var(--amber);
+  }
+
+  /* ── Análise: fund comparison table ── */
+  .adv-metrics-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'Courier New', monospace; font-size: 0.65rem;
+  }
+  .adv-metrics-table th {
+    text-align: right; padding: 5px 8px; color: var(--muted);
+    font-weight: normal; font-size: 0.57rem; text-transform: uppercase;
+    letter-spacing: 0.08em; border-bottom: 1px solid var(--border);
+    cursor: help; white-space: nowrap;
+  }
+  .adv-metrics-table th:first-child { text-align: left; }
+  .adv-metrics-table td {
+    text-align: right; padding: 5px 8px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .adv-metrics-table td:first-child { text-align: left; color: var(--text); }
+  .adv-metrics-table tr:last-child td { border-bottom: none; }
+  .adv-metrics-table tr:hover td { background: color-mix(in srgb, var(--accent) 3%, transparent); }
+  .adv-metrics-table .val-pos { color: var(--green); font-weight: bold; }
+  .adv-metrics-table .val-neg { color: var(--red); }
+  .adv-metrics-table .val-neu { color: var(--muted); }
+  .adv-metrics-table .best-in-col { 
+    background: color-mix(in srgb, var(--green) 8%, transparent);
+    border-radius: 3px; padding: 2px 6px;
+  }
+
+
+  /* ── Otimizador: novos modos ── */
+  .opt-obj-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .opt-mode-section {
+    margin-bottom: 0.35rem;
+  }
+  .opt-mode-label {
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 3px;
+  }
+  .opt-btn.mode-classic  { }
+  .opt-btn.mode-advanced {
+    border-style: dashed;
+  }
+  .opt-btn.mode-advanced.active {
+    border-style: solid;
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  }
+  /* Separator between classic and advanced modes */
+  .opt-mode-sep {
+    width: 0.5px; background: var(--border); margin: 0 2px; align-self: stretch;
+  }
+
+
+  /* ── Comparador A vs B ── */
+  .comp-section {
+    margin-top: 2rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .comp-header {
+    padding: 0.9rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+  }
+  .comp-header-title {
+    font-family: 'Courier New', monospace; font-size: 0.65rem;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--text);
+  }
+  .comp-header-note {
+    font-family: 'Courier New', monospace; font-size: 0.6rem;
+    color: var(--muted); line-height: 1.5;
+  }
+  .comp-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 0;
+  }
+  .comp-col {
+    padding: 1rem 1.2rem;
+    border-right: 1px solid var(--border);
+  }
+  .comp-col:last-child { border-right: none; }
+  .comp-col-label {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin-bottom: 0.7rem; padding: 3px 8px;
+    border-radius: 4px; display: inline-block;
+  }
+  .comp-col-a .comp-col-label { background: var(--blue-light); color: var(--blue); border: 0.5px solid var(--blue); }
+  .comp-col-b .comp-col-label { background: var(--amber-light); color: var(--amber); border: 0.5px solid var(--amber); }
+  .comp-fund-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0.3rem 0; border-bottom: 0.5px solid var(--border);
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+  }
+  .comp-fund-row:last-child { border-bottom: none; }
+  .comp-fund-row select {
+    flex: 1; font-family: 'Courier New', monospace; font-size: 0.65rem;
+    padding: 2px 6px; border: 0.5px solid var(--border);
+    background: var(--surface); color: var(--text);
+    border-radius: 4px; outline: none; cursor: pointer;
+  }
+  .comp-fund-row select:focus { border-color: var(--accent); }
+  .comp-fund-row input[type=number] {
+    width: 52px; font-family: 'Courier New', monospace; font-size: 0.68rem;
+    padding: 2px 4px; text-align: right;
+    border: 0.5px solid var(--border); border-radius: 3px;
+    background: var(--surface); color: var(--text); outline: none;
+  }
+  .comp-fund-row input:focus { border-color: var(--accent); }
+  .comp-fund-label { color: var(--muted); white-space: nowrap; }
+  .comp-add-btn {
+    font-family: 'Courier New', monospace; font-size: 0.6rem;
+    padding: 2px 10px; border-radius: 8px; margin-top: 0.5rem;
+    border: 0.5px solid var(--border); background: transparent;
+    color: var(--muted); cursor: pointer; transition: all 0.12s;
+  }
+  .comp-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .comp-results {
+    border-top: 1px solid var(--border);
+    padding: 1rem 1.4rem;
+  }
+  .comp-results-title {
+    font-family: 'Courier New', monospace; font-size: 0.57rem;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--muted); margin-bottom: 0.7rem;
+  }
+  .comp-metric-grid {
+    display: grid;
+    grid-template-columns: 1.5fr repeat(3, 1fr);
+    gap: 0; font-family: 'Courier New', monospace; font-size: 0.65rem;
+  }
+  .comp-metric-grid .ch {
+    padding: 5px 8px; color: var(--muted); font-size: 0.55rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border);
+    cursor: help;
+  }
+  .comp-metric-grid .ch.a { color: var(--blue); }
+  .comp-metric-grid .ch.b { color: var(--amber); }
+  .comp-metric-grid .cv {
+    padding: 5px 8px; border-bottom: 0.5px solid var(--border);
+    text-align: right;
+  }
+  .comp-metric-grid .cv.label { text-align: left; color: var(--text); cursor: help; }
+  .comp-metric-grid .cv.pos { color: var(--green); font-weight: bold; }
+  .comp-metric-grid .cv.neg { color: var(--red); }
+  .comp-metric-grid .cv.neu { color: var(--muted); }
+  .comp-metric-grid .cv.winner { background: color-mix(in srgb, var(--green) 6%, transparent); }
+  .comp-metric-grid .cv.loser  { background: color-mix(in srgb, var(--red)   4%, transparent); }
+  .comp-run-btn {
+    font-family: 'Courier New', monospace; font-size: 0.65rem;
+    padding: 5px 18px; border-radius: 8px; margin-top: 0.8rem;
+    border: 1px solid var(--accent); background: var(--accent);
+    color: #fff; cursor: pointer; transition: opacity 0.12s;
+  }
+  .comp-run-btn:hover { opacity: 0.85; }
+  .comp-run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* ── SWR Calculator ── */
+  .swr-section {
+    margin-top: 1rem; padding: 0.9rem 1rem;
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: 8px;
+  }
+  .swr-title {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 0.6rem;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .swr-controls {
+    display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+  }
+  .swr-controls label {
+    font-family: 'Courier New', monospace; font-size: 0.62rem; color: var(--muted);
+  }
+  .swr-controls input[type=number] {
+    width: 70px; font-family: 'Courier New', monospace; font-size: 0.72rem;
+    padding: 3px 6px; border: 0.5px solid var(--border);
+    background: var(--surface); color: var(--text);
+    border-radius: 4px; outline: none; text-align: right;
+  }
+  .swr-controls input:focus { border-color: var(--accent); }
+  .swr-btn {
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    padding: 3px 12px; border-radius: 6px;
+    border: 1px solid var(--accent); background: transparent;
+    color: var(--accent); cursor: pointer; transition: all 0.12s;
+  }
+  .swr-btn:hover { background: var(--accent); color: #fff; }
+  .swr-result {
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+    line-height: 1.7; color: var(--text);
+  }
+  .swr-result strong { color: var(--green); font-size: 0.88rem; }
+
+  /* ── Optimizer: beta-adjusted toggle ── */
+  .opt-beta-row {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 0.35rem; margin-bottom: 0.1rem;
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    color: var(--muted);
+  }
+  .opt-beta-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
+  .opt-beta-row label { cursor: pointer; }
+
 </style>
 </head>
 <body>
@@ -830,7 +1450,13 @@
     <h1>Ranking de Fundos</h1>
     <div class="subtitle">CAGR · dados diários da CVM · atualizado automaticamente</div>
   </div>
-  <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">☽ escuro</button>
+  <div class="header-controls">
+    <div class="header-status" id="headerStatus">
+      <span class="status-dot loading" id="headerDot"></span>
+      <span id="headerStatusText">carregando…</span>
+    </div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">☽ escuro</button>
+  </div>
 </div>
 
 <div class="tabs">
@@ -843,25 +1469,25 @@
 <div id="tab-ranking" class="tab-pane active">
 
 <div class="filter-bar">
-  <span class="filter-label">Tipo:</span>
+  <span class="filter-label" title="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia:</span>
   <button class="filter-chip active" data-filter="tipo" data-val="" onclick="setFilter('tipo','',this)">Todos</button>
   <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
   <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
   <button class="filter-chip" data-filter="tipo" data-val="Multimercado" onclick="setFilter('tipo','Multimercado',this)">Multimercado</button>
   <span class="filter-sep"></span>
-  <span class="filter-label">Exposição:</span>
+  <span class="filter-label">Mercado:</span>
   <button class="filter-chip active" data-filter="expo" data-val="" onclick="setFilter('expo','',this)">Todos</button>
   <button class="filter-chip" data-filter="expo" data-val="Brasil" onclick="setFilter('expo','Brasil',this)">Brasil</button>
   <button class="filter-chip" data-filter="expo" data-val="Internacional" onclick="setFilter('expo','Internacional',this)">Internacional</button>
   <span class="filter-sep"></span>
-  <span class="filter-label">IR:</span>
+  <span class="filter-label" title="RV = sem come-cotas, IR só no resgate (melhor para longo prazo). TR = IR antecipado em maio e novembro (come-cotas).">Imposto:</span>
   <button class="filter-chip active" data-filter="trib" data-val="" onclick="setFilter('trib','',this)">Todos</button>
-  <button class="filter-chip" data-filter="trib" data-val="RV" onclick="setFilter('trib','RV',this)">RV</button>
-  <button class="filter-chip" data-filter="trib" data-val="TR" onclick="setFilter('trib','TR',this)">TR</button>
+  <button class="filter-chip" data-filter="trib" data-val="RV" onclick="setFilter('trib','RV',this)" title="Renda Variável: paga IR apenas no resgate (15%). Sem come-cotas — todo o capital trabalha até você resgatar.">Sem come-cotas (RV)</button>
+  <button class="filter-chip" data-filter="trib" data-val="TR" onclick="setFilter('trib','TR',this)" title="Tabela Regressiva: IR antecipado em maio e novembro. Mais ineficiente para horizontes longos.">Com come-cotas (TR)</button>
 </div>
 
-<div class="period-bar">
-  <span class="filter-label">Período customizado:</span>
+<div class="period-bar" id="periodBarEl">
+  <span class="filter-label" title="Compare os fundos em uma janela de datas que você escolher, em vez dos períodos padrão.">Comparar em período específico:</span>
   <label>De: <input type="date" id="periodStart" onchange="onPeriodChange()"></label>
   <label>Até: <input type="date" id="periodEnd" onchange="onPeriodChange()"></label>
   <span id="periodBadge" style="display:none" class="period-badge"></span>
@@ -869,17 +1495,17 @@
   <span id="periodNote" style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted)"></span>
 </div>
 
-<div class="table-wrap">
+<div class="table-wrap" id="rankingTableWrap">
   <table>
     <thead>
       <tr>
         <th>#&nbsp;&nbsp;Fundo</th>
-        <th class="sortable" data-key="cagr12"    id="th-cagr12">12M ↕</th>
-        <th class="sortable" data-key="cagr36"    id="th-cagr36">36M ↕</th>
-        <th class="sortable" data-key="cagr60"    id="th-cagr60">60M ↕</th>
-        <th class="sortable col-alpha" data-key="alpha" id="th-alpha" title="Alpha: retorno do fundo menos o benchmark no mesmo período.&#10;Benchmark: IBOV para fundos de ações, CDI para multimercados.&#10;Mostra quanto o gestor entregou além do mercado (janela da coluna de ordenação).&#10;Verde = superou o benchmark · Vermelho = ficou abaixo">Alpha ↕</th>
-        <th class="sortable" data-key="inception" id="th-inception">Início ↕</th>
-        <th class="sortable" data-key="tenure"    id="th-tenure">Track Record ↕</th>
+        <th class="sortable" data-key="cagr12"    id="th-cagr12" title="Retorno ao ano nos últimos 12 meses. Taxa ANUALIZADA — não é o retorno total do período.">12M · a.a. ↕</th>
+        <th class="sortable" data-key="cagr36"    id="th-cagr36" title="Retorno médio ao ano nos últimos 3 anos. Taxa ANUALIZADA — ex: +18% significa +18% por ano, não +18% no total.">36M · a.a. ↕</th>
+        <th class="sortable" data-key="cagr60"    id="th-cagr60" title="Retorno médio ao ano nos últimos 5 anos. Taxa ANUALIZADA. Janela mais longa = mais confiável, inclui mais ciclos de mercado.">60M · a.a. ↕</th>
+        <th class="sortable col-alpha" data-key="alpha" id="th-alpha" title="Quanto o gestor ganhou ALÉM do mercado.&#10;Positivo = superou o IBOV (ou CDI para multimercados).&#10;Negativo = ficou abaixo do índice.&#10;Responde: vale pagar a taxa de gestão?">Alpha ↕</th>
+        <th class="sortable" data-key="inception" id="th-inception" title="Retorno médio ao ano desde o início do fundo. Inclui todos os ciclos, crises e altas desde a criação.">Desde início ↕</th>
+        <th class="sortable" data-key="tenure"    id="th-tenure" title="Há quanto tempo o fundo existe. Histórico mais longo = estimativas mais confiáveis.">Histórico ↕</th>
       </tr>
     </thead>
     <tbody id="fundBody"></tbody>
@@ -918,12 +1544,37 @@
             <button class="opt-btn"        id="optN10" onclick="setOptN(10)">10 fundos</button>
           </div>
           <div class="opt-divider"></div>
-          <div class="opt-obj-group">
-            <button class="opt-btn active" id="optObjSharpe"  onclick="setOptObj('sharpe')">Máx. Sharpe</button>
-            <button class="opt-btn"        id="optObjReturn"  onclick="setOptObj('return')">Máx. retorno</button>
-            <button class="opt-btn"        id="optObjVol"     onclick="setOptObj('vol')">Mín. vol.</button>
+          <div style="margin-bottom:0.25rem">
+            <div class="opt-mode-label">Objetivo clássico</div>
+            <div class="opt-obj-group">
+              <button class="opt-btn mode-classic active" id="optObjSharpe" onclick="setOptObj('sharpe')"
+                title="Portfólio tangente: maximiza o Índice de Sharpe — (retorno alvo − CDI) ÷ volatilidade total.&#10;Solução analítica exata: w* = Σ⁻¹(μ−CDI) normalizado.&#10;O portfólio mais eficiente em termos de retorno por unidade de TODA a volatilidade.&#10;Referência: Markowitz (1952), Sharpe (1966).">Máx. Sharpe</button>
+              <button class="opt-btn mode-classic" id="optObjVol" onclick="setOptObj('vol')"
+                title="Mínima variância global: minimiza σ²=wᵀΣw sujeito a Σwᵢ=1, wᵢ≥0.&#10;Solução analítica: w* = Σ⁻¹·1 normalizado.&#10;O portfólio de menor oscilação possível — sem considerar retorno.&#10;Útil quando há incerteza elevada sobre retornos esperados.">Mín. variância</button>
+              <button class="opt-btn mode-classic" id="optObjReturn" onclick="setOptObj('return')"
+                title="Maximiza o retorno esperado ponderado dos fundos selecionados.&#10;Usa softmax com temperatura T=3 para diversificar entre os melhores retornos esperados sem concentrar 100% no único melhor.&#10;Não considera risco — portfólio mais agressivo possível.">Máx. retorno</button>
+            </div>
+          </div>
+          <div>
+            <div class="opt-mode-label" style="display:flex;align-items:center;gap:5px">
+              Objetivo avançado
+              <span style="font-family:'Courier New',monospace;font-size:0.5rem;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue);border:0.5px solid var(--blue)">β</span>
+            </div>
+            <div class="opt-obj-group">
+              <button class="opt-btn mode-advanced" id="optObjSortino" onclick="setOptObj('sortino')"
+                title="Máx. Sortino: maximiza (retorno alvo − CDI) ÷ semi-desvio descendente do portfólio.&#10;Semi-desvio = volatilidade apenas dos retornos ABAIXO do CDI — ignora volatilidade para cima.&#10;Implementação: semi-covariância Sᵢⱼ = E[min(rᵢ−CDI,0)·min(rⱼ−CDI,0)] × 252.&#10;w* = S⁻¹(μ−CDI) normalizado (análogo ao Sharpe, com Σ substituída por S).&#10;Referência: Estrada (2008), J. Portfolio Management.&#10;Superior ao Sharpe para fundos com assimetria positiva (retornos extremos para cima).">Máx. Sortino</button>
+              <button class="opt-btn mode-advanced" id="optObjCalmar" onclick="setOptObj('calmar')"
+                title="Máx. Calmar: maximiza CAGR_portfólio ÷ |máx. drawdown histórico do portfólio|.&#10;O max drawdown é calculado sobre a série temporal real dos retornos ponderados — não é a média dos drawdowns individuais.&#10;Metodologia: pesos candidatos gerados por Sharpe; seleção da combinação pelo Calmar real da série.&#10;Encontra o portfólio com melhor retorno por unidade de 'dor máxima' histórica.&#10;Referência: Young (1991); Steinki &amp; Mohammad (SSRN 2662054).">Máx. Calmar</button>
+              <button class="opt-btn mode-advanced" id="optObjIR" onclick="setOptObj('ir')"
+                title="Máx. Information Ratio: maximiza alpha anualizado vs. IBOV ÷ tracking error.&#10;Tracking error = σ(retorno_portfólio − retorno_IBOV) = volatilidade do excesso de retorno.&#10;Implementação: identical ao Máx. Sharpe, mas usando IBOV como taxa livre de risco em vez do CDI.&#10;Diferença: enquanto Sharpe premia superar o CDI (~12,8%), IR premia superar o IBOV (~19,9%) — critério mais exigente.&#10;Encontra o portfólio mais eficiente em gerar alpha sobre o benchmark de referência.&#10;Referência: Grinold &amp; Kahn (1999), Active Portfolio Management.">Máx. IR vs. IBOV</button>
+            </div>
           </div>
           <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
+        </div>
+        <div class="opt-beta-row">
+          <input type="checkbox" id="optBetaAdj" onchange="updateBetaAdjNote()">
+          <label for="optBetaAdj" title="Usa Jensen's alpha como retorno esperado de cada fundo, em vez do CAGR bruto.&#10;Jensen's alpha = CAGR − [CDI + β × (IBOV − CDI)]&#10;Penaliza fundos cujo retorno é explicado pelo beta de mercado, não pela habilidade do gestor.&#10;Favorece gestores que entregam retorno genuíno, independente da exposição direcional ao mercado.&#10;Referência: Jensen (1968), J. of Finance.">Ajustar retornos pelo beta (Jensen's alpha)</label>
+          <span id="betaAdjNote" style="font-family:'Courier New',monospace;font-size:0.55rem;color:var(--accent);display:none">ativo</span>
         </div>
         <div class="opt-constraint-row">
           <span class="opt-constraint-label">Peso máx. por fundo:</span>
@@ -958,15 +1609,21 @@
       <div class="port-alloc-panel" id="portAllocPanel" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.5rem">
           <div class="port-section-label">Alocação</div>
+          <button class="export-btn" onclick="exportPortfolioCSV()" title="Baixar carteira como CSV">↓ CSV</button>
         </div>
         <div class="port-alloc-header">
-          <span>Fundo</span><span></span><span>Peso</span><span>Valor</span><span>Ret. alvo</span><span>Vol.</span><span>Sharpe</span>
+          <span>Fundo</span><span></span><span>Peso</span><span>Valor</span>
+          <span title="Retorno alvo estimado (bruto de IR): média ponderada por √T com penalização por dispersão ciclical e pull de mean-reversion para anchor de 60M">Retorno alvo*</span>
+          <span title="Volatilidade anualizada: desvio padrão dos retornos diários × √252">Volatilidade</span>
+          <span title="Retorno dividido pela oscilação (índice Sharpe). Quanto maior, mais eficiente o fundo.">Ret./Risco</span>
         </div>
         <div id="portAlloc"></div>
       </div>
       <div class="port-corr-panel">
-        <div class="port-section-label" style="margin-bottom:0.7rem">Correlação</div>
+        <div class="port-section-label" style="margin-bottom:0.3rem" title="Quanto os fundos se movem juntos. Correlação alta (próxima de 1) significa que os fundos caem juntos — diversificação fraca. Correlação baixa ou negativa = proteção real. Clique em qualquer célula para ver o gráfico de retornos diários.">Correlação</div>
+        <div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5">Vermelho = caem juntos · Verde = independentes · Clique para detalhe</div>
         <div id="portCorr" class="port-empty">Selecione ao menos 2 fundos</div>
+        <div id="concAlert"></div>
       </div>
     </div>
 
@@ -975,7 +1632,7 @@
   <!-- ── Simulador de IR ── -->
   <div class="ir-section" id="irSection">
     <div class="ir-header">
-      <span class="ir-header-title">Simulação de IR no resgate</span>
+      <span class="ir-header-title" title="Simula o impacto tributário por fundo. RV: 15% sobre o ganho no resgate. TR: come-cotas semestral (mai/nov) + alíquota regressiva no trecho final.">Impacto tributário — RV vs. TR</span>
       <div class="ir-slider-wrap">
         <span class="ir-slider-label">Prazo até o resgate:</span>
         <input type="range" class="ir-slider" id="irSlider" min="1" max="20" value="5" step="1"
@@ -984,12 +1641,13 @@
       </div>
     </div>
     <div id="irBody" class="ir-empty">Selecione fundos e pesos no portfólio acima</div>
+    <div id="irCCTimeline"></div>
   </div>
 
   <!-- ── Simulador de Aportes + Monte Carlo ── -->
   <div class="mc-section" id="mcSection">
     <div class="mc-header">
-      <span class="mc-header-title">Simulador de aportes periódicos · Monte Carlo</span>
+      <span class="mc-header-title" title="Simula N caminhos de retorno log-normais mensais com os parâmetros de retorno e volatilidade do portfólio. Exibe percentis P10–P90 do patrimônio ao longo do tempo.">Simulador de aportes — Monte Carlo</span>
     </div>
     <div class="mc-body">
 
@@ -1025,36 +1683,54 @@
           <label>Inflação a.a. (%)</label>
           <input type="number" id="mcInfl" value="4.5" min="0" max="30" step="0.5" oninput="mcScheduleRun()">
         </div>
+        <div class="mc-ctrl">
+          <label title="O aporte mensal cresce esta % uma vez por ano, no início de cada ano">Crescimento anual dos aportes (%)</label>
+          <input type="number" id="mcGrowth" value="0" min="0" max="50" step="0.5" oninput="mcScheduleRun()" placeholder="0 = sem crescimento">
+        </div>
       </div>
 
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;">
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:0.7rem;flex-wrap:wrap;">
         <button class="mc-run-btn" id="mcRunBtn" onclick="mcRun()">Simular</button>
         <div class="mc-n-btns">
           <button class="mc-n-btn active" data-n="1000" onclick="mcSetN(this)">1k</button>
           <button class="mc-n-btn" data-n="5000" onclick="mcSetN(this)">5k</button>
           <button class="mc-n-btn" data-n="20000" onclick="mcSetN(this)">20k</button>
+          <button class="mc-n-btn" data-n="50000" onclick="mcSetN(this)" title="Ultra: 50k simulações — pode demorar alguns segundos">Ultra</button>
         </div>
+        <button class="mc-advanced-toggle" id="mcAdvToggle" onclick="mcToggleAdvanced()">⚙ avançado</button>
         <span style="font-family:'Courier New',monospace;font-size:0.6rem;color:var(--muted)" id="mcNote">Simulações por Monte Carlo</span>
+      </div>
+
+      <div class="mc-advanced-panel" id="mcAdvPanel">
+        <label class="mc-fat-label">
+          <input type="checkbox" id="mcFatTails" onchange="mcScheduleRun()">
+          Fat tails — incluir cenários de crise
+        </label>
+        <div class="mc-fat-note">
+          Adiciona choques de mercado realistas: 1,7% de chance por mês de um mês de crise severa
+          (queda extra de −12 p.p., oscilação 2,5× maior). Baseado nas crises brasileiras históricas.
+          O resultado típico não muda muito — o pior cenário fica mais honesto.
+        </div>
       </div>
 
       <div id="mcStats" class="mc-stats" style="display:none">
         <div class="mc-stat green">
-          <div class="mc-stat-label">Mediana (P50)</div>
+          <div class="mc-stat-label" title="Em metade dos cenários, o patrimônio final supera este valor. Estimativa central — não é o melhor nem o pior resultado.">Mediana (P50)</div>
           <div class="mc-stat-val" id="mcP50">—</div>
           <div class="mc-stat-sub" id="mcP50Real">—</div>
         </div>
         <div class="mc-stat blue">
-          <div class="mc-stat-label">P75 — bom cenário</div>
+          <div class="mc-stat-label" title="1 em cada 4 cenários chega aqui ou mais. O mercado cooperou mais do que o esperado.">P75 — terceiro quartil</div>
           <div class="mc-stat-val" id="mcP75">—</div>
           <div class="mc-stat-sub" id="mcP75Real">—</div>
         </div>
         <div class="mc-stat amber">
-          <div class="mc-stat-label">P25 — cenário adverso</div>
+          <div class="mc-stat-label" title="Em 3 de cada 4 cenários o resultado fica acima deste valor. O mercado foi adverso mas não extremo.">P25 — primeiro quartil</div>
           <div class="mc-stat-val" id="mcP25">—</div>
           <div class="mc-stat-sub" id="mcP25Real">—</div>
         </div>
         <div class="mc-stat red">
-          <div class="mc-stat-label">P10 — pior 10%</div>
+          <div class="mc-stat-label" title="Apenas 1 em 10 cenários fica abaixo deste valor. O pior cenário realista — não impossível, mas improvável.">P10 — tail risk</div>
           <div class="mc-stat-val" id="mcP10">—</div>
           <div class="mc-stat-sub" id="mcP10Real">—</div>
         </div>
@@ -1062,9 +1738,9 @@
 
       <div id="mcChartWrap" class="mc-chart-wrap" style="display:none">
         <div class="mc-chart-legend">
-          <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(26,122,82,0.18)" rx="2"/></svg>P75–P90</div>
-          <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(26,74,138,0.18)" rx="2"/></svg>P25–P75</div>
-          <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(184,50,50,0.15)" rx="2"/></svg>P10–P25</div>
+          <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(26,122,82,0.18)" rx="2"/></svg>Cenário otimista</div>
+          <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(26,74,138,0.18)" rx="2"/></svg>Cenário típico</div>
+          <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(184,50,50,0.15)" rx="2"/></svg>Cenário adverso</div>
           <div class="mc-leg-item"><svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#1a4a8a" stroke-width="2"/></svg>Mediana</div>
           <div class="mc-leg-item"><svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#e05c2a" stroke-width="1.5" stroke-dasharray="4,3"/></svg>Taxa fixa</div>
         </div>
@@ -1078,9 +1754,104 @@
 
       <div id="mcEmpty" class="mc-empty">Configure o portfólio acima e clique Simular</div>
 
+      <!-- ── Fase de Retirada ── -->
+      <div class="mc-retire-section" id="mcRetireSection" style="display:none">
+        <div class="mc-retire-title">Fase de retirada — sustentabilidade do portfólio</div>
+        <p style="font-family:'Courier New',monospace;font-size:0.67rem;color:var(--muted);line-height:1.75;margin-bottom:1rem;padding:0.65rem 0.9rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 6px 6px 0">
+          O simulador acima modela a <em>fase de acumulação</em>. Esta seção resolve o problema inverso:
+          dado o patrimônio acumulado na distribuição de cenários acima, qual é a probabilidade de
+          sustentar uma retirada mensal constante pelo prazo definido sem depleting o capital?
+        </p>
+
+        <div class="mc-retire-controls">
+          <div class="mc-ctrl">
+            <label title="Valor mensal em R$ de hoje que você quer sacar. Será corrigido pela inflação a cada ano.">Saque mensal (R$ de hoje)</label>
+            <input type="number" id="mcSaque" value="15000" min="0" step="1000" oninput="mcRunRetire()">
+          </div>
+          <div class="mc-ctrl">
+            <label>Prazo de retirada (anos)</label>
+            <input type="number" id="mcRetireAnos" value="25" min="1" max="50" oninput="mcRunRetire()">
+          </div>
+          <div class="mc-ctrl">
+            <label>Retorno na retirada a.a. (%)</label>
+            <input type="number" id="mcRetireRet" value="" placeholder="igual à acumulação" step="0.5" oninput="mcRunRetire()">
+          </div>
+        </div>
+
+        <div class="mc-verdict" id="mcVerdict"></div>
+
+        <div class="swr-section" id="swrSection" style="display:none">
+          <div class="swr-title">
+            <span title="Safe Withdrawal Rate: dado o patrimônio acumulado e o portfólio, calcula o saque mensal máximo que mantém probabilidade de sobrevivência ≥ 90% nos cenários Monte Carlo. Busca binária sobre o parâmetro de saque.">?</span>
+            Qual o saque máximo sustentável? — Taxa de Retirada Segura
+          </div>
+          <div class="swr-controls">
+            <label title="Número de anos que o patrimônio precisa durar">Prazo: <input type="number" id="swrAnos" value="25" min="5" max="50" step="1"> anos</label>
+            <label title="Probabilidade mínima de sobrevivência exigida">Segurança: <input type="number" id="swrPct" value="90" min="70" max="99" step="5">%</label>
+            <button class="swr-btn" id="swrBtn" onclick="calcSWR()">Calcular</button>
+          </div>
+          <div class="swr-result" id="swrResult"></div>
+        </div>
+
+        <div id="mcRetireChartWrap" class="mc-chart-wrap" style="display:none">
+          <div class="mc-chart-legend">
+            <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(26,122,82,0.18)" rx="2"/></svg>Cenário otimista</div>
+            <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(26,74,138,0.18)" rx="2"/></svg>Cenário típico</div>
+            <div class="mc-leg-item"><svg width="16" height="8"><rect x="0" y="1" width="16" height="6" fill="rgba(184,50,50,0.15)" rx="2"/></svg>Cenário adverso</div>
+            <div class="mc-leg-item"><svg width="16" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="#1a4a8a" stroke-width="2"/></svg>Mediana</div>
+          </div>
+          <div style="position:relative;height:240px;"><canvas id="mcRetireChart"></canvas></div>
+        </div>
+
+        <div class="mc-survival-wrap" id="mcSurvivalWrap" style="display:none">
+          <div class="mc-survival-title">Probabilidade de sobrevivência do patrimônio</div>
+          <div style="position:relative;height:120px;"><canvas id="mcSurvivalChart"></canvas></div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.8rem;" id="mcSeqHeader" style="display:none">
+          <span style="font-family:'Courier New',monospace;font-size:0.63rem;color:var(--muted)" title="Dois aposentados com o mesmo retorno médio e o mesmo patrimônio chegam a resultados radicalmente diferentes dependendo de QUANDO o mercado cai. Cair no início da aposentadoria é muito mais devastador.">⚠ Risco de sequência de retornos</span>
+          <button class="mc-seq-toggle" id="mcSeqToggle" onclick="mcToggleSeq()">ver análise</button>
+        </div>
+        <div class="mc-seq-panel" id="mcSeqPanel"></div>
+      </div>
+
     </div>
   </div>
 
+
+
+  <!-- ── Comparador de Carteiras A vs B ── -->
+  <div class="comp-section" id="compSection">
+    <div class="comp-header">
+      <div>
+        <div class="comp-header-title">Comparador de carteiras — A vs B</div>
+        <div class="comp-header-note">
+          Monte duas carteiras e compare lado a lado: retorno esperado, risco, Sharpe, Sortino, Calmar, drawdown.
+          <br>Útil para avaliar o impacto de trocar um fundo por outro, ou comparar duas teses de alocação.
+        </div>
+      </div>
+      <button class="comp-run-btn" id="compRunBtn" onclick="runComparador()">Comparar</button>
+    </div>
+
+    <div class="comp-layout">
+      <div class="comp-col comp-col-a" id="compColA">
+        <div class="comp-col-label">Carteira A</div>
+        <div id="compRowsA"></div>
+        <button class="comp-add-btn" onclick="compAddRow('A')">+ fundo</button>
+      </div>
+      <div class="comp-col comp-col-b" id="compColB">
+        <div class="comp-col-label">Carteira B</div>
+        <div id="compRowsB"></div>
+        <button class="comp-add-btn" onclick="compAddRow('B')">+ fundo</button>
+      </div>
+    </div>
+
+    <div class="comp-results" id="compResults" style="display:none">
+      <div class="comp-results-title">Comparativo de métricas</div>
+      <div class="comp-metric-grid" id="compMetricGrid"></div>
+      <div id="compNote" style="font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted);margin-top:0.6rem"></div>
+    </div>
+  </div>
 
 </div><!-- /tab-portfolio -->
 
@@ -1096,14 +1867,13 @@
     </select></label>
     <label>Mostrar: <select id="chartMode" onchange="renderNormalizedChart()">
       <option value="normalized">Retorno acumulado (%)</option>
-      <option value="drawdown">Underwater — drawdown do pico</option>
+      <option value="drawdown">Queda desde o pico (drawdown)</option>
     </select></label>
     <label><input type="checkbox" id="chartShowBmk" onchange="renderNormalizedChart()" checked> IBOV</label>
   </div>
 
   <div class="chart-fund-toggles" id="chartFundToggles"></div>
   <div style="position:relative;height:380px;width:100%"><canvas id="chartCanvas"></canvas></div>
-  <div id="chartLegend" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:0.6rem;font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted)"></div>
 
 </div><!-- /tab-graficos -->
 
@@ -1112,7 +1882,12 @@
   <div class="analysis-grid">
 
     <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title">Radar risco × retorno</div>
+      <div class="analysis-card-title">Stress test — cenários históricos adversos</div>
+      <div id="stressContainer"></div>
+    </div>
+
+    <div class="analysis-card" style="grid-column:1/-1">
+      <div class="analysis-card-title">Risco × Retorno</div>
       <div id="scatterLoading" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem">calculando…</div>
       <div style="position:relative;height:320px;width:100%"><canvas id="scatterCanvas"></canvas></div>
     </div>
@@ -1123,28 +1898,68 @@
     </div>
 
     <div class="analysis-card">
-      <div class="analysis-card-title">Score de consistência</div>
+      <div class="analysis-card-title">Consistência</div>
       <div id="consistencyContainer"></div>
     </div>
 
     <div class="analysis-card" style="display:flex;flex-direction:column;">
-      <div class="analysis-card-title">Drawdown histórico (underwater)</div>
+      <div class="analysis-card-title">Drawdown histórico</div>
       <select id="uwFundSelect" style="font-family:'Courier New',monospace;font-size:0.68rem;padding:3px 8px;border:0.5px solid var(--border);background:var(--surface);color:var(--text);border-radius:4px;width:100%;margin-bottom:0.6rem;outline:none;" onchange="renderUnderwaterChart()"></select>
       <div style="position:relative;flex:1;min-height:320px;width:100%"><canvas id="underwaterCanvas"></canvas></div>
     </div>
 
+
     <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title">Stress test — cenários históricos adversos</div>
-      <div id="stressContainer"></div>
+      <div class="analysis-card-title" title="Métricas de risco ajustado que complementam o Sharpe e capturam dimensões ignoradas por ele: assimetria de retornos, magnitude da queda máxima e eficiência do alpha gerado.">Métricas de risco avançadas</div>
+      <div id="advMetricsContainer">
+        <div style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">carregando…</div>
+      </div>
     </div>
 
+    <div class="analysis-card" style="grid-column:1/-1">
+      <div class="analysis-card-title" title="O alpha de 12 meses (retorno acima do IBOV) recalculado mensalmente ao longo do histórico disponível. Revela se o gestor gera alpha de forma consistente ou se o número único esconde volatilidade significativa de resultados.">Alpha rolante 12M — evolução do excesso de retorno vs. IBOV</div>
+      <div style="margin-bottom:0.7rem">
+        <select class="fund-selector-analise" id="rollingAlphaSelect" onchange="renderRollingAlpha()">
+          <option value="">— selecione um fundo —</option>
+        </select>
+      </div>
+      <div id="rollingAlphaStats" style="display:none;margin-bottom:0.6rem"></div>
+      <div id="rollingAlphaWrap" style="display:none">
+        <div style="position:relative;height:180px"><canvas id="rollingAlphaChart"></canvas></div>
+        <div id="rollingAlphaNote" style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-top:0.4rem"></div>
+      </div>
+      <div id="rollingAlphaEmpty" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">Selecione um fundo para ver a evolução do alpha rolante.</div>
+    </div>
 
+    <div class="analysis-card" style="grid-column:1/-1">
+      <div class="analysis-card-title" title="Fronteira eficiente: curva que representa o melhor retorno possível para cada nível de volatilidade, dada a combinação dos fundos disponíveis. Portfólios abaixo da fronteira são sub-ótimos — é possível ter mais retorno com o mesmo risco, ou menos risco com o mesmo retorno.">Fronteira eficiente — universo de fundos disponíveis</div>
+      <div style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted);margin-bottom:0.6rem">
+        Cada ponto é um fundo individual. A curva é a fronteira eficiente: combinações ótimas long-only.
+        Portfólios <em>à esquerda e acima</em> da nuvem de fundos só são alcançáveis por diversificação.
+      </div>
+      <div id="efficientFrontierLoading" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">calculando…</div>
+      <div style="position:relative;height:340px"><canvas id="efficientFrontierCanvas"></canvas></div>
+    </div>
 
   </div>
 
 </div><!-- /tab-analise -->
 
+<div id="corrScatterModal" style="display:none" class="corr-scatter-modal" onclick="if(event.target===this)closeCorrScatter()">
+  <div class="corr-scatter-inner">
+    <div class="corr-scatter-title">
+      <span id="corrScatterTitle">Correlação</span>
+      <button class="corr-scatter-close" onclick="closeCorrScatter()">✕</button>
+    </div>
+    <div id="corrScatterStats" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:0.7rem"></div>
+    <div style="position:relative;height:260px;"><canvas id="corrScatterCanvas"></canvas></div>
+  </div>
+</div>
+
 <div class="legend">
+  <div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);opacity:0.7;line-height:1.6;width:100%">
+    * Retorno esperado = estimativa baseada no histórico do fundo. Não é garantia de retorno futuro. Rentabilidade passada não garante rentabilidade futura.
+  </div>
   <div class="legend-status">
     <span class="status-dot loading" id="statusDot"></span><span id="statusText">Carregando…</span>
     <span id="statusDate"></span>
@@ -1415,7 +2230,7 @@ function sortBy(key) {
   render();
 }
 
-const TH_LABELS = { cagr12:'12M', cagr36:'36M', cagr60:'60M', alpha:'Alpha', inception:'Início', tenure:'Track Record' };
+const TH_LABELS = { cagr12:'12M', cagr36:'36M', cagr60:'60M', alpha:'Alpha', inception:'Início', tenure:'Histórico' };
 
 function updateHeaders() {
   Object.keys(TH_LABELS).forEach(k => {
@@ -1458,53 +2273,75 @@ function buildDetailPanel(f, isExp) {
   const inception = meta.inception ? meta.inception.split('-').reverse().join('/') : '—';
   const tenure = fmtTenure(f.cnpjFmt).replace(/<[^>]+>/g,'');
 
+  // Comparação vs IBOV (na janela de 36M por default)
+  const alpha36 = calcAlpha(f, 'cagr36');
+  const alphaStr = alpha36 != null
+    ? (alpha36 >= 0
+        ? `<span style="color:var(--green);font-weight:bold">+${alpha36.toFixed(1)}pp acima do IBOV</span>`
+        : `<span style="color:var(--red);font-weight:bold">${alpha36.toFixed(1)}pp abaixo do IBOV</span>`)
+    : '—';
+
+  // Drawdown atual — queda do pico
+  const dd = calcDrawdown(f);
+  const ddStr = dd != null
+    ? (dd === 0
+        ? '<span style="color:var(--green)">No pico histórico ✓</span>'
+        : `<span style="color:var(--red);font-weight:bold">${dd.toFixed(1)}% abaixo do pico</span>`)
+    : '—';
+
+  // Tributação em linguagem simples
+  const tribExplain = meta.trib === 'RV'
+    ? 'IR apenas no resgate (15%) — sem come-cotas. Todo o capital trabalha até o dia do resgate.'
+    : 'Come-cotas em maio e novembro: IR antecipado semestralmente. Menos eficiente para horizontes longos.';
+
   return `<div class="detail-panel ${isExp ? 'open' : ''}" id="detail-${id}">
     <div class="detail-inner">
 
       <div class="detail-col">
-        <div class="detail-col-header">Performance CAGR</div>
-        <div class="perf-grid">
-          <div><div class="perf-label">12 meses</div>${fmtPctLarge(f.cagr12)}</div>
-          <div><div class="perf-label">36 meses</div>${fmtPctLarge(f.cagr36)}</div>
-          <div><div class="perf-label">60 meses</div>${fmtPctLarge(f.cagr60)}</div>
-          <div><div class="perf-label">Desde o início</div>${fmtPctLarge(cagrInception(f))}</div>
-          <div style="grid-column:1/-1;border-top:1px solid var(--border);margin-top:0.3rem;padding-top:0.5rem;">
-            <div class="perf-label" style="margin-bottom:3px">Drawdown atual</div>
-            ${fmtDrawdown(calcDrawdown(f))}
-          </div>
-          ${f.isDelayed ? `<div style="grid-column:1/-1;margin-top:0.4rem;padding:0.35rem 0.5rem;background:var(--amber-light);border-radius:5px;border:0.5px solid var(--amber)">
-            <div style="font-family:Courier New,monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--amber);margin-bottom:2px">Cota com atraso</div>
-            <div style="font-size:0.72rem;color:var(--text)">Última cota disponível: <strong>${f.latestDate}</strong><br>Referência dos demais fundos: ${window.anchorDate||'—'}<br>CAGRs calculados até ${f.latestDate} (${f.delayDays}d antes da referência)</div>
-          </div>` : ''}
+        <div class="detail-col-header">Resultado vs. mercado</div>
+        <div class="ditem">
+          <div class="dlabel">Últimos 3 anos (vs IBOV)</div>
+          <div class="dval" style="font-size:0.92rem">${alphaStr}</div>
+        </div>
+        <div class="ditem" style="margin-top:0.5rem">
+          <div class="dlabel">Queda atual desde o pico</div>
+          <div class="dval" style="font-size:0.88rem">${ddStr}</div>
+        </div>
+        <div class="ditem" style="margin-top:0.5rem">
+          <div class="dlabel">Retorno desde o início · ${tenure}</div>
+          <div class="dval">${fmtPctLarge(cagrInception(f))} ao ano</div>
+        </div>
+        ${f.isDelayed ? `<div style="margin-top:0.5rem;padding:0.35rem 0.5rem;background:var(--amber-light);border-radius:5px;border:0.5px solid var(--amber)">
+          <div style="font-family:Courier New,monospace;font-size:0.58rem;color:var(--amber)">Cota com ${f.delayDays}d de atraso — dados de ${f.latestDate}</div>
+        </div>` : ''}
+      </div>
+
+      <div class="detail-col">
+        <div class="detail-col-header">O que é este fundo</div>
+        <div class="ditem">
+          <div class="dlabel">Estratégia</div>
+          <div class="dval">${meta.tipo || '—'}</div>
+        </div>
+        <div class="ditem">
+          <div class="dlabel">Onde investe</div>
+          <div class="dval">${meta.expo || '—'}</div>
+        </div>
+        <div class="ditem">
+          <div class="dlabel">Início das operações</div>
+          <div class="dval">${inception}</div>
         </div>
       </div>
 
       <div class="detail-col">
-        <div class="detail-col-header">Sobre o fundo</div>
+        <div class="detail-col-header">Como investir</div>
         <div class="ditem">
-          <div class="dlabel">Nome</div>
-          <div class="dval" style="font-size:0.76rem">${f.name}</div>
-        </div>
-        <div class="ditem">
-          <div class="dlabel">Tipo · Exposição</div>
-          <div class="dval">${meta.tipo || '—'} · ${meta.expo || '—'}</div>
-        </div>
-      </div>
-
-      <div class="detail-col">
-        <div class="detail-col-header">Acesso</div>
-        <div class="ditem">
-          <div class="dlabel">Início · Track record</div>
-          <div class="dval">${inception} · ${tenure}</div>
-        </div>
-        <div class="ditem">
-          <div class="dlabel">Tributação</div>
-          <div class="dval">${TRIB_LABEL[meta.trib] || meta.trib || '—'} <span class="tag ${tribClass}">${meta.trib || '—'}</span></div>
-        </div>
-        <div class="ditem">
-          <div class="dlabel">Melhor banco</div>
+          <div class="dlabel">Disponível em</div>
           <div class="dval">${meta.banco || '—'}</div>
           ${meta.obs ? `<div class="dnote">${meta.obs}</div>` : ''}
+        </div>
+        <div class="ditem" style="margin-top:0.5rem">
+          <div class="dlabel">Imposto de renda <span class="tag ${tribClass}">${meta.trib || '—'}</span></div>
+          <div class="dval" style="font-size:0.72rem;line-height:1.5;color:var(--muted)">${tribExplain}</div>
         </div>
       </div>
 
@@ -1592,18 +2429,15 @@ function buildIbovRow() {
     ? (() => { const [y,m,d] = window.anchorDate.split('-'); return `${d}/${m}/${y}`; })()
     : '—';
   return `<tr class="ibov-row">
-    <td><div class="fund-name-cell">
-      <span class="rank ibov">IBOV</span>
-      <div>
-        <div class="fund-name">Ibovespa</div>
-        <div class="fund-cnpj">referência até ${anchorFmt} · Yahoo Finance</div>
+    <td colspan="7" style="padding:0">
+      <div style="display:flex;align-items:center;gap:0.7rem;padding:5px 16px;background:color-mix(in srgb,var(--blue-light) 60%,transparent);border-top:1px dashed var(--border);border-bottom:1px dashed var(--border)">
+        <span style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--blue);font-weight:bold">▼ referência: Ibovespa</span>
+        <span style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--blue)">12M: ${ibov.cagr12!=null?'+'+(ibov.cagr12>=0?'':'')+ibov.cagr12.toFixed(1)+'%':'—'}</span>
+        <span style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--blue)">36M: ${ibov.cagr36!=null?ibov.cagr36.toFixed(1)+'%':'—'}</span>
+        <span style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--blue)">60M: ${ibov.cagr60!=null?ibov.cagr60.toFixed(1)+'%':'—'}</span>
+        <span style="font-family:'Courier New',monospace;font-size:0.56rem;color:var(--muted);margin-left:auto">fundos abaixo desta linha ficaram atrás do mercado · referência ${anchorFmt}</span>
       </div>
-    </div></td>
-    <td>${fmtPct(ibov.cagr12)}</td>
-    <td>${fmtPct(ibov.cagr36)}</td>
-    <td>${fmtPct(ibov.cagr60)}</td>
-    <td><span class="cagr-val na">—</span></td>
-    <td><span class="tenure">—</span></td>
+    </td>
   </tr>`;
 }
 
@@ -1711,6 +2545,7 @@ function switchTab(name) {
         renderConsistency();
         requestAnimationFrame(function() {
           renderStressTest();
+          setTimeout(initNewAnalysis, 150);
         });
       });
     });
@@ -1955,21 +2790,48 @@ function updatePortfolio() {
     : `<span class="port-metric-val neu" style="font-size:0.95rem">${v.toFixed(2)}</span>`;
 
   // Métricas — grid 3 colunas, altura fixa
-  document.getElementById('portMetrics').innerHTML = `
+
+  // Build synthesis sentence
+  const synthParts = [];
+  if (portTarget?.expReturn != null) synthParts.push(`retorno estimado de <strong>+${portTarget.expReturn.toFixed(1)}% ao ano</strong>`);
+  if (portVol36) synthParts.push(`oscilação histórica de <strong>${portVol36.toFixed(0)}% ao ano</strong>`);
+  const stressLoss = (function() {
+    // Estimate max drawdown for the portfolio from history (worst 20-day window)
+    if (!historyData) return null;
+    const wNorm2 = Object.fromEntries(selected.map(c => [c, weights[c]/total]));
+    const n = historyData.funds[selected[0]]?.returns?.length || 0;
+    if (n < 20) return null;
+    let worst = 0;
+    for (let i = 0; i <= n - 20; i++) {
+      let cum = 1.0;
+      for (let j = i; j < i+20; j++) {
+        let portRet = 0;
+        for (const c of selected) portRet += (wNorm2[c]||0) * (historyData.funds[c]?.returns[j]||0);
+        cum *= (1 + portRet);
+      }
+      if ((cum-1) < worst) worst = cum-1;
+    }
+    return worst < -0.02 ? worst * 100 : null;
+  })();
+  const synthVerd = synthParts.length > 0
+    ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(', ')}${stressLoss ? `, e histórico de quedas de até <strong style="color:var(--red)">${stressLoss.toFixed(0)}% em 20 pregões adversos</strong>` : ''}.</div>`
+    : '';
+
+  document.getElementById('portMetrics').innerHTML = `${synthVerd}
     <div class="port-metrics-grid">
-      <div class="port-metric"><div class="port-metric-label">CAGR 12M</div>${fmtM(cagr12w)}</div>
-      <div class="port-metric"><div class="port-metric-label">CAGR 36M</div>${fmtM(cagr36w)}</div>
-      <div class="port-metric"><div class="port-metric-label">Volatilidade</div>${fmtM(vol)}</div>
-      <div class="port-metric"><div class="port-metric-label">Drawdown m\u00e1x</div>${fmtM(maxDD * 100, true)}</div>
-      <div class="port-metric"><div class="port-metric-label">Drawdown atual</div>${fmtM(ddAtual * 100, true)}</div>
-      <div class="port-metric"><div class="port-metric-label">Valor alocado</div><span class="port-metric-val neu">${patrimonio > 0 ? 'R$\u00a0' + brlAlocado.toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</span></div>
+      <div class="port-metric"><div class="port-metric-label" title="CAGR ponderado do portfólio nos últimos 12 meses (média geométrica anualizada dos retornos diários)">CAGR 12M</div>${fmtM(cagr12w)}</div>
+      <div class="port-metric"><div class="port-metric-label" title="CAGR ponderado do portfólio nos últimos 36 meses — janela mais estável que o 12M para avaliar performance estrutural">CAGR 36M</div>${fmtM(cagr36w)}</div>
+      <div class="port-metric"><div class="port-metric-label" title="Volatilidade anualizada: desvio padrão dos retornos diários × √252, ponderado pelos pesos e matriz de correlação histórica">Volatilidade a.a.</div>${fmtM(vol)}</div>
+      <div class="port-metric"><div class="port-metric-label" title="Maximum drawdown: maior queda pico-a-vale registrada no período histórico disponível. Medida de risco de cauda de alta relevância prática.">Max. drawdown</div>${fmtM(maxDD * 100, true)}</div>
+      <div class="port-metric"><div class="port-metric-label" title="Drawdown atual: distância percentual da cota corrente ao pico histórico (underwater). Zero indica nova máxima histórica.">Drawdown atual</div>${fmtM(ddAtual * 100, true)}</div>
+      <div class="port-metric"><div class="port-metric-label">Patrimônio alocado</div><span class="port-metric-val neu">${patrimonio > 0 ? 'R$\u00a0' + brlAlocado.toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</span></div>
       <div class="port-metric" style="border-top:1px solid var(--border);padding-top:0.65rem;margin-top:0.1rem;grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:0">
         <div>
-          <div class="port-metric-label">Retorno alvo <span style="font-size:0.52rem;opacity:0.65">(sem I.R.)</span></div>
+          <div class="port-metric-label" title="Retorno alvo estimado: média ponderada dos retornos esperados individuais (pesos √T por janela temporal, penalização por dispersão ciclical, pull de mean-reversion para anchor de 60M).">Retorno alvo* <span style="font-size:0.52rem;opacity:0.65">(bruto de I.R.)</span></div>
           ${fmtTarget(portTarget?.expReturn)}
         </div>
         <div>
-          <div class="port-metric-label">Sharpe</div>
+          <div class="port-metric-label" title="Índice de Sharpe: (retorno alvo − CDI) ÷ volatilidade. Acima de 0,5 é razoável para fundos de ações brasileiros.">Sharpe</div>
           ${fmtSharpe(portTarget?.sharpe)}
         </div>
       </div>
@@ -2109,24 +2971,16 @@ ${tipLines}${dispNote}${rawNote}</div>
     document.getElementById('portCorr').innerHTML = '<div class="port-empty">Selecione ao menos 2 fundos</div>';
     return;
   }
-  const corr  = historyData.correlation;
-  const names = selected.map(c => shortName(c));
-  const th    = '<tr><th></th>' + names.map(n => `<th>${n}</th>`).join('') + '</tr>';
-  const rows  = selected.map((ca, i) =>
-    `<tr><th>${names[i]}</th>` +
-    selected.map((cb, j) => {
-      if (i === j) return `<td style="color:var(--muted)">\u2014</td>`;
-      const v   = corr[ca]?.[cb] ?? 0;
-      const abs = Math.abs(v);
-      const bg  = `rgba(${Math.round(abs*180)},${Math.round((1-abs)*80+80)},80,0.22)`;
-      const col = abs > 0.7 ? 'var(--red)' : abs < 0.35 ? 'var(--green)' : 'var(--text)';
-      return `<td style="background:${bg};color:${col}">${v.toFixed(2)}</td>`;
-    }).join('') + '</tr>'
-  ).join('');
-  document.getElementById('portCorr').innerHTML = `<div class="corr-table-wrap"><table class="corr-table">${th}${rows}</table></div>`;
+  // Interactive heatmap with click-to-scatter
+  const heatmapHtml = buildCorrHeatmap(selected);
+  document.getElementById('portCorr').innerHTML = heatmapHtml
+    ? heatmapHtml
+    : '<div class="port-empty">Correlação indisponível</div>';
 
   // Atualiza simulador de IR sempre que o portfólio mudar
   renderIR();
+  renderCCTimeline();
+  checkConcentrationAlerts();
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -2368,13 +3222,13 @@ function renderIR() {
   let html = `<div class="ir-table-wrap"><table class="ir-table">
     <thead><tr>
       <th>Fundo</th>
-      <th>Ret. alvo</th>
+      <th title="Retorno alvo estimado com base no histórico do fundo (bruto de IR)">Retorno alvo*</th>
       <th>Aporte</th>
-      <th>Valor bruto</th>
-      <th>IR total</th>
-      <th>Custo fiscal</th>
-      <th>Valor líquido</th>
-      <th>CAGR líquido</th>
+      <th title="Valor bruto projetado no resgate, antes de qualquer tributação">Valor bruto</th>
+      <th title="Total de imposto de renda pago — inclui come-cotas (fundos TR) e IR no resgate">IR total pago</th>
+      <th title="Alíquota real considerando o custo de oportunidade do capital antecipado via come-cotas. RV = sempre 15%. TR = mais, porque o come-cotas retira capital que deixou de crescer.">Custo real do IR</th>
+      <th title="O que fica no seu bolso após todos os impostos">O que fica com você</th>
+      <th title="Taxa de crescimento anual já descontado o imposto de renda">Retorno a.a. líquido</th>
     </tr></thead><tbody>`;
 
   for (const row of rows) {
@@ -3938,28 +4792,34 @@ function mcA2M(rA, sA) {
 }
 
 // Deterministic accumulation path (annual compounding, monthly aportes)
-function mcDetPath(P, M, rAnnual, years) {
+function mcDetPath(P, M, rAnnual, years, growth) {
   const rm = Math.pow(1 + rAnnual / 100, 1 / 12) - 1;
+  const g  = (growth || 0) / 100;
   let b = P;
   const path = [P];
   for (let y = 1; y <= years; y++) {
-    for (let m = 0; m < 12; m++) b = b * (1 + rm) + M;
+    const My = M * Math.pow(1 + g, y - 1);
+    for (let m = 0; m < 12; m++) b = b * (1 + rm) + My;
     path.push(b);
   }
   return path;
 }
 
 // Monte Carlo accumulation: N paths, annual steps stored
-function mcSimulate(P, M, rAnnual, sigmaAnnual, years, N) {
+function mcSimulate(P, M, rAnnual, sigmaAnnual, years, N, growth) {
   const { mu_m, sigm } = mcA2M(rAnnual, sigmaAnnual);
+  const g = (growth || 0) / 100;
   // all[y] = Float32Array of N balances at end of year y
   const all = Array.from({ length: years + 1 }, () => new Float32Array(N));
   for (let n = 0; n < N; n++) {
     let b = P;
     all[0][n] = b;
     for (let y = 1; y <= years; y++) {
+      // Aporte do ano y: cresce g% a cada virada de ano
+      // Ano 1 → M, Ano 2 → M*(1+g), Ano y → M*(1+g)^(y-1)
+      const My = M * Math.pow(1 + g, y - 1);
       for (let m = 0; m < 12; m++) {
-        b = b * Math.exp(mu_m + sigm * mcRandn()) + M;
+        b = b * Math.exp(mu_m + sigm * mcRandn()) + My;
       }
       all[y][n] = b < 0 ? 0 : b;
     }
@@ -4087,6 +4947,7 @@ function mcGetParams() {
     M:            parseFloat(document.getElementById('mcAporteMensal').value)  || 0,
     anos:         parseInt(document.getElementById('mcAnos').value)            || 10,
     infl:         parseFloat(document.getElementById('mcInfl').value)          || 4.5,
+    growth:       parseFloat(document.getElementById('mcGrowth').value)        || 0,
     retorno:      retorno,
     volatilidade: volatilidade,
     fromAuto,
@@ -4100,8 +4961,12 @@ function mcRun() {
   const btn = document.getElementById('mcRunBtn');
   const note = document.getElementById('mcNote');
   btn.disabled = true;
-  note.textContent = 'calculando…';
+  const N = MCPortState.N;
+  note.textContent = N >= 20000
+    ? 'calculando ' + N.toLocaleString('pt-BR') + ' caminhos… aguarde'
+    : 'calculando…';
 
+  // Larger delay for Ultra to ensure the UI updates before blocking
   setTimeout(function() {
     try {
       _mcRunCore();
@@ -4109,7 +4974,7 @@ function mcRun() {
       note.textContent = 'Erro: ' + e.message;
     }
     btn.disabled = false;
-  }, 20);
+  }, N >= 20000 ? 60 : 20);
 }
 
 function _mcRunCore() {
@@ -4129,8 +4994,8 @@ function _mcRunCore() {
   const years = p.anos;
 
   // Run simulation
-  const all = mcSimulate(p.P, p.M, p.retorno, p.volatilidade, years, N);
-  const det = mcDetPath(p.P, p.M, p.retorno, years);
+  const all = mcSimulate(p.P, p.M, p.retorno, p.volatilidade, years, N, p.growth);
+  const det = mcDetPath(p.P, p.M, p.retorno, years, p.growth);
 
   // Final year percentiles
   const finalCol = all[years];
@@ -4176,10 +5041,13 @@ function _mcRunCore() {
 
   // IR summary for median scenario
   mcRenderIRSummary(p, p50, p25, p75);
+  mcRunRetire();
 
   const src = MCPortState.source === 'portfolio' ? 'portfólio' : 'fundo';
+  const growthNote = p.growth > 0 ? ' · crescimento aportes +' + p.growth.toFixed(1) + '%/ano' : '';
   note.textContent = N.toLocaleString('pt-BR') + ' simulações · '
-    + src + ' · ret. ' + p.retorno.toFixed(1) + '% a.a. · vol. ' + p.volatilidade.toFixed(1) + '% a.a.';
+    + src + ' · ret. ' + p.retorno.toFixed(1) + '% a.a. · vol. ' + p.volatilidade.toFixed(1) + '% a.a.'
+    + growthNote;
 }
 
 function _mcRenderChart(labels, p10, p25, p50, p75, p90, det) {
@@ -4209,7 +5077,7 @@ function _mcRenderChart(labels, p10, p25, p50, p75, p90, det) {
     return;
   }
 
-  MCPortState.chartInst = new Chart(ctx, {
+  const ch = new Chart(ctx, {
     type: 'line',
     data: { labels, datasets },
     options: {
@@ -4229,7 +5097,7 @@ function _mcRenderChart(labels, p10, p25, p50, p75, p90, det) {
               const map = {
                 'P10':'P10 (pior 10%)', 'P25':'P25', 'P25b':null,
                 'P75':null, 'P75b':null, 'P90':'P90 (melhor 10%)',
-                'Mediana':'Mediana (P50)', 'Taxa fixa':'Taxa fixa (sem vol.)'
+                'Mediana':'Cenário típico (mediana)', 'Taxa fixa':'Retorno fixo (sem oscilação)'
               };
               const lbl = map[c.dataset.label];
               if (!lbl) return null;
@@ -4255,6 +5123,8 @@ function _mcRenderChart(labels, p10, p25, p50, p75, p90, det) {
       }
     }
   });
+  MCPortState.chartInst = ch;
+  mcWireCrosshair(ctx, function() { return MCPortState.chartInst; });
 }
 
 // ── IR summary for median scenario ────────────────────────────────────────
@@ -4334,6 +5204,2288 @@ function initMCSelect() {
 // ── Stub for old renderAportes (now unused from análise tab) ──────────────
 function renderAportes() {}
 function initAportesSelect() { initMCSelect(); }
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// CROSSHAIR PLUGIN (Chart.js)
+// ════════════════════════════════════════════════════════════════════════════
+Chart.register({
+  id: 'mcCrosshair',
+  afterDraw(chart) {
+    if (!chart._mcCX) return;
+    const ctx = chart.ctx, ys = chart.scales.y, xs = chart.scales.x;
+    if (!ys || !xs) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(chart._mcCX, ys.top);
+    ctx.lineTo(chart._mcCX, ys.bottom);
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    ctx.strokeStyle = dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.stroke();
+    ctx.restore();
+  }
+});
+
+function mcWireCrosshair(canvas, getChart) {
+  canvas.addEventListener('mousemove', function(e) {
+    const ch = getChart();
+    if (!ch) return;
+    ch._mcCX = e.clientX - canvas.getBoundingClientRect().left;
+    ch.update('none');
+  });
+  canvas.addEventListener('mouseleave', function() {
+    const ch = getChart();
+    if (!ch) return;
+    ch._mcCX = null;
+    ch.update('none');
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// FAT TAILS
+// ════════════════════════════════════════════════════════════════════════════
+
+function mcToggleAdvanced() {
+  const panel = document.getElementById('mcAdvPanel');
+  const btn   = document.getElementById('mcAdvToggle');
+  const open  = panel.classList.toggle('open');
+  btn.classList.toggle('active', open);
+  btn.textContent = open ? '⚙ avançado (ativo)' : '⚙ avançado';
+}
+
+function mcSampleReturn(mu_m, sigm) {
+  // Fat tails: Gaussian mixture calibrated for Brazilian equity funds
+  // 1.7% monthly probability of a crisis month: -12pp shock + vol 2.5x
+  // ~6 truly extreme months in 30 years (Mar/2020, Oct/2008, Sep/2015, etc.)
+  const fatTails = document.getElementById('mcFatTails')?.checked;
+  if (fatTails && Math.random() < 0.017) {
+    return Math.exp(mu_m + (-0.12) + sigm * 2.5 * mcRandn()) - 1;
+  }
+  return Math.exp(mu_m + sigm * mcRandn()) - 1;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MC SIMULATE — updated to use mcSampleReturn (fat tails aware)
+// ════════════════════════════════════════════════════════════════════════════
+
+function mcSimulateFT(P, M, rAnnual, sigmaAnnual, years, N, growth) {
+  const { mu_m, sigm } = mcA2M(rAnnual, sigmaAnnual);
+  const g = (growth || 0) / 100;
+  const all = Array.from({ length: years + 1 }, () => new Float32Array(N));
+  for (let n = 0; n < N; n++) {
+    let b = P;
+    all[0][n] = b;
+    for (let y = 1; y <= years; y++) {
+      const My = M * Math.pow(1 + g, y - 1);
+      for (let m = 0; m < 12; m++) {
+        b = b * (1 + mcSampleReturn(mu_m, sigm)) + My;
+      }
+      all[y][n] = b < 0 ? 0 : b;
+    }
+  }
+  return all;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// WITHDRAWAL PHASE (Fase de Retirada)
+// ════════════════════════════════════════════════════════════════════════════
+
+const MCRetireState = {
+  retireChartInst:   null,
+  survivalChartInst: null,
+  seqChartInstA:     null,
+  seqChartInstB:     null,
+  lastAccumFinal:    null,  // Float32Array of final balances from accumulation
+  lastParams:        null,  // params from last accumulation run
+};
+
+function mcSimRetire(starts, saque, infl, rAnnual, sigmaAnnual, years, N) {
+  const { mu_m, sigm } = mcA2M(rAnnual, sigmaAnnual);
+  const gi = Math.pow(1 + infl / 100, 1 / 12) - 1;
+  // Pre-build withdrawal schedule (corrigido pela inflação)
+  const wSched = new Float64Array(years * 12);
+  let w0 = saque;
+  // saque is monthly in today's R$; inflate forward
+  for (let m = 0; m < years * 12; m++) { wSched[m] = w0; w0 *= (1 + gi); }
+
+  const all = Array.from({ length: years + 1 }, () => new Float32Array(N));
+  for (let n = 0; n < N; n++) {
+    let b = starts[n];
+    all[0][n] = b;
+    let depleted = false;
+    for (let y = 1; y <= years; y++) {
+      if (depleted) { all[y][n] = 0; continue; }
+      const base = (y - 1) * 12;
+      for (let m = 0; m < 12; m++) {
+        b = b * (1 + mcSampleReturn(mu_m, sigm)) - wSched[base + m];
+        if (b < 0) { b = 0; depleted = true; break; }
+      }
+      all[y][n] = b;
+    }
+  }
+  return all;
+}
+
+function mcRunRetire() {
+  const retireSection = document.getElementById('mcRetireSection');
+  if (!retireSection || retireSection.style.display === 'none') return;
+  if (!MCRetireState.lastAccumFinal || !MCRetireState.lastParams) return;
+
+  const saque     = parseFloat(document.getElementById('mcSaque').value)      || 15000;
+  const anos      = parseInt(document.getElementById('mcRetireAnos').value)   || 25;
+  const retInput  = parseFloat(document.getElementById('mcRetireRet').value);
+  const p         = MCRetireState.lastParams;
+  const ret       = (!isNaN(retInput) && retInput > 0) ? retInput : p.retorno;
+  const vol       = p.volatilidade;
+  const N         = MCPortState.N;
+  const infl      = p.infl;
+
+  // Use the actual distribution of final balances from accumulation
+  const starts = MCRetireState.lastAccumFinal;
+
+  const all = mcSimRetire(starts, saque, infl, ret, vol, anos, N);
+
+  // Survival probability per year
+  const survival = Array.from({ length: anos + 1 }, (_, y) => {
+    const col = all[y];
+    let alive = 0;
+    for (let n = 0; n < N; n++) if (col[n] > 0) alive++;
+    return (alive / N) * 100;
+  });
+
+  // Percentile paths
+  function retirePctPath(pv) {
+    return Array.from({ length: anos + 1 }, (_, y) => Math.round(mcPct(all[y], pv)));
+  }
+  const rp10 = retirePctPath(10), rp25 = retirePctPath(25), rp50 = retirePctPath(50);
+  const rp75 = retirePctPath(75), rp90 = retirePctPath(90);
+
+  const labels = Array.from({ length: anos + 1 }, (_, i) => {
+    const yr = new Date().getFullYear() + p.anos + i;
+    return i === 0 ? 'Início' : String(yr);
+  });
+
+  // Verdict
+  const survFinal = survival[anos];
+  const verdEl = document.getElementById('mcVerdict');
+  verdEl.style.display = '';
+  if (survFinal >= 90) {
+    verdEl.className = 'mc-verdict green';
+    verdEl.innerHTML = `✓ <strong>Patrimônio robusto:</strong> ${survFinal.toFixed(0)}% dos ${N.toLocaleString('pt-BR')} cenários ainda têm saldo ao final de ${anos} anos com saques de ${fmtBRL(saque)}/mês (hoje). O portfólio sustenta essa retirada com alta probabilidade.`;
+  } else if (survFinal >= 65) {
+    verdEl.className = 'mc-verdict amber';
+    verdEl.innerHTML = `▲ <strong>Atenção:</strong> ${survFinal.toFixed(0)}% dos cenários sobrevivem ao prazo completo. Em ${(100-survFinal).toFixed(0)}% dos casos o patrimônio se esgota antes de ${anos} anos. Considere reduzir o saque ou aumentar o prazo de acumulação.`;
+  } else {
+    verdEl.className = 'mc-verdict red';
+    verdEl.innerHTML = `⚠ <strong>Risco alto de ruína:</strong> apenas ${survFinal.toFixed(0)}% dos cenários sobrevivem ${anos} anos com saques de ${fmtBRL(saque)}/mês. Com ${(100-survFinal).toFixed(0)}% de probabilidade o patrimônio se esgota antes do prazo.`;
+  }
+
+  // Render retire band chart
+  document.getElementById('mcRetireChartWrap').style.display = '';
+  _mcRenderRetireChart(labels, rp10, rp25, rp50, rp75, rp90);
+
+  // Render survival chart
+  document.getElementById('mcSurvivalWrap').style.display = '';
+  _mcRenderSurvivalChart(labels, survival);
+
+  // Show sequence of returns section
+  document.getElementById('mcSeqHeader').style.display = 'flex';
+
+  // Render sequence if panel already open
+  if (document.getElementById('mcSeqPanel').classList.contains('open')) {
+    mcRenderSeqOfReturns(mcPct(starts, 50), saque, infl, ret, vol, anos);
+  }
+}
+
+function _mcRenderRetireChart(labels, p10, p25, p50, p75, p90) {
+  const ctx = document.getElementById('mcRetireChart');
+  if (!ctx) return;
+  const datasets = [
+    { label:'P10r',  data:p10, borderColor:'transparent', backgroundColor:'rgba(184,50,50,0.14)', fill:'+1', tension:0, pointRadius:0 },
+    { label:'P25r',  data:p25, borderColor:'transparent', backgroundColor:'rgba(184,50,50,0.14)', fill:false, tension:0, pointRadius:0 },
+    { label:'P25rb', data:p25, borderColor:'transparent', backgroundColor:'rgba(26,74,138,0.16)', fill:'+1', tension:0, pointRadius:0 },
+    { label:'P75r',  data:p75, borderColor:'transparent', backgroundColor:'rgba(26,74,138,0.16)', fill:false, tension:0, pointRadius:0 },
+    { label:'P75rb', data:p75, borderColor:'transparent', backgroundColor:'rgba(26,122,82,0.14)', fill:'+1', tension:0, pointRadius:0 },
+    { label:'P90r',  data:p90, borderColor:'transparent', backgroundColor:'rgba(26,122,82,0.14)', fill:false, tension:0, pointRadius:0 },
+    { label:'Mediana', data:p50, borderColor:'#1a4a8a', backgroundColor:'transparent', fill:false, tension:0, pointRadius:0, borderWidth:2 },
+  ];
+  if (MCRetireState.retireChartInst) {
+    MCRetireState.retireChartInst.data.labels   = labels;
+    MCRetireState.retireChartInst.data.datasets = datasets;
+    MCRetireState.retireChartInst.update('none');
+    return;
+  }
+  const ch = new Chart(ctx, {
+    type:'line', data:{labels, datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{
+        legend:{display:false},
+        mcCrosshair:{},
+        tooltip:{
+          backgroundColor:'rgba(26,25,22,0.92)',
+          titleColor:'#aaa', bodyColor:'#e8e6e0',
+          titleFont:{family:'Courier New',size:11}, bodyFont:{family:'Courier New',size:11},
+          padding:10,
+          callbacks:{
+            label:function(c){
+              const skip = ['P10r','P25r','P25rb','P75r','P75rb'];
+              if (skip.includes(c.dataset.label)) return null;
+              const map = {'P90r':'P90','Mediana':'Cenário típico (mediana)'};
+              return '  ' + (map[c.dataset.label]||c.dataset.label) + ':  ' + mcFmtShort(c.parsed.y);
+            },
+            filter:function(i){ return !['P25r','P25rb','P75r','P75rb','P10r'].includes(i.dataset.label); }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{font:{family:'Courier New',size:10},color:'#888',maxRotation:0,autoSkip:true,maxTicksLimit:12},grid:{display:false}},
+        y:{ticks:{font:{family:'Courier New',size:10},color:'#888',callback:function(v){return mcFmtShort(v);}},grid:{color:'rgba(128,128,128,0.08)'}}
+      }
+    }
+  });
+  MCRetireState.retireChartInst = ch;
+  mcWireCrosshair(ctx, function(){ return MCRetireState.retireChartInst; });
+}
+
+function _mcRenderSurvivalChart(labels, survival) {
+  const ctx = document.getElementById('mcSurvivalChart');
+  if (!ctx) return;
+  const colors = survival.map(v => v >= 90 ? 'rgba(26,122,82,0.75)' : v >= 65 ? 'rgba(160,92,0,0.75)' : 'rgba(184,50,50,0.75)');
+  if (MCRetireState.survivalChartInst) {
+    MCRetireState.survivalChartInst.data.labels = labels;
+    MCRetireState.survivalChartInst.data.datasets[0].data = survival;
+    MCRetireState.survivalChartInst.data.datasets[0].backgroundColor = colors;
+    MCRetireState.survivalChartInst.update('none');
+    return;
+  }
+  MCRetireState.survivalChartInst = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ data:survival, backgroundColor:colors, borderRadius:2, borderSkipped:false }] },
+    options:{
+      responsive:true, maintainAspectRatio:false, animation:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label:function(c){ return '  Sobrevivência: ' + c.parsed.y.toFixed(1) + '% dos cenários'; }
+          },
+          backgroundColor:'rgba(26,25,22,0.92)', titleColor:'#aaa', bodyColor:'#e8e6e0',
+          titleFont:{family:'Courier New',size:11}, bodyFont:{family:'Courier New',size:11}
+        }
+      },
+      scales:{
+        x:{ticks:{font:{family:'Courier New',size:9},color:'#888',maxRotation:0,autoSkip:true,maxTicksLimit:10},grid:{display:false}},
+        y:{min:0, max:100, ticks:{font:{family:'Courier New',size:9},color:'#888',callback:function(v){return v+'%';}},grid:{color:'rgba(128,128,128,0.06)'}}
+      }
+    }
+  });
+}
+
+function mcToggleSeq() {
+  const panel  = document.getElementById('mcSeqPanel');
+  const btn    = document.getElementById('mcSeqToggle');
+  const isOpen = panel.classList.toggle('open');
+  btn.textContent = isOpen ? 'ocultar' : 'ver análise';
+  if (isOpen && MCRetireState.lastParams && MCRetireState.lastAccumFinal) {
+    const p     = MCRetireState.lastParams;
+    const saque = parseFloat(document.getElementById('mcSaque').value) || 15000;
+    const anos  = parseInt(document.getElementById('mcRetireAnos').value) || 25;
+    const ret   = parseFloat(document.getElementById('mcRetireRet').value) || p.retorno;
+    const vol   = p.volatilidade;
+    const infl  = p.infl;
+    mcRenderSeqOfReturns(mcPct(MCRetireState.lastAccumFinal, 50), saque, infl, ret, vol, anos);
+  }
+}
+
+// ── Sequence of returns: deterministic approach (same returns, different order) ──
+function mcInvNorm(p) {
+  const c = [-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838,-2.549732539343734,4.374664141464968,2.938163982698783];
+  const d = [7.784695709041462e-03,3.224671290700398e-01,2.445134137142996,3.754408661907416];
+  const a = [0,-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239];
+  const b2 = [0,-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,6.680131188771972e+01,-1.328068155288572e+01];
+  const pL=0.02425, pH=1-pL;
+  if(p<pL){const q=Math.sqrt(-2*Math.log(p));return(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);}
+  if(p<=pH){const q=p-0.5,r=q*q;return(((((a[1]*r+a[2])*r+a[3])*r+a[4])*r+a[5])*r+a[6])*q/(((((b2[1]*r+b2[2])*r+b2[3])*r+b2[4])*r+b2[5])*r+1);}
+  const q=Math.sqrt(-2*Math.log(1-p));return-(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5])/((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+
+function mcRenderSeqOfReturns(P0, saque, infl, rMean, rSigma, years) {
+  const sigA = rSigma/100;
+  const muA  = Math.log(1 + rMean/100) - 0.5*sigA*sigA;
+  const N    = years;
+  const gi   = Math.pow(1+infl/100,1/12)-1;
+
+  // Build N quantile points of the annual distribution — deterministic, reproducible
+  const pool = Array.from({length:N}, (_,i) => Math.exp(muA + sigA*mcInvNorm((i+1)/(N+1))) - 1);
+  const favorable   = [...pool].sort((a,b) => b - a);  // best first
+  const unfavorable = [...pool].sort((a,b) => a - b);  // worst first
+
+  function simulate(returns) {
+    let b = P0, w = saque;
+    const path = [P0];
+    for (let y = 0; y < returns.length; y++) {
+      const rm = Math.pow(1 + returns[y], 1/12) - 1;
+      for (let m = 0; m < 12; m++) { b = b*(1+rm) - w; w *= (1+gi); if(b<0) b=0; }
+      path.push(Math.max(0, b));
+      if (b <= 0) { for (let r = y+2; r <= returns.length; r++) path.push(0); break; }
+    }
+    return path;
+  }
+
+  const pathA = simulate(favorable);
+  const pathB = simulate(unfavorable);
+  const labels = Array.from({length:N+1}, (_,i) => i===0?'Início':'Ano '+i);
+  const avgRet = pool.reduce((s,r)=>s+r,0)/pool.length;
+
+  const panel = document.getElementById('mcSeqPanel');
+  panel.innerHTML = `
+    <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:8px;padding:1rem 1.2rem;margin-top:0.5rem">
+      <p style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted);line-height:1.7;margin-bottom:0.9rem">
+        Dois aposentados com <strong>o mesmo patrimônio e os mesmos saques</strong> — retorno médio idêntico de
+        <strong>${(avgRet*100).toFixed(1)}% a.a.</strong> — com a <em>ordem dos anos</em> invertida:
+        melhores primeiro vs. piores primeiro. A diferença final revela o risco de sequência.
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <div>
+          <div style="font-family:'Courier New',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--green);margin-bottom:5px">↑ Anos favoráveis primeiro</div>
+          <div style="position:relative;height:130px"><canvas id="mcSeqChartA"></canvas></div>
+          <div style="font-family:'Courier New',monospace;font-size:0.68rem;color:var(--muted);margin-top:5px">Saldo final: <strong style="color:${pathA[pathA.length-1]>0?'var(--green)':'var(--red)'}">${pathA[pathA.length-1]>0?mcFmtShort(pathA[pathA.length-1]):'Esgotado'}</strong></div>
+        </div>
+        <div>
+          <div style="font-family:'Courier New',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--red);margin-bottom:5px">↓ Anos desfavoráveis primeiro</div>
+          <div style="position:relative;height:130px"><canvas id="mcSeqChartB"></canvas></div>
+          <div style="font-family:'Courier New',monospace;font-size:0.68rem;color:var(--muted);margin-top:5px">Saldo final: <strong style="color:var(--red)">${pathB[pathB.length-1]>0?mcFmtShort(pathB[pathB.length-1]):'Esgotado'}</strong></div>
+        </div>
+      </div>
+      ${(function(){
+        const fA=pathA[pathA.length-1], fB=pathB[pathB.length-1];
+        if (fA>0 && fB<=0) return `<p style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--red);background:var(--red-light);border:0.5px solid var(--red);border-radius:6px;padding:7px 10px;margin-top:0.7rem;line-height:1.5">⚠ <strong>Zona crítica:</strong> o caminho desfavorável esgota o patrimônio enquanto o favorável sobrevive. A ordem dos retornos nos primeiros anos é determinante para a sua aposentadoria.</p>`;
+        if (fA>0 && fB>0 && fA/fB > 2.5) return `<p style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--amber);background:var(--amber-light);border:0.5px solid var(--amber);border-radius:6px;padding:7px 10px;margin-top:0.7rem;line-height:1.5">▲ Diferença de ${(fA/fB).toFixed(1)}× entre os caminhos. Um crash nos primeiros anos da retirada é significativamente mais prejudicial que no final. Vale manter reserva de liquidez para os primeiros anos.</p>`;
+        return `<p style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--green);background:var(--green-light);border:0.5px solid var(--green);border-radius:6px;padding:7px 10px;margin-top:0.7rem;line-height:1.5">✓ Diferença de ${fA>0&&fB>0?(fA/fB).toFixed(1)+'×':'—'} entre os caminhos — relativamente contida. O patrimônio é robusto o suficiente para absorver variações na sequência de retornos.</p>`;
+      })()}
+    </div>`;
+
+  setTimeout(function() {
+    ['A','B'].forEach(function(letter) {
+      const id    = 'mcSeqChart' + letter;
+      const path  = letter === 'A' ? pathA : pathB;
+      const color = letter === 'A' ? '#1a7a52' : '#b83232';
+      const stateKey = 'seqChartInst' + letter;
+      const canvas = document.getElementById(id);
+      if (!canvas) return;
+      if (MCRetireState[stateKey]) { MCRetireState[stateKey].destroy(); MCRetireState[stateKey] = null; }
+      MCRetireState[stateKey] = new Chart(canvas, {
+        type:'line',
+        data:{ labels, datasets:[{ data:path, borderColor:color,
+          backgroundColor:color.replace('#','rgba(').replace(/(..)(..)(..)/, function(_,r,g,b){ return parseInt(r,16)+','+parseInt(g,16)+','+parseInt(b,16)+',0.08)'; }),
+          fill:true, tension:0, pointRadius:0, borderWidth:1.5 }] },
+        options:{ responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{ legend:{display:false}, tooltip:{enabled:false} },
+          scales:{
+            x:{ticks:{color:'#888',font:{family:'Courier New',size:8},maxTicksLimit:6},grid:{display:false}},
+            y:{ticks:{color:'#888',font:{family:'Courier New',size:8},callback:function(v){return mcFmtShort(v);}},grid:{color:'rgba(128,128,128,0.06)'}}
+          } }
+      });
+    });
+  }, 0);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CONCENTRATION ALERTS
+// ════════════════════════════════════════════════════════════════════════════
+
+function checkConcentrationAlerts() {
+  const el = document.getElementById('concAlert');
+  if (!el) return;
+
+  const weights  = getWeights();
+  const selected = Object.keys(weights);
+  const total    = Object.values(weights).reduce((a,b)=>a+b, 0);
+  if (selected.length === 0 || total === 0) { el.innerHTML = ''; return; }
+
+  const alerts = [];
+
+  // Check individual concentration > 40%
+  for (const cnpj of selected) {
+    const pct = weights[cnpj] / total * 100;
+    if (pct > 40) {
+      const nome = (FUND_META[cnpj]||{}).nome || cnpj;
+      alerts.push({ type:'amber', msg: `<strong>${nome}</strong> representa ${pct.toFixed(0)}% do portfólio. Concentração acima de 40% aumenta o risco idiossincrático: um evento específico desse fundo (mudança de gestor, saques massivos, erro de tese) pode impactar desproporcionalmente o resultado.` });
+    }
+  }
+
+  // Check pairwise correlation > 0.85 (only if historyData available)
+  if (historyData && historyData.correlation && selected.length >= 2) {
+    const corr = historyData.correlation;
+    for (let i = 0; i < selected.length; i++) {
+      for (let j = i + 1; j < selected.length; j++) {
+        const ca = selected[i], cb = selected[j];
+        const rho = corr[ca]?.[cb] ?? 0;
+        if (rho > 0.85) {
+          const nA = shortName(ca), nB = shortName(cb);
+          alerts.push({ type:'amber', msg: `<strong>${nA}</strong> e <strong>${nB}</strong> têm correlação de ${rho.toFixed(2)} — acima de 0,85. Fundos altamente correlacionados protegem pouco em quedas: ambos tendem a cair juntos quando o mercado corrige. Diversificação real requer correlações baixas.` });
+        }
+      }
+    }
+  }
+
+  if (!alerts.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = alerts.map(function(a) {
+    return `<div class="conc-alert ${a.type === 'red' ? 'red-alert' : ''}">⚠ <span>${a.msg}</span></div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// COME-COTAS TIMELINE
+// ════════════════════════════════════════════════════════════════════════════
+
+function renderCCTimeline() {
+  const el = document.getElementById('irCCTimeline');
+  if (!el) return;
+
+  const weights  = getWeights();
+  const selected = Object.keys(weights);
+  if (selected.length === 0) { el.innerHTML = ''; return; }
+
+  const total = Object.values(weights).reduce((a,b)=>a+b,0);
+  if (total === 0) { el.innerHTML = ''; return; }
+
+  // Only show for TR funds
+  const trFunds = selected.filter(c => (FUND_META[c]||{}).trib === 'TR');
+  if (trFunds.length === 0) { el.innerHTML = ''; return; }
+
+  const patrimonio = parsePatrimonio();
+  const anos       = parseInt(document.getElementById('irSlider')?.value || 5);
+
+  // For each TR fund, compute annual come-cotas payments
+  const hoje = new Date();
+  const fim  = new Date(hoje.getTime() + anos * 365.25 * 86400000);
+
+  // Build year-by-year CC totals across TR funds
+  const yearTotals = {};
+  for (let y = hoje.getFullYear(); y <= hoje.getFullYear() + anos; y++) {
+    yearTotals[y] = 0;
+  }
+
+  for (const cnpj of trFunds) {
+    const w      = weights[cnpj] / total;
+    const aporte = patrimonio * w;
+    const meta   = FUND_META[cnpj] || {};
+    const fData  = funds.find(f => f.cnpjFmt === cnpj);
+    const target = fData ? calcTargetReturn(fData) : null;
+    if (!target) continue;
+    const r = target.value / 100;
+    const rday = Math.pow(1+r, 1/365.25) - 1;
+
+    // Simulate CC payments
+    let b = aporte, base = aporte, prev = new Date(hoje);
+    for (let yr = hoje.getFullYear(); yr <= hoje.getFullYear()+anos+1; yr++) {
+      for (const ccDate of [new Date(yr,4,31), new Date(yr,10,30)]) {
+        if (ccDate <= hoje || ccDate >= fim) continue;
+        const dias = (ccDate - prev) / 86400000;
+        b = b * Math.pow(1+rday, dias);
+        const rend = b - base;
+        if (rend > 0) {
+          const ir = rend * 0.15;
+          if (!yearTotals[yr]) yearTotals[yr] = 0;
+          yearTotals[yr] += ir;
+          b -= ir;
+        }
+        base = b;
+        prev = ccDate;
+      }
+    }
+  }
+
+  const years  = Object.keys(yearTotals).filter(y => yearTotals[y] > 0).map(Number).sort();
+  if (!years.length) { el.innerHTML = ''; return; }
+
+  // Compute opportunity cost: what each CC payment would have grown to by end of horizon
+  const avgRet   = trFunds.reduce((s, c) => {
+    const fd = funds.find(f => f.cnpjFmt === c);
+    const t  = fd ? calcTargetReturn(fd) : null;
+    return s + (t ? t.value : 0);
+  }, 0) / trFunds.length / 100;
+
+  const totCC = years.reduce((s, y) => s + yearTotals[y], 0);
+
+  el.innerHTML = `<div class="ir-cc-timeline">
+    <div class="ir-cc-title">Come-cotas — pagamentos semestrais (fundos TR)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:0.7rem">
+      ${years.map(function(y) {
+        const v = yearTotals[y];
+        const yearsLeft = (hoje.getFullYear() + anos) - y;
+        const oppCost = v * (Math.pow(1+avgRet, yearsLeft) - 1);
+        return `<div style="flex:1;min-width:60px;padding:0.4rem 0.5rem;background:var(--surface);border:0.5px solid var(--border);border-radius:5px;text-align:center">
+          <div style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);margin-bottom:2px">${y}</div>
+          <div style="font-family:'Courier New',monospace;font-size:0.7rem;color:var(--red);font-weight:bold">${fmtBRL(v)}</div>
+          ${yearsLeft > 0 ? `<div style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);margin-top:1px" title="Custo de oportunidade: quanto esse capital deixou de crescer">+${fmtBRL(oppCost)} potencial</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted);line-height:1.6">
+      Total antecipado ao fisco: <strong style="color:var(--red)">${fmtBRL(totCC)}</strong> ·
+      Este capital é retirado antes do resgate e <em>deixa de crescer</em> nos anos restantes.
+      O custo real é maior do que os pagamentos nominais sugerem.
+    </div>
+  </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CORR HEATMAP INTERATIVO
+// ════════════════════════════════════════════════════════════════════════════
+
+let corrScatterChart = null;
+
+function buildCorrHeatmap(selected) {
+  if (!historyData || !historyData.correlation || selected.length < 2) return null;
+  const corr  = historyData.correlation;
+  const names = selected.map(function(c) { return shortName(c); });
+
+  let html = '<div class="corr-heatmap"><table>';
+  html += '<tr><th></th>' + names.map(function(n){ return `<th>${n}</th>`; }).join('') + '</tr>';
+
+  selected.forEach(function(ca, i) {
+    html += `<tr><th style="text-align:left;padding-right:8px">${names[i]}</th>`;
+    selected.forEach(function(cb, j) {
+      if (i === j) {
+        html += '<td style="color:var(--muted)">—</td>';
+        return;
+      }
+      const v   = corr[ca]?.[cb] ?? 0;
+      const abs = Math.abs(v);
+      const bg  = `rgba(${Math.round(abs*180)},${Math.round((1-abs)*80+80)},80,0.22)`;
+      const col = abs > 0.7 ? 'var(--red)' : abs < 0.35 ? 'var(--green)' : 'var(--text)';
+      html += `<td style="background:${bg};color:${col}" onclick="openCorrScatter('${ca}','${cb}')">${v.toFixed(2)}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</table></div>';
+  return html;
+}
+
+function openCorrScatter(ca, cb) {
+  if (!historyData) return;
+  const modal = document.getElementById('corrScatterModal');
+  const title = document.getElementById('corrScatterTitle');
+  const stats = document.getElementById('corrScatterStats');
+  if (!modal) return;
+
+  const nA = (FUND_META[ca]||{}).nome || ca;
+  const nB = (FUND_META[cb]||{}).nome || cb;
+  const corr = (historyData.correlation?.[ca]?.[cb] ?? 0);
+  title.textContent = `${shortName(ca)} × ${shortName(cb)}`;
+  stats.innerHTML = `Pearson ρ = <strong style="color:${Math.abs(corr)>0.7?'var(--red)':Math.abs(corr)<0.35?'var(--green)':'var(--text)'}">${corr.toFixed(3)}</strong> · retornos diários · ${historyData.commonDates.length} pregões`;
+
+  modal.style.display = 'flex';
+
+  // Build scatter data from daily returns
+  const retsA = historyData.funds[ca]?.returns || [];
+  const retsB = historyData.funds[cb]?.returns || [];
+  const n = Math.min(retsA.length, retsB.length);
+
+  // Sample at most 300 points to keep chart fast
+  const step = Math.max(1, Math.floor(n / 300));
+  const pts  = [];
+  for (let i = 0; i < n; i += step) pts.push({ x: retsA[i] * 100, y: retsB[i] * 100 });
+
+  // Regression line
+  const meanX = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+  const meanY = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+  const slope = pts.reduce((s,p)=>s+(p.x-meanX)*(p.y-meanY),0) /
+                pts.reduce((s,p)=>s+(p.x-meanX)**2,0);
+  const minX = Math.min(...pts.map(p=>p.x));
+  const maxX = Math.max(...pts.map(p=>p.x));
+  const regLine = [
+    { x: minX, y: meanY + slope*(minX - meanX) },
+    { x: maxX, y: meanY + slope*(maxX - meanX) },
+  ];
+
+  setTimeout(function() {
+    const ctx = document.getElementById('corrScatterCanvas');
+    if (!ctx) return;
+    if (corrScatterChart) { corrScatterChart.destroy(); corrScatterChart = null; }
+    corrScatterChart = new Chart(ctx, {
+      type:'scatter',
+      data:{ datasets:[
+        { label:'dias', data:pts, pointRadius:2, pointHoverRadius:4,
+          backgroundColor:'rgba(26,74,138,0.35)', borderColor:'transparent' },
+        { label:'regressão', data:regLine, type:'line', borderColor:'rgba(224,92,42,0.8)',
+          borderWidth:1.5, pointRadius:0, fill:false, tension:0, borderDash:[4,3] }
+      ]},
+      options:{
+        responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{
+            callbacks:{ label:function(c){
+              if(c.datasetIndex===1) return null;
+              return `${nA.split(' ')[0]}: ${c.parsed.x.toFixed(2)}%  ${nB.split(' ')[0]}: ${c.parsed.y.toFixed(2)}%`;
+            }}
+          }
+        },
+        scales:{
+          x:{ title:{display:true,text:shortName(ca)+' (%)',font:{family:'Courier New',size:10},color:'#888'},
+              ticks:{font:{family:'Courier New',size:9},color:'#888',callback:function(v){return v.toFixed(1)+'%';}},
+              grid:{color:'rgba(128,128,128,0.08)'}},
+          y:{ title:{display:true,text:shortName(cb)+' (%)',font:{family:'Courier New',size:10},color:'#888'},
+              ticks:{font:{family:'Courier New',size:9},color:'#888',callback:function(v){return v.toFixed(1)+'%';}},
+              grid:{color:'rgba(128,128,128,0.08)'}}
+        }
+      }
+    });
+  }, 0);
+}
+
+function closeCorrScatter() {
+  const modal = document.getElementById('corrScatterModal');
+  if (modal) modal.style.display = 'none';
+  if (corrScatterChart) { corrScatterChart.destroy(); corrScatterChart = null; }
+}
+
+// Keyboard close
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeCorrScatter();
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// EXPORTAR CARTEIRA CSV
+// ════════════════════════════════════════════════════════════════════════════
+
+function exportPortfolioCSV() {
+  const weights    = getWeights();
+  const selected   = Object.keys(weights);
+  const total      = Object.values(weights).reduce((a,b)=>a+b,0);
+  const patrimonio = parsePatrimonio();
+  if (!selected.length) return;
+
+  const cdiVal = (function() {
+    const s = [];
+    if (cdi.cagr12) s.push([1,cdi.cagr12]);
+    if (cdi.cagr36) s.push([3,cdi.cagr36]);
+    if (cdi.cagr60) s.push([5,cdi.cagr60]);
+    if (!s.length) return 12;
+    return s.reduce((a,[T,v])=>a+T*v,0) / s.reduce((a,[T])=>a+T,0);
+  })();
+
+  const rows = [['Fundo','CNPJ','Tipo','Tributação','Peso%','Valor R$','Ret.Alvo%','Vol%','Sharpe','CAGR12M%','CAGR36M%','CAGR60M%']];
+  for (const cnpj of selected) {
+    const pct     = (weights[cnpj] / total * 100).toFixed(1);
+    const valor   = (patrimonio * weights[cnpj] / total).toFixed(0);
+    const meta    = FUND_META[cnpj] || {};
+    const fData   = funds.find(f => f.cnpjFmt === cnpj);
+    const target  = fData ? calcTargetReturn(fData) : null;
+    const vol     = (function() {
+      if (!historyData || !historyData.funds[cnpj]) return '';
+      const r = historyData.funds[cnpj].returns;
+      const n = r.length, mean = r.reduce((a,b)=>a+b,0)/n;
+      const vari = r.reduce((a,x)=>a+(x-mean)**2,0)/(n-1);
+      return (Math.sqrt(vari*252)*100).toFixed(1);
+    })();
+    const ret   = target ? target.value.toFixed(1) : '';
+    const sharpe = (ret && vol) ? ((parseFloat(ret) - cdiVal) / parseFloat(vol)).toFixed(2) : '';
+    rows.push([
+      meta.nome || cnpj, cnpj, meta.tipo||'', meta.trib||'',
+      pct, valor, ret, vol, sharpe,
+      fData?.cagr12?.toFixed(2)||'', fData?.cagr36?.toFixed(2)||'', fData?.cagr60?.toFixed(2)||''
+    ]);
+  }
+
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'carteira_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// UI IMPROVEMENTS
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── 1. Tab title updates ───────────────────────────────────────────────────
+const TAB_TITLES = {
+  ranking:   'Ranking · Fundos',
+  portfolio: 'Portfólio · Fundos',
+  graficos:  'Gráficos · Fundos',
+  analise:   'Análise · Fundos',
+};
+
+// ── 2. Header status sync ──────────────────────────────────────────────────
+function syncHeaderStatus() {
+  const dot  = document.getElementById('headerDot');
+  const text = document.getElementById('headerStatusText');
+  const chip = document.getElementById('headerStatus');
+  const src  = document.getElementById('statusDot');
+  const srcT = document.getElementById('statusText');
+  const srcD = document.getElementById('statusDate');
+  if (!dot || !src) return;
+
+  // Mirror the footer status dot class
+  dot.className = src.className;
+  chip.className = 'header-status ' + (
+    src.classList.contains('ok')    ? 'ok' :
+    src.classList.contains('warn')  ? 'warn' :
+    src.classList.contains('error') ? 'error' : ''
+  );
+
+  // Build compact status text
+  const dateText = srcD ? srcD.textContent.replace('Referência: ', '') : '';
+  const parts = dateText.split(' · ');
+  const dateOnly = parts[0] || '';
+  text.textContent = dateOnly || srcT?.textContent || 'carregando…';
+}
+
+// Call syncHeaderStatus after load() populates the footer
+const _origLoad = window.load;
+// Patch will happen via MutationObserver instead
+(function() {
+  const observer = new MutationObserver(function() {
+    syncHeaderStatus();
+  });
+  const statusDot = document.getElementById('statusDot');
+  if (statusDot) observer.observe(statusDot.parentElement, { childList: true, subtree: true, characterData: true });
+  // Initial call
+  setTimeout(syncHeaderStatus, 100);
+  setTimeout(syncHeaderStatus, 1500);
+  setTimeout(syncHeaderStatus, 4000);
+})();
+
+// ── 3. Enhanced switchTab with title + animation ───────────────────────────
+const _origSwitchTab = switchTab;
+switchTab = function(name) {
+  // Update document title
+  if (TAB_TITLES[name]) document.title = TAB_TITLES[name];
+  // Call original
+  _origSwitchTab(name);
+};
+
+// ── 4. Period active visual feedback ──────────────────────────────────────
+const _origRecalc = recalcFromHistory;
+recalcFromHistory = function() {
+  _origRecalc();
+  document.getElementById('rankingTableWrap')?.classList.add('period-active');
+  document.getElementById('periodBarEl')?.classList.add('period-active-bar');
+};
+
+const _origClearPeriod = clearPeriod;
+clearPeriod = function() {
+  _origClearPeriod();
+  document.getElementById('rankingTableWrap')?.classList.remove('period-active');
+  document.getElementById('periodBarEl')?.classList.remove('period-active-bar');
+};
+
+// ── 5. Fund color dots in ranking ─────────────────────────────────────────
+const CHART_COLORS_UI = [
+  '#e05c2a','#1a7a52','#1a4a8a','#9c5c2a','#b83232',
+  '#a05c00','#7a5c9a','#157a6e','#5c3a9a','#c9960c',
+  '#2a7a4a','#6a3a2a','#3a6a9a','#8a5c3a'
+];
+
+// Map CNPJ → color index (stable, based on FUND_META key order)
+let fundColorMap = {};
+function initFundColors() {
+  const cnpjs = Object.keys(FUND_META);
+  cnpjs.forEach(function(cnpj, i) {
+    fundColorMap[cnpj] = CHART_COLORS_UI[i % CHART_COLORS_UI.length];
+  });
+}
+initFundColors();
+
+function getFundColor(cnpj) {
+  return fundColorMap[cnpj] || 'var(--muted)';
+}
+
+// ── 6. Patch render() to add color dots and inline alpha ──────────────────
+const _origRender = render;
+render = function() {
+  _origRender();
+  requestAnimationFrame(function() {
+    addColorDotsToTable();
+    highlightSortedColumn();
+    _addInlineAlpha();
+  });
+};
+
+function addColorDotsToTable() {
+  // Add color dots next to rank badges
+  document.querySelectorAll('tr.fund-row').forEach(function(row) {
+    const cnpjEl = row.querySelector('.fund-cnpj');
+    if (!cnpjEl) return;
+    const cnpj = cnpjEl.textContent.trim();
+    const color = getFundColor(cnpj);
+    // Check if dot already exists
+    if (row.querySelector('.fund-color-dot')) return;
+    const nameCell = row.querySelector('.fund-name');
+    if (nameCell && color) {
+      const dot = document.createElement('span');
+      dot.className = 'fund-color-dot';
+      dot.style.background = color;
+      nameCell.insertBefore(dot, nameCell.firstChild);
+    }
+  });
+}
+
+function highlightSortedColumn() {
+  // Highlight the primary sort column cells
+  const keyMap = { cagr12: 1, cagr36: 2, cagr60: 3, alpha: 4, inception: 5, tenure: 6 };
+  const colIndex = (keyMap[currentSort] || 1) + 1; // +1 for fund name column
+  // Remove previous
+  document.querySelectorAll('td.sorted-col').forEach(function(td) {
+    td.classList.remove('sorted-col');
+    td.classList.remove('sorted-primary');
+  });
+  // Add to current
+  document.querySelectorAll('tr.fund-row').forEach(function(row) {
+    const tds = row.querySelectorAll('td');
+    if (tds[colIndex - 1]) {
+      tds[colIndex - 1].classList.add('sorted-col');
+      tds[colIndex - 1].classList.add('sorted-primary');
+    }
+  });
+}
+
+// ── 7. Portfolio: accent border on rows with weight ────────────────────────
+const _origUpdatePortfolio = updatePortfolio;
+updatePortfolio = function() {
+  _origUpdatePortfolio();
+  requestAnimationFrame(updateFundRowWeightIndicators);
+};
+
+function updateFundRowWeightIndicators() {
+  document.querySelectorAll('#fundSelector .fund-row-port').forEach(function(row, i) {
+    const chk = row.querySelector('input[type=checkbox]');
+    const sl  = document.getElementById('sl-' + i);
+    if (!chk || !sl) return;
+    const hasWeight = chk.checked && parseInt(sl.value) > 0;
+    row.classList.toggle('has-weight', hasWeight);
+    // Also color the slider thumb to match fund color
+    const cnpj = chk.dataset.cnpj;
+    const color = getFundColor(cnpj);
+    if (color && hasWeight) {
+      sl.style.setProperty('--thumb-color', color);
+      // Direct style for webkit
+      sl.style.accentColor = color;
+    } else {
+      sl.style.accentColor = '';
+    }
+  });
+}
+
+// ── 8. Optimizer: animated dots while calculating ─────────────────────────
+const _origRunOptimizer = runOptimizer;
+runOptimizer = function() {
+  const status = document.getElementById('optStatus');
+  if (status) {
+    status.innerHTML = 'Calculando<span class="calc-dot">.</span><span class="calc-dot">.</span><span class="calc-dot">.</span>';
+  }
+  _origRunOptimizer();
+};
+
+// ── 9. Portfolio empty state with helpful hint ─────────────────────────────
+const _origBuildFundSelector = buildFundSelector;
+buildFundSelector = function() {
+  _origBuildFundSelector();
+  // After building selector, update the metrics panel hint
+  const metricsEl = document.getElementById('portMetrics');
+  if (metricsEl && metricsEl.classList.contains('port-empty')) {
+    metricsEl.innerHTML = `
+      <div class="port-empty-hint">
+        <strong>Monte sua carteira</strong><br>
+        Selecione fundos à esquerda e ajuste os pesos com os sliders.<br>
+        <span style="opacity:0.7">Retorno alvo, volatilidade e Sharpe atualizam em tempo real.</span>
+        <br>
+        <span class="hint-action" onclick="setOptN(3); setOptObj('sharpe'); runOptimizer()">
+          ✦ Sugestão: montar carteira com melhor retorno/risco (3 fundos)
+        </span>
+      </div>`;
+  }
+};
+
+// ── 10. Number update animation on portfolio metrics ──────────────────────
+function animateNumericEl(el) {
+  if (!el) return;
+  el.classList.remove('num-updated');
+  void el.offsetWidth; // reflow
+  el.classList.add('num-updated');
+}
+
+// Patch portMetrics innerHTML updates to add animation
+const _origUpdatePort2 = updatePortfolio;
+// Already patched above — add animation to metric vals after update
+const _patchMetrics = setInterval(function() {
+  const grid = document.getElementById('portMetrics');
+  if (!grid) return;
+  clearInterval(_patchMetrics);
+  // Use MutationObserver to animate on change
+  const obs = new MutationObserver(function() {
+    grid.querySelectorAll('.port-metric-val').forEach(animateNumericEl);
+  });
+  obs.observe(grid, { childList: true, subtree: true });
+}, 500);
+
+// ── 11. Ranking: inline alpha pill next to primary sort value ─────────────
+// After render, add tiny alpha pill next to the sorted column's CAGR value
+// Only when sorting by cagr12/36/60 (not alpha or inception)
+const _addInlineAlpha = function() {
+  if (!['cagr12','cagr36','cagr60'].includes(currentSort)) return;
+  if (!funds.length) return;
+
+  document.querySelectorAll('tr.fund-row').forEach(function(row) {
+    const cnpjEl = row.querySelector('.fund-cnpj');
+    if (!cnpjEl) return;
+    const cnpj = cnpjEl.textContent.trim();
+    const f    = funds.find(function(ff) { return ff.cnpjFmt === cnpj; });
+    if (!f) return;
+
+    const alpha = calcAlpha(f, currentSort);
+    if (alpha === null) return;
+
+    // Find the sorted column td (index = keyMap[currentSort])
+    const keyMap = { cagr12: 1, cagr36: 2, cagr60: 3 };
+    const tdIdx  = keyMap[currentSort]; // 0-based after fund name
+    const tds    = row.querySelectorAll('td');
+    const td     = tds[tdIdx]; // td index: 0=fund, 1=cagr12, 2=cagr36, 3=cagr60
+    if (!td) return;
+
+    // Only add once
+    if (td.querySelector('.alpha-inline')) return;
+
+    const sign = alpha >= 0 ? '+' : '';
+    const cls  = Math.abs(alpha) < 0.5 ? 'neu' : alpha > 0 ? 'pos' : 'neg';
+    const pill = document.createElement('span');
+    pill.className = 'alpha-inline ' + cls;
+    pill.title = (alpha >= 0 ? 'Acima' : 'Abaixo') + ' do benchmark em ' + Math.abs(alpha).toFixed(1) + 'pp';
+    pill.textContent = sign + alpha.toFixed(1) + 'pp';
+    td.appendChild(pill);
+  });
+};
+
+// Hook into render
+const _origRender2 = render;
+render = function() {
+  _origRender2();
+  setTimeout(_addInlineAlpha, 50);
+};
+
+// ── 12. Page title on load ────────────────────────────────────────────────
+document.title = 'Ranking · Fundos';
+
+// ── 13. Keyboard shortcuts ────────────────────────────────────────────────
+document.addEventListener('keydown', function(e) {
+  // Already have Escape for modal — add tab shortcuts
+  if (e.altKey) {
+    if (e.key === '1') { switchTab('ranking');   e.preventDefault(); }
+    if (e.key === '2') { switchTab('portfolio'); e.preventDefault(); }
+    if (e.key === '3') { switchTab('graficos');  e.preventDefault(); }
+    if (e.key === '4') { switchTab('analise');   e.preventDefault(); }
+  }
+});
+
+// ── 14. Sync chart fund toggle colors with fundColorMap ───────────────────
+const _origInitChartToggles = initChartToggles;
+initChartToggles = function() {
+  if (!historyData) return;
+  const wrap = document.getElementById('chartFundToggles');
+  if (!wrap || wrap.children.length > 0) return;
+  const cnpjs = Object.keys(historyData.funds);
+  cnpjs.forEach(function(cnpj, i) {
+    chartFundActive[cnpj] = true;
+    const btn = document.createElement('button');
+    btn.className = 'chart-fund-toggle active';
+    // Use stable fund color from fundColorMap
+    const color = getFundColor(cnpj) || CHART_COLORS_UI[i % CHART_COLORS_UI.length];
+    btn.style.background = color;
+    btn.style.borderColor = color;
+    btn.style.color = '#fff';
+    btn.textContent = historyData.funds[cnpj].nome.split(' ')[0];
+    // Use shortName if available
+    if (typeof shortName === 'function') btn.textContent = shortName(cnpj);
+    btn.onclick = (function(c, col) {
+      return function() {
+        chartFundActive[c] = !chartFundActive[c];
+        btn.classList.toggle('active', chartFundActive[c]);
+        btn.style.background = chartFundActive[c] ? col : 'transparent';
+        btn.style.color      = chartFundActive[c] ? '#fff' : 'var(--muted)';
+        renderNormalizedChart();
+      };
+    })(cnpj, color);
+    wrap.appendChild(btn);
+  });
+};
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// MÉTRICAS AVANÇADAS: Sortino, Calmar, IR, Beta, Rolling Alpha, Propensity
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Helpers de cálculo ─────────────────────────────────────────────────────
+
+function computeAdvancedMetrics(cnpj) {
+  if (!historyData || !historyData.funds[cnpj]) return null;
+  const rets  = historyData.funds[cnpj].returns;
+  const n     = rets.length;
+  if (n < 60) return null;
+
+  const ibovCagr36 = (ibov.cagr36 || 20);
+  const cdiCagr36  = (cdi.cagr36  || 12);
+  const ibovDaily  = Math.pow(1 + ibovCagr36/100, 1/252) - 1;
+  const cdiDaily   = Math.pow(1 + cdiCagr36/100,  1/252) - 1;
+
+  // Annualized return (CAGR over available period)
+  let cum = 1;
+  for (let i = 0; i < n; i++) cum *= (1 + rets[i]);
+  const cagr = (Math.pow(cum, 252/n) - 1) * 100;
+
+  // Sortino ratio (MAR = CDI)
+  const excess   = rets.map(r => r - cdiDaily);
+  const downside = excess.map(e => Math.min(e, 0));
+  const ddVar    = downside.reduce((s, x) => s + x*x, 0) / n;
+  const ddDev    = Math.sqrt(ddVar) * Math.sqrt(252) * 100;
+  const sortino  = ddDev > 0 ? (cagr - cdiCagr36) / ddDev : null;
+
+  // Calmar ratio = CAGR / |max drawdown|
+  let c2 = 1, pk = 1, mdd = 0;
+  for (let i = 0; i < n; i++) {
+    c2 *= (1 + rets[i]);
+    if (c2 > pk) pk = c2;
+    const dd = (c2 - pk) / pk;
+    if (dd < mdd) mdd = dd;
+  }
+  const calmar = mdd < 0 ? cagr / Math.abs(mdd * 100) : null;
+
+  // Beta vs equal-weighted market proxy (all funds in history)
+  const eqRets = [];
+  const allCnpjs = Object.keys(historyData.funds);
+  for (let i = 0; i < n; i++) {
+    let r = 0;
+    allCnpjs.forEach(c => { r += (historyData.funds[c].returns[i] || 0); });
+    eqRets.push(r / allCnpjs.length);
+  }
+  const meanMkt = eqRets.reduce((s,r) => s+r, 0) / n;
+  const meanF   = rets.reduce((s,r) => s+r, 0) / n;
+  const cov = rets.reduce((s,r,i) => s + (r-meanF)*(eqRets[i]-meanMkt), 0) / (n-1);
+  const varM = eqRets.reduce((s,r) => s + (r-meanMkt)**2, 0) / (n-1);
+  const beta = varM > 0 ? cov / varM : 1.0;
+
+  // Information Ratio vs IBOV proxy
+  const excessIbov = rets.map(r => r - ibovDaily);
+  const alphaDail  = excessIbov.reduce((s,e) => s+e, 0) / n;
+  const alphaAnn   = (Math.pow(1 + alphaDail, 252) - 1) * 100;
+  const teD  = Math.sqrt(excessIbov.reduce((s,e) => s + (e-alphaDail)**2, 0) / (n-1));
+  const teAnn = teD * Math.sqrt(252) * 100;
+  const ir = teAnn > 0 ? alphaAnn / teAnn : null;
+
+  // Rolling 12M alpha vs IBOV
+  const WINDOW = 252;
+  const rollingAlpha = [];
+  const rollingDates = [];
+  const dates = historyData.commonDates;
+  for (let i = 0; i <= n - WINDOW; i++) {
+    let cf = 1, ci = 1;
+    for (let j = i; j < i + WINDOW; j++) {
+      cf *= (1 + rets[j]);
+      ci *= (1 + ibovDaily);
+    }
+    const ra = (Math.pow(cf, 252/WINDOW) - Math.pow(ci, 252/WINDOW)) * 100;
+    rollingAlpha.push(parseFloat(ra.toFixed(2)));
+    rollingDates.push(dates[i + WINDOW]);
+  }
+
+  // Propensity to beat IBOV (rolling quarterly, step 21 days)
+  let beats = 0, totalQ = 0;
+  for (let i = 0; i <= n - 63; i += 21) {
+    let cf = 1, ci = 1;
+    for (let j = i; j < i + 63; j++) {
+      cf *= (1 + rets[j]);
+      ci *= (1 + ibovDaily);
+    }
+    if (cf > ci) beats++;
+    totalQ++;
+  }
+  const propensity = totalQ > 0 ? (beats / totalQ) * 100 : 0;
+
+  return {
+    cagr, sortino, calmar, beta, ir, teAnn,
+    propensity, alphaAnn,
+    rollingAlpha, rollingDates,
+    raMin: Math.min(...rollingAlpha),
+    raMax: Math.max(...rollingAlpha),
+    raLatest: rollingAlpha[rollingAlpha.length - 1],
+    raMean: rollingAlpha.reduce((s,x) => s+x, 0) / rollingAlpha.length,
+    mddPct: mdd * 100,
+    ddDev, cdiCagr36, ibovCagr36,
+  };
+}
+
+// Cache
+const _metricsCache = {};
+function getAdvMetrics(cnpj) {
+  if (!_metricsCache[cnpj]) _metricsCache[cnpj] = computeAdvancedMetrics(cnpj);
+  return _metricsCache[cnpj];
+}
+
+// ── Render: tabela comparativa de métricas avançadas ──────────────────────
+
+let _rollingChart = null;
+let _effChart = null;
+
+function renderAdvMetricsTable() {
+  const el = document.getElementById('advMetricsContainer');
+  if (!el || !historyData) return;
+
+  const cnpjs = Object.keys(historyData.funds);
+  const rows  = cnpjs.map(cnpj => ({ cnpj, m: getAdvMetrics(cnpj) })).filter(r => r.m);
+
+  // Find bests for highlighting
+  const bestSortino  = Math.max(...rows.map(r => r.m.sortino ?? -99));
+  const bestCalmar   = Math.max(...rows.map(r => r.m.calmar  ?? -99));
+  const bestIR       = Math.max(...rows.map(r => r.m.ir      ?? -99));
+  const bestProp     = Math.max(...rows.map(r => r.m.propensity));
+
+  function fmtVal(v, decimals=2) {
+    if (v == null || !isFinite(v)) return '<span class="val-neu">N/D</span>';
+    return v.toFixed(decimals);
+  }
+  function cls(v, best, neutral=0) {
+    if (v == null) return 'val-neu';
+    if (Math.abs(v - best) < 0.001) return 'val-pos best-in-col';
+    if (v >= neutral) return 'val-pos';
+    return 'val-neg';
+  }
+  function tip(text) {
+    return `<span class="tip-icon" title="${text}">?</span>`;
+  }
+
+  // Sort by Sortino desc
+  rows.sort((a,b) => (b.m.sortino ?? -99) - (a.m.sortino ?? -99));
+
+  let html = `
+  <div style="font-family:'Courier New',monospace;font-size:0.6rem;color:var(--muted);line-height:1.7;margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-radius:6px;border-left:2px solid var(--accent)">
+    Sharpe penaliza toda a volatilidade — para cima e para baixo — igualmente. As métricas abaixo capturam o que ele não captura:
+    <strong>Sortino</strong> penaliza apenas retornos abaixo do CDI ·
+    <strong>Calmar</strong> mede o retorno por unidade de queda máxima ·
+    <strong>IR</strong> mede a consistência do alpha gerado ·
+    <strong>Beat</strong> é a frequência com que o fundo superou o IBOV num horizonte de 3 meses.
+    <em>Células em negrito verde = melhor do universo naquela métrica.</em>
+  </div>
+  <div style="overflow-x:auto">
+  <table class="adv-metrics-table">
+  <thead><tr>
+    <th style="text-align:left">Fundo</th>
+    <th title="Sortino ratio: (retorno anualizado − CDI) ÷ desvio padrão dos retornos abaixo do CDI.&#10;Superior ao Sharpe para fundos com assimetria positiva, pois não penaliza volatilidade para cima.&#10;Acima de 1,0 é excelente; acima de 0,7 é razoável para equity brasileira.">Sortino ${tip('Sharpe ajustado — penaliza só retornos abaixo do CDI, não a volatilidade para cima')}</th>
+    <th title="Calmar ratio: CAGR ÷ módulo do máximo drawdown histórico.&#10;Responde: quanto de retorno o fundo entregou para cada 1% de queda máxima?&#10;Acima de 1,0 significa que o CAGR é maior que o pior drawdown (em módulo).&#10;O Charles River com Calmar 0,62 gerou R$0,62 de CAGR para cada R$1 de queda máxima.">Calmar ${tip('CAGR ÷ queda máxima — quanto o fundo rendeu por unidade de "dor máxima"')}</th>
+    <th title="Information Ratio: alpha anualizado vs. IBOV ÷ tracking error (desvio padrão do excesso de retorno).&#10;Mede se o gestor gera alpha de forma eficiente — não só se gerou, mas se gerou com consistência.&#10;IR > 0,5 é considerado bom; IR > 0,75 é excelente na literatura acadêmica (Grinold & Kahn, Active Portfolio Management).&#10;IR negativo significa que o gestor destruiu valor vs. simplesmente comprar o IBOV.">IR ${tip('Information Ratio: alpha ÷ tracking error — eficiência do alpha gerado vs. IBOV')}</th>
+    <th title="Beta vs. universo de fundos: sensibilidade do fundo às variações do mercado de ações (proxy: portfólio equal-weight dos 14 fundos).&#10;Beta 1,0 = se move igual ao mercado. Beta 0,5 = se move metade. Beta 1,5 = amplifica 50%.&#10;Long Only tipicamente β ≈ 0,9–1,2; Long Biased β ≈ 0,5–0,8; Multimercado pode ter β < 0,5.&#10;Útil para comparar: um fundo com CAGR 18% e β 0,6 gerou mais alpha ajustado ao risco do que um com CAGR 20% e β 1,2.">Beta ${tip('Sensibilidade ao mercado — Long Biased/Multimercado naturalmente menor que Long Only')}</th>
+    <th title="Frequência com que o fundo superou o IBOV em janelas de 3 meses (63 pregões), recalculadas mensalmente.&#10;Interpretação: um fundo que bate o IBOV em 70% dos trimestres tem um processo de geração de alpha mais robusto do que um que bate em 45%.&#10;A Manulife/John Hancock usa essa métrica como 'propensity to outperform' — mais informativa que o CAGR único, pois captura a consistência.&#10;Abaixo de 50% significa que o fundo perde para o índice na maioria dos trimestres.">Beat IBOV ${tip('% de janelas de 3M em que o fundo superou o IBOV — "propensity to outperform"')}</th>
+    <th title="Alpha rolante mais recente: excesso de retorno anualizado vs. IBOV na janela de 12M encerrada na última data disponível.&#10;Compare com o alpha médio histórico para detectar mudanças de tendência.&#10;Um alpha recente muito diferente do histórico pode indicar mudança de processo do gestor, ciclo desfavorável para o estilo do fundo, ou reversão à média.">Alpha 12M ${tip('Alpha anualizado vs. IBOV na janela de 12M mais recente')}</th>
+    <th title="Intervalo [mínimo, máximo] do alpha rolante de 12M ao longo de todo o histórico disponível.&#10;Um intervalo estreito indica consistência; um intervalo amplo indica que o retorno relativo varia muito conforme o ciclo de mercado.&#10;Fundos com alpha mínimo muito negativo têm maior risco de captura de drawdown específico do estilo.">Range Alpha ${tip('Intervalo histórico do alpha rolante 12M [min, max]')}</th>
+  </tr></thead>
+  <tbody>`;
+
+  rows.forEach(({ cnpj, m }) => {
+    const nome = (FUND_META[cnpj] || {}).nome || cnpj;
+    const color = getFundColor ? getFundColor(cnpj) : '#888';
+    const dotHtml = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};margin-right:6px;flex-shrink:0;vertical-align:middle"></span>`;
+
+    const srVal  = m.sortino != null ? m.sortino.toFixed(2) : 'N/D';
+    const caVal  = m.calmar  != null ? m.calmar.toFixed(2)  : 'N/D';
+    const irVal  = m.ir      != null ? m.ir.toFixed(2)      : 'N/D';
+    const betaV  = m.beta.toFixed(2);
+    const propV  = m.propensity.toFixed(0) + '%';
+    const raLat  = m.raLatest != null ? (m.raLatest >= 0 ? '+' : '') + m.raLatest.toFixed(1) + '%' : 'N/D';
+    const raRng  = `[${m.raMin >= 0 ? '+' : ''}${m.raMin.toFixed(0)}, ${m.raMax >= 0 ? '+' : ''}${m.raMax.toFixed(0)}]%`;
+
+    const srCls  = m.sortino  != null ? cls(m.sortino, bestSortino, 0.5)  : 'val-neu';
+    const caCls  = m.calmar   != null ? cls(m.calmar,  bestCalmar,  1.0)  : 'val-neu';
+    const irCls  = m.ir       != null ? cls(m.ir,      bestIR,      0.0)  : 'val-neu';
+    const propCls = cls(m.propensity, bestProp, 50);
+    const raLatCls = m.raLatest != null ? (m.raLatest >= 0 ? 'val-pos' : 'val-neg') : 'val-neu';
+
+    html += `<tr>
+      <td>${dotHtml}${nome}</td>
+      <td class="${srCls}">${srVal}</td>
+      <td class="${caCls}">${caVal}</td>
+      <td class="${irCls}">${irVal}</td>
+      <td class="val-neu">${betaV}</td>
+      <td class="${propCls}">${propV}</td>
+      <td class="${raLatCls}">${raLat}</td>
+      <td class="val-neu" style="font-size:0.6rem">${raRng}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table></div>
+  <div style="margin-top:0.6rem;font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted)">
+    Beta calculado vs. portfólio equal-weight dos 14 fundos (proxy de mercado do universo). IBOV proxy: CAGR 36M convertido em retorno diário constante.
+    Período: ${historyData.commonDates[0].slice(0,7)} → ${historyData.commonDates[historyData.commonDates.length-1].slice(0,7)}.
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+// ── Render: Rolling Alpha por fundo ───────────────────────────────────────
+
+function initRollingAlphaSelect() {
+  const sel = document.getElementById('rollingAlphaSelect');
+  if (!sel || !historyData || sel.options.length > 1) return;
+  Object.keys(historyData.funds).forEach(function(cnpj) {
+    const opt = document.createElement('option');
+    opt.value = cnpj;
+    opt.textContent = historyData.funds[cnpj].nome || cnpj;
+    sel.appendChild(opt);
+  });
+}
+
+function renderRollingAlpha() {
+  const sel   = document.getElementById('rollingAlphaSelect');
+  const wrap  = document.getElementById('rollingAlphaWrap');
+  const stats = document.getElementById('rollingAlphaStats');
+  const empty = document.getElementById('rollingAlphaEmpty');
+  const note  = document.getElementById('rollingAlphaNote');
+  if (!sel) return;
+
+  const cnpj = sel.value;
+  if (!cnpj) {
+    if (wrap)  wrap.style.display  = 'none';
+    if (stats) stats.style.display = 'none';
+    if (empty) empty.style.display = '';
+    return;
+  }
+
+  const m = getAdvMetrics(cnpj);
+  if (!m || !m.rollingAlpha.length) return;
+
+  if (wrap)  wrap.style.display  = '';
+  if (stats) stats.style.display = '';
+  if (empty) empty.style.display = 'none';
+
+  // Stats summary
+  const raLatCls = m.raLatest >= 0 ? 'var(--green)' : 'var(--red)';
+  const maCls    = m.raMean   >= 0 ? 'var(--green)' : 'var(--red)';
+  const color = getFundColor ? getFundColor(cnpj) : '#1a4a8a';
+  stats.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:0.6rem">
+      <div class="metric-card-new">
+        <div class="lbl"><span class="tip-icon" title="Alpha rolante de 12M mais recente: excesso de retorno anualizado vs. IBOV na janela encerrada na última data disponível.">?</span>Alpha atual (12M)</div>
+        <div class="val" style="color:${raLatCls}">${m.raLatest >= 0 ? '+' : ''}${m.raLatest.toFixed(1)}%</div>
+        <div class="sub">vs. IBOV (12M rolante)</div>
+      </div>
+      <div class="metric-card-new">
+        <div class="lbl"><span class="tip-icon" title="Média de todos os alphas rolantes de 12M ao longo do histórico. Um alpha médio positivo não garante persistência — o range [min,max] é tão importante quanto a média.">?</span>Alpha médio histórico</div>
+        <div class="val" style="color:${maCls}">${m.raMean >= 0 ? '+' : ''}${m.raMean.toFixed(1)}%</div>
+        <div class="sub">${m.rollingAlpha.length} janelas de 12M</div>
+      </div>
+      <div class="metric-card-new">
+        <div class="lbl"><span class="tip-icon" title="O melhor e o pior alpha de 12M observados no histórico. Um range estreito indica consistência. Um range amplo indica dependência do ciclo de mercado — o fundo performa muito melhor em alguns ambientes do que em outros.">?</span>Range histórico</div>
+        <div class="val neu" style="font-size:0.85rem">[${m.raMin.toFixed(0)}, ${m.raMax >= 0 ? '+' : ''}${m.raMax.toFixed(0)}]%</div>
+        <div class="sub">min / máx do alpha 12M</div>
+      </div>
+      <div class="metric-card-new">
+        <div class="lbl"><span class="tip-icon" title="Frequência com que o fundo superou o IBOV em janelas de 3 meses (63 pregões), recalculadas mensalmente ao longo de todo o histórico. Acima de 60% indica robustez do processo de geração de alpha.">?</span>Beat IBOV (3M)</div>
+        <div class="val" style="color:${m.propensity >= 55 ? 'var(--green)' : m.propensity >= 45 ? 'var(--amber)' : 'var(--red)'}">${m.propensity.toFixed(0)}%</div>
+        <div class="sub">das janelas trimestrais</div>
+      </div>
+    </div>`;
+
+  // Chart
+  const ctx = document.getElementById('rollingAlphaChart');
+  if (!ctx) return;
+  if (_rollingChart) { _rollingChart.destroy(); _rollingChart = null; }
+
+  const labels = m.rollingDates.map(d => d.slice(0,7));
+  const data   = m.rollingAlpha;
+
+  // Color each point: green if positive, red if negative
+  const pointColors = data.map(v => v >= 0 ? 'rgba(26,122,82,0.85)' : 'rgba(184,50,50,0.85)');
+  const lineColor   = color;
+
+  _rollingChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        // Zero line reference
+        { label: 'IBOV (0%)', data: data.map(() => 0),
+          borderColor: 'rgba(128,128,128,0.3)', borderWidth: 1,
+          borderDash: [4,3], pointRadius: 0, fill: false, tension: 0, order: 2 },
+        // Alpha line
+        { label: 'Alpha 12M rolante',
+          data,
+          borderColor: lineColor, borderWidth: 1.5,
+          backgroundColor: function(ctx2) {
+            const chart = ctx2.chart;
+            const {ctx: c, chartArea} = chart;
+            if (!chartArea) return 'transparent';
+            const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            grad.addColorStop(0, 'rgba(26,122,82,0.15)');
+            grad.addColorStop(0.5, 'rgba(128,128,128,0.05)');
+            grad.addColorStop(1, 'rgba(184,50,50,0.12)');
+            return grad;
+          },
+          fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4,
+          pointBackgroundColor: pointColors, order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(26,25,22,0.92)',
+          titleColor: '#aaa', bodyColor: '#e8e6e0',
+          titleFont: { family: 'Courier New', size: 11 },
+          bodyFont:  { family: 'Courier New', size: 11 },
+          padding: 10,
+          callbacks: {
+            title: items => items[0]?.label || '',
+            label: function(c) {
+              if (c.datasetIndex === 0) return null;
+              const v = c.parsed.y;
+              return `  Alpha 12M: ${v >= 0 ? '+' : ''}${v.toFixed(1)}% vs. IBOV`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
+                       maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+             grid: { display: false } },
+        y: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
+                       callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%' },
+             grid: { color: 'rgba(128,128,128,0.08)' } }
+      }
+    }
+  });
+
+  const nome = historyData.funds[cnpj].nome;
+  if (note) note.innerHTML = `Alpha 12M rolante de <strong>${nome}</strong> vs. IBOV proxy (cagr36 anualizado diariamente). Cada ponto = retorno anualizado dos últimos 252 pregões do fundo menos o do IBOV.`;
+}
+
+// ── Render: Efficient Frontier ─────────────────────────────────────────────
+
+function renderEfficientFrontier() {
+  if (!historyData || !funds.length || typeof Chart === 'undefined') return;
+  const el = document.getElementById('efficientFrontierLoading');
+  if (el) el.style.display = 'none';
+  const ctx = document.getElementById('efficientFrontierCanvas');
+  if (!ctx) return;
+  if (_effChart) { _effChart.destroy(); _effChart = null; }
+
+  const cnpjs = Object.keys(historyData.funds);
+  const cdiVal = cdi.cagr36 || 12;
+
+  // Individual fund points
+  const fundPoints = [];
+  cnpjs.forEach(function(cnpj, i) {
+    const m = getAdvMetrics(cnpj);
+    if (!m) return;
+    const fData = funds.find(f => f.cnpjFmt === cnpj);
+    if (!fData) return;
+    const t = calcTargetReturn(fData);
+    if (!t) return;
+    const fd = historyData.funds[cnpj];
+    const n2 = fd.returns.length;
+    const mean2 = fd.returns.reduce((a,b)=>a+b,0)/n2;
+    const var2  = fd.returns.reduce((a,r)=>a+(r-mean2)**2,0)/(n2-1);
+    const vol2  = Math.sqrt(var2*252)*100;
+    fundPoints.push({
+      x: parseFloat(vol2.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
+      label: fd.nome, cnpj, color: CHART_COLORS[i % CHART_COLORS.length],
+      sortino: m.sortino, calmar: m.calmar, ir: m.ir, beta: m.beta,
+    });
+  });
+
+  if (!fundPoints.length) return;
+
+  // Approximate efficient frontier via Monte Carlo of random weights
+  // Sample N random long-only portfolios and identify Pareto frontier
+  const N_FRONTIER = 800;
+  const frontierPts = [];
+  const cov = historyData.correlation;
+  const allC = cnpjs.filter(c => fundPoints.some(p => p.cnpj === c));
+
+  for (let sim = 0; sim < N_FRONTIER; sim++) {
+    // Random weights (Dirichlet-like via exponential)
+    const raw = allC.map(() => -Math.log(Math.random() || 1e-10));
+    const sum = raw.reduce((a,b)=>a+b,0);
+    const w = raw.map(r => r/sum);
+
+    // Portfolio return (weighted avg of target returns)
+    const ptRet = allC.reduce((s,c,i) => {
+      const fp = fundPoints.find(p => p.cnpj === c);
+      return s + (fp ? w[i] * fp.y : 0);
+    }, 0);
+
+    // Portfolio vol via covariance matrix
+    let ptVar = 0;
+    allC.forEach((ca, i) => {
+      const fpA = fundPoints.find(p => p.cnpj === ca);
+      if (!fpA) return;
+      allC.forEach((cb, j) => {
+        const fpB = fundPoints.find(p => p.cnpj === cb);
+        if (!fpB) return;
+        const rho = (ca === cb) ? 1 : (cov[ca]?.[cb] ?? 0);
+        ptVar += w[i] * w[j] * fpA.x * fpB.x * rho;
+      });
+    });
+    const ptVol = Math.sqrt(Math.max(0, ptVar));
+    frontierPts.push({ x: parseFloat(ptVol.toFixed(2)), y: parseFloat(ptRet.toFixed(2)) });
+  }
+
+  // Filter to approximate efficient frontier (Pareto-optimal in vol/ret space)
+  frontierPts.sort((a,b) => a.x - b.x);
+  const frontier = [];
+  let maxRet = -Infinity;
+  for (const pt of frontierPts) {
+    if (pt.y >= maxRet - 0.3) {  // slight tolerance
+      if (pt.y > maxRet) maxRet = pt.y;
+      frontier.push(pt);
+    }
+  }
+  // Keep only the envelope (for each vol bin, keep highest ret)
+  const binW = 0.5;
+  const bins = {};
+  frontier.forEach(pt => {
+    const bin = Math.round(pt.x / binW) * binW;
+    if (!bins[bin] || pt.y > bins[bin].y) bins[bin] = pt;
+  });
+  const frontierLine = Object.values(bins).sort((a,b)=>a.x-b.x);
+
+  const maxVol = Math.max(...fundPoints.map(p=>p.x), ...frontierLine.map(p=>p.x)) * 1.1;
+  const minRet = Math.min(cdiVal, ...fundPoints.map(p=>p.y)) - 2;
+  const avgSharpe = fundPoints.reduce((s,p) => s + (p.y-cdiVal)/p.x, 0) / fundPoints.length;
+
+  _effChart = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        // Capital Market Line reference
+        { type: 'line', label: 'Linha de mercado (Sharpe médio)',
+          data: [{x:0,y:cdiVal},{x:maxVol,y:cdiVal+avgSharpe*maxVol}],
+          borderColor:'rgba(128,128,128,0.25)', borderWidth:1, borderDash:[5,4],
+          pointRadius:0, fill:false, tension:0, order:3 },
+        // Frontier envelope
+        { type: 'line', label: 'Fronteira eficiente (aprox.)',
+          data: frontierLine,
+          borderColor:'rgba(26,122,82,0.6)', borderWidth:1.5,
+          backgroundColor:'rgba(26,122,82,0.04)',
+          fill:true, tension:0.4, pointRadius:0, order:2 },
+        // Individual funds
+        ...fundPoints.map(p => ({
+          label: p.label, data: [{x:p.x, y:p.y}],
+          backgroundColor: p.color + 'cc', borderColor: p.color,
+          borderWidth:1.5, pointRadius:8, pointHoverRadius:11,
+          order:1, extra: p,
+        }))
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false, animation:false,
+      plugins: {
+        legend:{ display:false },
+        tooltip:{
+          backgroundColor:'rgba(26,25,22,0.94)',
+          titleColor:'#aaa', bodyColor:'#e8e6e0',
+          titleFont:{family:'Courier New',size:11}, bodyFont:{family:'Courier New',size:11}, padding:11,
+          callbacks:{
+            label: function(c) {
+              if (c.datasetIndex <= 1) return null;
+              const p = fundPoints[c.datasetIndex - 2];
+              if (!p) return null;
+              const sharpe = ((p.y - cdiVal) / p.x).toFixed(2);
+              const lines = [
+                `  ${p.label}`,
+                `  Retorno alvo:   ${p.y.toFixed(1)}%`,
+                `  Volatilidade:   ${p.x.toFixed(1)}%`,
+                `  Sharpe:         ${sharpe}`,
+              ];
+              if (p.sortino != null) lines.push(`  Sortino:        ${p.sortino.toFixed(2)}`);
+              if (p.calmar  != null) lines.push(`  Calmar:         ${p.calmar.toFixed(2)}`);
+              if (p.ir      != null) lines.push(`  Inf. Ratio:     ${p.ir.toFixed(2)}`);
+              lines.push(`  Beta:           ${p.beta.toFixed(2)}`);
+              return lines;
+            },
+            filter: c => c.datasetIndex >= 2,
+          }
+        }
+      },
+      scales:{
+        x:{ min:0, title:{display:true,text:'Volatilidade anualizada (%)',
+              font:{family:'Courier New',size:10},color:'#888'},
+            ticks:{font:{family:'Courier New',size:10},color:'#888',
+              callback:v=>v.toFixed(0)+'%'},
+            grid:{color:'rgba(128,128,128,0.08)'}},
+        y:{ min:minRet, title:{display:true,text:'Retorno alvo (%)',
+              font:{family:'Courier New',size:10},color:'#888'},
+            ticks:{font:{family:'Courier New',size:10},color:'#888',
+              callback:v=>v.toFixed(0)+'%'},
+            grid:{color:'rgba(128,128,128,0.08)'}}
+      }
+    }
+  });
+}
+
+// ── Wire: called after existing analysis renders complete ──────────────────
+function initNewAnalysis() {
+  renderAdvMetricsTable();
+  initRollingAlphaSelect();
+  renderEfficientFrontier();
+}
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// NOVOS MODOS DO OTIMIZADOR: Sortino, Calmar, IR
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── Semi-covariância (para Sortino) ────────────────────────────────────────
+//
+// Sᵢⱼ = (1/n) Σₜ min(rᵢₜ − CDI_daily, 0) · min(rⱼₜ − CDI_daily, 0) × 252 × 10000
+//
+// Divisão por n (não n−1): a semi-covariância usa o segundo momento parcial
+// (Lower Partial Moment de ordem 2) — convenção de Estrada (2008).
+// O resultado está em %² anualizados, igual à covMatrix normal.
+//
+// Propriedade chave: Sᵢⱼ ≥ 0 sempre (produto de não-positivos é não-negativo),
+// portanto S é positiva semi-definida e inversível.
+function semiCovMatrix(cnpjs, historyData, cdiAnnual) {
+  const k = cnpjs.length;
+  const rets = cnpjs.map(c => historyData.funds[c].returns);
+  const n = rets[0].length;
+  const cdiDaily = Math.pow(1 + cdiAnnual / 100, 1 / 252) - 1;
+
+  // Semi-deviações: min(rᵢₜ − CDI_daily, 0)
+  const semiDevs = rets.map(ri => ri.map(r => Math.min(r - cdiDaily, 0)));
+
+  const S = Array.from({length: k}, () => new Array(k).fill(0));
+  for (let i = 0; i < k; i++) {
+    for (let j = i; j < k; j++) {
+      let s = 0;
+      for (let t = 0; t < n; t++) s += semiDevs[i][t] * semiDevs[j][t];
+      S[i][j] = S[j][i] = (s / n) * 252 * 10000;  // %² anualizados
+    }
+  }
+  return S;
+}
+
+// ── Pesos de Máx. Sortino ──────────────────────────────────────────────────
+//
+// Estrutura idêntica ao maxSharpeWeights, mas com S (semi-cov) no lugar de Σ:
+//   w* = S⁻¹(μ − CDI) / (1ᵀ S⁻¹ (μ − CDI))
+//
+// Referência: Estrada (2008) "Mean-Semivariance Optimization: A Heuristic Approach",
+// Journal of Applied Finance, Vol.18, No.1.
+function maxSortinoWeights(cnpjs, mus, cdiTarget, historyData) {
+  const n = mus.length;
+  let active = mus.map((_, i) => i);
+
+  for (let iter = 0; iter < n; iter++) {
+    const k = active.length;
+    if (k === 0) return null;
+
+    const subCnpjs = active.map(i => cnpjs[i]);
+    const subMus   = active.map(i => mus[i]);
+    const excess   = subMus.map(m => m - cdiTarget);
+    if (excess.every(e => e <= 0)) return null;
+
+    // Semi-cov do subconjunto ativo
+    const S    = semiCovMatrix(subCnpjs, historyData, cdiTarget);
+    const inv  = invertMatrix(S);
+    if (!inv) return null;
+
+    const ie    = matVec(inv, excess);
+    const denom = ie.reduce((a, b) => a + b, 0);
+    if (Math.abs(denom) < 1e-12) return null;
+
+    const wSub = ie.map(x => x / denom);
+
+    if (wSub.every(x => x >= -1e-10)) {
+      const wPos = wSub.map(x => Math.max(0, x));
+      const tot  = wPos.reduce((a, b) => a + b, 0);
+      if (tot <= 0) return null;
+      const wFull = new Array(n).fill(0);
+      active.forEach((origIdx, ki) => { wFull[origIdx] = wPos[ki] / tot; });
+      return wFull;
+    }
+
+    const minK = wSub.indexOf(Math.min(...wSub));
+    active.splice(minK, 1);
+  }
+  return null;
+}
+
+// ── Avaliação de portfólio com métricas avançadas ─────────────────────────
+function evalPortfolioAdvanced(w, cnpjs, mus, cdiTarget, ibovProxy, cov, historyData) {
+  const ret    = dot(w, mus);
+  const vol    = portVol(w, cov);
+  const sharpe = vol > 0 ? (ret - cdiTarget) / vol : -Infinity;
+
+  // Sortino: calcular semi-vol do portfólio via série temporal
+  const n = historyData.funds[cnpjs[0]].returns.length;
+  const cdiDaily = Math.pow(1 + cdiTarget / 100, 1 / 252) - 1;
+  let sumSemiSq = 0;
+  for (let t = 0; t < n; t++) {
+    let r_p = 0;
+    cnpjs.forEach((c, i) => { r_p += w[i] * historyData.funds[c].returns[t]; });
+    const excess = r_p - cdiDaily;
+    if (excess < 0) sumSemiSq += excess * excess;
+  }
+  const semiVol = Math.sqrt(sumSemiSq / n) * Math.sqrt(252) * 100;
+  const sortino = semiVol > 0 ? (ret - cdiTarget) / semiVol : -Infinity;
+
+  // Calmar: calcular max drawdown da série do portfólio
+  let cum = 1, peak = 1, maxDD = 0;
+  for (let t = 0; t < n; t++) {
+    let r_p = 0;
+    cnpjs.forEach((c, i) => { r_p += w[i] * historyData.funds[c].returns[t]; });
+    cum *= (1 + r_p);
+    if (cum > peak) peak = cum;
+    const dd = (cum - peak) / peak;
+    if (dd < maxDD) maxDD = dd;
+  }
+  // CAGR from historical period
+  const cagrHist = (Math.pow(cum, 252/n) - 1) * 100;
+  const calmar = maxDD < 0 ? cagrHist / Math.abs(maxDD * 100) : cagrHist / 0.001;
+
+  // IR vs IBOV: (retorno − IBOV) / tracking_error
+  const ibovExcess = ret - ibovProxy;
+  // TE = σ_p (com IBOV proxy constante, TE = vol)
+  const ir = vol > 0 ? ibovExcess / vol : -Infinity;
+
+  return { w, cnpjs, ret, vol, sharpe, sortino, calmar, ir, semiVol, maxDD: maxDD * 100, cagrHist };
+}
+
+// ── Patch de setOptObj para incluir novos modos ────────────────────────────
+const _origSetOptObj = setOptObj;
+setOptObj = function(obj) {
+  optObj = obj;
+  // All 6 button IDs
+  ['optObjSharpe','optObjReturn','optObjVol',
+   'optObjSortino','optObjCalmar','optObjIR'].forEach(function(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('active', el.id === 'optObj' + obj.charAt(0).toUpperCase() + obj.slice(1));
+  });
+};
+
+// ── Patch de runOptimizer para incluir novos modos ─────────────────────────
+const _origRunOpt = runOptimizer;
+runOptimizer = function() {
+  // Only intercept for new modes; fall through to original for classic modes
+  if (!['sortino','calmar','ir'].includes(optObj)) {
+    _origRunOpt();
+    return;
+  }
+
+  if (!historyData) return;
+  const btn    = document.getElementById('optRunBtn');
+  const status = document.getElementById('optStatus');
+  btn.disabled = true;
+  status.innerHTML = 'Calculando<span class="calc-dot">.</span><span class="calc-dot">.</span><span class="calc-dot">.</span>';
+
+  setTimeout(function() {
+    try {
+      const allCnpjs = Object.keys(historyData.funds);
+      const k        = optN;
+
+      // Retornos alvo
+      const muMap = {};
+      for (const cnpj of allCnpjs) {
+        const fData = funds.find(f => f.cnpjFmt === cnpj);
+        const t     = fData ? calcTargetReturn(fData) : null;
+        muMap[cnpj] = t ? t.value : null;
+      }
+
+      // CDI e IBOV alvo
+      let cdiTarget = 10;
+      if (cdi) {
+        const s = [];
+        if (cdi.cagr12 != null) s.push([1, cdi.cagr12]);
+        if (cdi.cagr36 != null) s.push([3, cdi.cagr36]);
+        if (cdi.cagr60 != null) s.push([5, cdi.cagr60]);
+        if (s.length) cdiTarget = s.reduce((a,[T,v]) => a+T*v,0) / s.reduce((a,[T])=>a+T,0);
+      }
+      const ibovProxy = ibov.cagr36 || 20;
+
+      const validCnpjs = allCnpjs.filter(c => muMap[c] != null);
+      let best = null;
+      let nCombos = 0;
+
+      for (const combo of combinations(validCnpjs, k)) {
+        nCombos++;
+        const mus = combo.map(c => muMap[c]);
+        const cov = covMatrix(combo, historyData);
+
+        // Weight computation strategy by objective
+        let w = null;
+        if (optObj === 'sortino') {
+          // Analytical: w* = S⁻¹(μ−CDI) / norm
+          w = maxSortinoWeights(combo, mus, cdiTarget, historyData);
+          if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);  // fallback
+          if (!w) w = minVolWeights(cov);
+        } else if (optObj === 'calmar') {
+          // Calmar has no closed-form weights; use Sharpe weights (minimizes DD heuristically)
+          // Then compare combos by Calmar of the resulting portfolio series
+          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+          if (!w) w = minVolWeights(cov);
+        } else if (optObj === 'ir') {
+          // IR = (ret − IBOV) / TE ≡ Sharpe with rf=IBOV
+          w = maxSharpeWeights(combo, mus, ibovProxy, cov);
+          if (!w) w = minVolWeights(cov);
+        }
+        if (!w) w = new Array(k).fill(1 / k);
+
+        // Apply weight constraints (same as original)
+        const feasible = (optMinW * k <= 1.0 + 1e-9)
+                      && (optMaxW * k >= 1.0 - 1e-9)
+                      && (optMinW  <= optMaxW + 1e-9);
+        if (!feasible) continue;
+
+        if (optMaxW < 1.0 || optMinW > 1e-9) {
+          for (let iter = 0; iter < 50; iter++) {
+            const slack = (1.0 - w.reduce((a,b) => a+b, 0)) / k;
+            w = w.map(x => x + slack);
+            const prev = [...w];
+            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+            if (w.every((x, i) => Math.abs(x - prev[i]) < 1e-10)) break;
+          }
+          for (let iter = 0; iter < 50; iter++) {
+            const diff = 1.0 - w.reduce((a, b) => a + b, 0);
+            if (Math.abs(diff) < 1e-12) break;
+            const freeIdx = diff > 0
+              ? w.map((x, i) => x < optMaxW - 1e-12 ? i : -1).filter(i => i >= 0)
+              : w.map((x, i) => x > optMinW + 1e-12 ? i : -1).filter(i => i >= 0);
+            if (freeIdx.length === 0) break;
+            const per = diff / freeIdx.length;
+            freeIdx.forEach(i => { w[i] += per; });
+            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+          }
+        }
+
+        const p = evalPortfolioAdvanced(w, combo, mus, cdiTarget, ibovProxy, cov, historyData);
+
+        if (!best) { best = p; continue; }
+
+        const better =
+          optObj === 'sortino' ? p.sortino > best.sortino :
+          optObj === 'calmar'  ? p.calmar  > best.calmar  :
+          /* ir */               p.ir      > best.ir;
+
+        if (better) best = p;
+      }
+
+      if (!best) {
+        status.textContent = 'Não foi possível otimizar.';
+        btn.disabled = false;
+        return;
+      }
+
+      // Build status with relevant metric
+      let metricStr, metricLabel;
+      if (optObj === 'sortino') {
+        metricStr  = best.sortino.toFixed(2);
+        metricLabel = `Sortino ${metricStr}`;
+      } else if (optObj === 'calmar') {
+        metricStr  = best.calmar.toFixed(2);
+        metricLabel = `Calmar ${metricStr}`;
+      } else {
+        metricStr  = best.ir.toFixed(2);
+        metricLabel = `IR ${metricStr}`;
+      }
+
+      status.textContent =
+        `${nCombos} combinações · ${metricLabel} · ` +
+        best.cnpjs.map((c, i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
+
+      applyOptimizedPortfolio(best.cnpjs, best.w);
+
+    } catch(e) {
+      document.getElementById('optStatus').textContent = 'Erro: ' + e.message;
+    }
+    btn.disabled = false;
+  }, 20);
+};
+
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMPARADOR DE CARTEIRAS A vs B
+// ════════════════════════════════════════════════════════════════════════════
+
+const CompState = { rowsA: [], rowsB: [] };
+
+function compBuildFundOptions() {
+  if (!historyData) return '';
+  return Object.keys(historyData.funds).map(cnpj => {
+    const nome = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome || cnpj;
+    return `<option value="${cnpj}">${nome}</option>`;
+  }).join('');
+}
+
+function compInitRows() {
+  // Default: Carteira A = top-3 by CAGR, Carteira B = next-3
+  const rowsA = document.getElementById('compRowsA');
+  const rowsB = document.getElementById('compRowsB');
+  if (!rowsA || !rowsB || !historyData) return;
+  if (rowsA.children.length > 0) return; // already initialized
+
+  const opts = compBuildFundOptions();
+  const cnpjs = Object.keys(historyData.funds);
+
+  // Build 2 rows in each column by default
+  for (let i = 0; i < 3; i++) {
+    rowsA.insertAdjacentHTML('beforeend', compRowHTML('A', cnpjs[i] || cnpjs[0], i === 0 ? 50 : 25));
+    rowsB.insertAdjacentHTML('beforeend', compRowHTML('B', cnpjs[i+3] || cnpjs[0], i === 0 ? 50 : 25));
+  }
+  document.getElementById('compRowsA').querySelectorAll('select').forEach(s => { s.innerHTML = opts; });
+  document.getElementById('compRowsB').querySelectorAll('select').forEach(s => { s.innerHTML = opts; });
+
+  // Set default selections
+  const cnpjsA = cnpjs.slice(0, 3); const wA = [50, 30, 20];
+  const cnpjsB = cnpjs.slice(3, 6); const wB = [50, 30, 20];
+  document.querySelectorAll('#compRowsA .comp-fund-row').forEach((row, i) => {
+    const sel = row.querySelector('select'); const inp = row.querySelector('input');
+    if (sel && cnpjsA[i]) sel.value = cnpjsA[i];
+    if (inp && wA[i]) inp.value = wA[i];
+  });
+  document.querySelectorAll('#compRowsB .comp-fund-row').forEach((row, i) => {
+    const sel = row.querySelector('select'); const inp = row.querySelector('input');
+    if (sel && cnpjsB[i]) sel.value = cnpjsB[i];
+    if (inp && wB[i]) inp.value = wB[i];
+  });
+}
+
+function compRowHTML(col, cnpj, weight) {
+  return `<div class="comp-fund-row">
+    <select onchange="compChanged()" style="flex:1">
+      <option value="${cnpj}">${cnpj}</option>
+    </select>
+    <input type="number" value="${weight}" min="0" max="100" step="5" oninput="compChanged()" style="width:52px">
+    <span class="comp-fund-label">%</span>
+    <button onclick="this.parentElement.remove();compChanged()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.75rem;padding:0 3px" title="Remover">✕</button>
+  </div>`;
+}
+
+function compAddRow(col) {
+  const container = document.getElementById('compRows' + col);
+  if (!container) return;
+  const opts = compBuildFundOptions();
+  const div = document.createElement('div');
+  div.innerHTML = compRowHTML(col, '', 10);
+  div.querySelector('select').innerHTML = opts;
+  container.appendChild(div.firstElementChild);
+}
+
+function compChanged() {
+  document.getElementById('compResults').style.display = 'none';
+}
+
+function compGetPortfolio(col) {
+  const rows = document.querySelectorAll(`#compRows${col} .comp-fund-row`);
+  const items = [];
+  let totalW = 0;
+  rows.forEach(row => {
+    const cnpj = row.querySelector('select')?.value;
+    const w = parseFloat(row.querySelector('input')?.value || 0);
+    if (cnpj && w > 0 && historyData?.funds[cnpj]) {
+      items.push({ cnpj, w });
+      totalW += w;
+    }
+  });
+  if (totalW <= 0) return null;
+  return items.map(it => ({ cnpj: it.cnpj, w: it.w / totalW }));
+}
+
+function compCalcMetrics(portfolio) {
+  if (!portfolio || !historyData) return null;
+  const cnpjs  = portfolio.map(p => p.cnpj);
+  const weights = portfolio.map(p => p.w);
+  const n = historyData.funds[cnpjs[0]]?.returns?.length || 0;
+  if (n < 60) return null;
+
+  const cdiAnn  = cdi.cagr36 || 12;
+  const ibovAnn = ibov.cagr36 || 20;
+  const cdiDaily = Math.pow(1 + cdiAnn/100, 1/252) - 1;
+
+  // Portfolio daily returns
+  const portRets = [];
+  for (let t = 0; t < n; t++) {
+    let r = 0;
+    cnpjs.forEach((c, i) => { r += weights[i] * (historyData.funds[c].returns[t] || 0); });
+    portRets.push(r);
+  }
+
+  // CAGR
+  let cum = 1; for (const r of portRets) cum *= (1+r);
+  const cagr = (Math.pow(cum, 252/n) - 1) * 100;
+
+  // Vol
+  const meanR = portRets.reduce((s,r)=>s+r,0)/n;
+  const varR  = portRets.reduce((s,r)=>s+(r-meanR)**2,0)/(n-1);
+  const vol   = Math.sqrt(varR * 252) * 100;
+
+  // Sharpe
+  const sharpe = vol > 0 ? (cagr - cdiAnn) / vol : null;
+
+  // Sortino
+  const semiSq = portRets.reduce((s,r) => s + Math.min(r-cdiDaily,0)**2, 0) / n;
+  const semiVol = Math.sqrt(semiSq * 252) * 100;
+  const sortino = semiVol > 0 ? (cagr - cdiAnn) / semiVol : null;
+
+  // Max drawdown + Calmar
+  let c2=1, pk=1, mdd=0;
+  for (const r of portRets) {
+    c2 *= (1+r); if (c2>pk) pk=c2;
+    const dd=(c2-pk)/pk; if (dd<mdd) mdd=dd;
+  }
+  const calmar = mdd < 0 ? cagr / Math.abs(mdd*100) : null;
+
+  // IR vs IBOV
+  const ir = vol > 0 ? (cagr - ibovAnn) / vol : null;
+
+  // Portfolio volatility via cov matrix (proper)
+  const cov = covMatrix(cnpjs, historyData);
+  const portVolCov = portVol(weights, cov);
+
+  // Beta (vs equal-weight universe)
+  const allCnpjs = Object.keys(historyData.funds);
+  const eqRets = [];
+  for (let t = 0; t < n; t++) {
+    let r = 0; allCnpjs.forEach(c => { r += historyData.funds[c].returns[t] / allCnpjs.length; });
+    eqRets.push(r);
+  }
+  const meanMkt = eqRets.reduce((s,r)=>s+r,0)/n;
+  const cov_pm = portRets.reduce((s,r,t)=>s+(r-meanR)*(eqRets[t]-meanMkt),0)/(n-1);
+  const varMkt = eqRets.reduce((s,r)=>s+(r-meanMkt)**2,0)/(n-1);
+  const beta = varMkt > 0 ? cov_pm / varMkt : 1;
+
+  return { cagr, vol: portVolCov, sharpe, sortino, calmar, ir, mdd: mdd*100, beta, cdiAnn, ibovAnn };
+}
+
+function runComparador() {
+  compInitRows();
+  const pA = compGetPortfolio('A');
+  const pB = compGetPortfolio('B');
+  if (!pA || !pB) {
+    alert('Configure fundos e pesos em ambas as carteiras.');
+    return;
+  }
+
+  const mA = compCalcMetrics(pA);
+  const mB = compCalcMetrics(pB);
+  if (!mA || !mB) {
+    alert('Dados insuficientes para calcular as métricas.');
+    return;
+  }
+
+  const resultsEl = document.getElementById('compResults');
+  const gridEl    = document.getElementById('compMetricGrid');
+  const noteEl    = document.getElementById('compNote');
+  resultsEl.style.display = '';
+
+  function fmt(v, dec=2, sign=false) {
+    if (v == null || !isFinite(v)) return '—';
+    return (sign && v > 0 ? '+' : '') + v.toFixed(dec) + '%';
+  }
+  function fmtR(v, dec=2) {
+    if (v == null || !isFinite(v)) return '—';
+    return (v > 0 ? '+' : '') + v.toFixed(dec);
+  }
+
+  // Metrics: [label, tooltip, valueA, valueB, higherIsBetter]
+  const metrics = [
+    ['Retorno esperado*', 'CAGR anualizado sobre o período histórico disponível. Não é garantia de retorno futuro.', fmt(mA.cagr,1,true), fmt(mB.cagr,1,true), true, mA.cagr, mB.cagr],
+    ['Volatilidade a.a.', 'Desvio padrão anualizado dos retornos diários — quanto o portfólio oscila por ano.', fmt(mA.vol,1), fmt(mB.vol,1), false, mA.vol, mB.vol],
+    ['Max. drawdown', 'Maior queda pico-a-vale registrada no período histórico.', fmt(mA.mdd,1), fmt(mB.mdd,1), false, mA.mdd, mB.mdd],
+    ['Sharpe', '(Retorno − CDI) ÷ volatilidade total. Eficiência do retorno por unidade de toda a oscilação.', fmtR(mA.sharpe), fmtR(mB.sharpe), true, mA.sharpe, mB.sharpe],
+    ['Sortino', '(Retorno − CDI) ÷ volatilidade DESCENDENTE. Penaliza apenas retornos abaixo do CDI.', fmtR(mA.sortino), fmtR(mB.sortino), true, mA.sortino, mB.sortino],
+    ['Calmar', 'Retorno ÷ |max drawdown|. Quanto de CAGR o portfólio entregou por cada 1% de queda máxima.', fmtR(mA.calmar), fmtR(mB.calmar), true, mA.calmar, mB.calmar],
+    ['IR vs. IBOV', '(Retorno − IBOV) ÷ volatilidade. Eficiência do alpha gerado sobre o mercado de referência.', fmtR(mA.ir), fmtR(mB.ir), true, mA.ir, mB.ir],
+    ['Beta', 'Sensibilidade ao portfólio equal-weight do universo de fundos disponíveis.', mA.beta.toFixed(2), mB.beta.toFixed(2), null, null, null],
+  ];
+
+  let html = `
+    <div class="ch label"></div>
+    <div class="ch a" title="Carteira A">Carteira A</div>
+    <div class="ch b" title="Carteira B">Carteira B</div>
+    <div class="ch">Vantagem</div>`;
+
+  metrics.forEach(([label, tip, vA, vB, hib, numA, numB]) => {
+    let clsA = 'cv', clsB = 'cv', advantage = '—';
+    if (hib !== null && numA != null && numB != null && isFinite(numA) && isFinite(numB)) {
+      const aBetter = hib ? numA > numB : numA < numB;
+      if (Math.abs(numA - numB) > 0.001) {
+        clsA = aBetter ? 'cv winner pos' : 'cv loser';
+        clsB = aBetter ? 'cv loser' : 'cv winner pos';
+        advantage = aBetter
+          ? `<span style="color:var(--blue)">A</span>`
+          : `<span style="color:var(--amber)">B</span>`;
+        const diff = Math.abs(numA - numB);
+        advantage += ` <span style="color:var(--muted);font-size:0.6rem">(${diff.toFixed(label === 'Beta' ? 2 : (label === 'Sharpe'||label === 'Sortino'||label==='Calmar'||label==='IR vs. IBOV' ? 2 : 1))}${['Sharpe','Sortino','Calmar','IR vs. IBOV','Beta'].includes(label)?'':' pp'})</span>`;
+      }
+    }
+    html += `
+      <div class="cv label" title="${tip}">${label}</div>
+      <div class="${clsA}" style="text-align:right">${vA}</div>
+      <div class="${clsB}" style="text-align:right">${vB}</div>
+      <div class="cv" style="text-align:right">${advantage}</div>`;
+  });
+
+  gridEl.innerHTML = html;
+
+  // Summary note
+  const wins = metrics.filter(([,,,hib,,nA,nB]) => hib!==null && nA!=null && nB!=null && isFinite(nA) && isFinite(nB) && (hib ? nA>nB : nA<nB) && Math.abs(nA-nB)>0.001).length;
+  const total = metrics.filter(([,,,hib,,nA,nB]) => hib!==null && nA!=null && nB!=null && isFinite(nA) && isFinite(nB)).length;
+  noteEl.innerHTML = `A vence em ${wins}/${total} métricas · B vence em ${total-wins}/${total} · ` +
+    `Período: ${historyData.commonDates[0].slice(0,7)} → ${historyData.commonDates[historyData.commonDates.length-1].slice(0,7)}.`;
+}
+
+// Initialize comparador when portfolio tab opens
+const _origSwitchTabForComp = switchTab;
+switchTab = function(name) {
+  _origSwitchTabForComp(name);
+  if (name === 'portfolio' && historyData) {
+    setTimeout(compInitRows, 100);
+  }
+};
+
+// Also init when history loads
+const _origLoadHistForComp = loadHistory;
+loadHistory = function() {
+  const p = _origLoadHistForComp();
+  if (p && p.then) {
+    p.then(() => { if (document.getElementById('tab-portfolio').classList.contains('active')) compInitRows(); });
+  }
+  return p;
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// SWR CALCULATOR (Safe Withdrawal Rate)
+// ════════════════════════════════════════════════════════════════════════════
+
+function calcSWR() {
+  const el = document.getElementById('swrResult');
+  const btn = document.getElementById('swrBtn');
+  if (!MCRetireState.lastAccumFinal || !MCRetireState.lastParams) {
+    el.innerHTML = '<span style="color:var(--muted)">Execute o simulador de acumulação primeiro.</span>';
+    return;
+  }
+
+  btn.disabled = true;
+  el.innerHTML = 'Calculando…';
+
+  setTimeout(function() {
+    const anos     = parseInt(document.getElementById('swrAnos')?.value || 25);
+    const targetPct = parseFloat(document.getElementById('swrPct')?.value || 90) / 100;
+    const p        = MCRetireState.lastParams;
+    const starts   = MCRetireState.lastAccumFinal;
+    const N        = MCPortState.N;
+
+    // Binary search: find max saque where survival ≥ targetPct
+    // saque is in today's R$, inflated monthly
+    let lo = 0, hi = 500000;
+    let bestSaque = 0, bestSurv = 0;
+
+    for (let iter = 0; iter < 20; iter++) {
+      const mid = (lo + hi) / 2;
+      const all = mcSimRetire(starts, mid, p.infl, p.retorno, p.volatilidade, anos, N);
+      const col  = all[anos];
+      let alive  = 0;
+      for (let n2 = 0; n2 < N; n2++) if (col[n2] > 0) alive++;
+      const surv = alive / N;
+
+      if (surv >= targetPct) {
+        bestSaque = mid;
+        bestSurv  = surv;
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+
+    const medianWealth = MCRetireState.lastAccumFinal ?
+      (function() {
+        const arr = MCRetireState.lastAccumFinal.slice().sort();
+        return arr[Math.floor(arr.length/2)];
+      })() : 0;
+
+    const annualSWR = bestSaque > 0 && medianWealth > 0
+      ? (bestSaque * 12 / medianWealth * 100).toFixed(2)
+      : '—';
+
+    el.innerHTML = bestSaque > 100
+      ? `Saque mensal máximo (${(targetPct*100).toFixed(0)}% de segurança, ${anos} anos): <strong>${mcFmtShort(bestSaque)}/mês</strong> em R$ de hoje.
+         <br><span style="color:var(--muted)">Sobrevivência real: ${(bestSurv*100).toFixed(1)}% dos ${N.toLocaleString('pt-BR')} cenários.
+         Taxa anual de retirada (SWR) vs mediana acumulada: ${annualSWR}%.
+         Referência: Bengen (1994) encontrou 4% como SWR segura para EUA 30 anos. No Brasil, com retornos nominais maiores mas inflação maior, o equivalente varia conforme o portfólio.</span>`
+      : '<span style="color:var(--muted)">Não foi possível calcular — tente um prazo menor ou probabilidade mais baixa.</span>';
+    btn.disabled = false;
+  }, 20);
+}
+
+// Show SWR section when retirement phase appears
+const _origMCRunRetire = mcRunRetire;
+mcRunRetire = function() {
+  _origMCRunRetire();
+  const swr = document.getElementById('swrSection');
+  if (swr && MCRetireState.lastAccumFinal) swr.style.display = '';
+};
+
+// ════════════════════════════════════════════════════════════════════════════
+// OPTIMIZER: Beta-adjusted returns (Jensen's alpha as mu)
+// ════════════════════════════════════════════════════════════════════════════
+
+function updateBetaAdjNote() {
+  const cb  = document.getElementById('optBetaAdj');
+  const note = document.getElementById('betaAdjNote');
+  if (note) note.style.display = cb?.checked ? '' : 'none';
+}
+
+function getBetaAdjustedMu(cnpj) {
+  // Jensen's alpha = CAGR_fund - [CDI + beta * (IBOV - CDI)]
+  const m = getAdvMetrics(cnpj);
+  if (!m) return null;
+  const cdiAnn  = cdi.cagr36  || 12;
+  const ibovAnn = ibov.cagr36 || 20;
+  return m.cagr - (cdiAnn + m.beta * (ibovAnn - cdiAnn));
+}
+
+// Patch runOptimizer to use beta-adjusted mu when checkbox is active
+const _origRunOptimizerBA = runOptimizer;
+runOptimizer = function() {
+  const useBetaAdj = document.getElementById('optBetaAdj')?.checked;
+  if (!useBetaAdj || !['sortino','calmar','ir'].includes(optObj)) {
+    // For classic modes + non-beta-adjusted, check if beta adj is needed
+    if (!useBetaAdj) { _origRunOptimizerBA(); return; }
+  }
+
+  if (!historyData) return;
+  const btn    = document.getElementById('optRunBtn');
+  const status = document.getElementById('optStatus');
+  btn.disabled = true;
+  status.innerHTML = 'Calculando (beta-adj)<span class="calc-dot">.</span><span class="calc-dot">.</span><span class="calc-dot">.</span>';
+
+  setTimeout(function() {
+    try {
+      const allCnpjs = Object.keys(historyData.funds);
+      const k = optN;
+
+      // Use Jensen's alpha as mu
+      const muMap = {};
+      for (const cnpj of allCnpjs) {
+        if (useBetaAdj) {
+          muMap[cnpj] = getBetaAdjustedMu(cnpj);
+        } else {
+          const fData = funds.find(f => f.cnpjFmt === cnpj);
+          const t     = fData ? calcTargetReturn(fData) : null;
+          muMap[cnpj] = t ? t.value : null;
+        }
+      }
+
+      let cdiTarget = 0; // Jensen's alpha is already excess return if beta-adj
+      if (!useBetaAdj) {
+        if (cdi) {
+          const s = [];
+          if (cdi.cagr12 != null) s.push([1, cdi.cagr12]);
+          if (cdi.cagr36 != null) s.push([3, cdi.cagr36]);
+          if (cdi.cagr60 != null) s.push([5, cdi.cagr60]);
+          if (s.length) cdiTarget = s.reduce((a,[T,v])=>a+T*v,0)/s.reduce((a,[T])=>a+T,0);
+        }
+      }
+
+      const ibovProxy = ibov.cagr36 || 20;
+      const validCnpjs = allCnpjs.filter(c => muMap[c] != null && isFinite(muMap[c]));
+      let best = null; let nCombos = 0;
+
+      for (const combo of combinations(validCnpjs, k)) {
+        nCombos++;
+        const mus = combo.map(c => muMap[c]);
+        const cov = covMatrix(combo, historyData);
+
+        let w = null;
+        if (optObj === 'sortino') {
+          w = maxSortinoWeights(combo, mus, cdiTarget, historyData);
+          if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+        } else if (optObj === 'calmar') {
+          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+        } else if (optObj === 'ir') {
+          w = maxSharpeWeights(combo, mus, ibovProxy, cov);
+        } else {
+          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+          if (!w) w = minVolWeights(cov);
+        }
+        if (!w) w = new Array(k).fill(1/k);
+
+        // Apply weight constraints
+        const feasible = (optMinW * k <= 1.0 + 1e-9) && (optMaxW * k >= 1.0 - 1e-9) && (optMinW <= optMaxW + 1e-9);
+        if (!feasible) continue;
+
+        if (optMaxW < 1.0 || optMinW > 1e-9) {
+          for (let iter = 0; iter < 50; iter++) {
+            const slack = (1.0 - w.reduce((a,b)=>a+b,0)) / k;
+            w = w.map(x => x + slack);
+            const prev = [...w];
+            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+            if (w.every((x,i) => Math.abs(x-prev[i]) < 1e-10)) break;
+          }
+          for (let iter = 0; iter < 50; iter++) {
+            const diff = 1.0 - w.reduce((a,b)=>a+b,0);
+            if (Math.abs(diff) < 1e-12) break;
+            const freeIdx = diff > 0
+              ? w.map((x,i) => x < optMaxW-1e-12 ? i : -1).filter(i => i >= 0)
+              : w.map((x,i) => x > optMinW+1e-12 ? i : -1).filter(i => i >= 0);
+            if (!freeIdx.length) break;
+            const per = diff / freeIdx.length;
+            freeIdx.forEach(i => { w[i] += per; });
+            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+          }
+        }
+
+        const p = evalPortfolioAdvanced(w, combo, mus, cdiTarget, ibovProxy, cov, historyData);
+
+        if (!best) { best = p; continue; }
+        const better =
+          optObj === 'sortino' ? p.sortino > best.sortino :
+          optObj === 'calmar'  ? p.calmar  > best.calmar  :
+          optObj === 'ir'      ? p.ir      > best.ir      :
+          optObj === 'vol'     ? p.vol     < best.vol     :
+          optObj === 'return'  ? p.ret     > best.ret     :
+                                 p.sharpe  > best.sharpe;
+        if (better) best = p;
+      }
+
+      if (!best) { status.textContent = 'Não foi possível otimizar.'; btn.disabled = false; return; }
+
+      const adjNote = useBetaAdj ? ' [beta-adj]' : '';
+      const metricStr = optObj === 'sortino' ? `Sortino ${best.sortino.toFixed(2)}` :
+                        optObj === 'calmar'  ? `Calmar ${best.calmar.toFixed(2)}`   :
+                        optObj === 'ir'      ? `IR ${best.ir.toFixed(2)}`           :
+                        optObj === 'vol'     ? `vol ${best.vol.toFixed(1)}%`         :
+                        optObj === 'return'  ? `retorno ${best.ret.toFixed(1)}%`     :
+                                              `Sharpe ${best.sharpe.toFixed(2)}`;
+
+      status.textContent = `${nCombos} combinações · ${metricStr}${adjNote} · ` +
+        best.cnpjs.map((c,i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
+
+      applyOptimizedPortfolio(best.cnpjs, best.w);
+
+    } catch(e) {
+      document.getElementById('optStatus').textContent = 'Erro: ' + e.message;
+    }
+    btn.disabled = false;
+  }, 20);
+};
 
 
 updateHeaders();
