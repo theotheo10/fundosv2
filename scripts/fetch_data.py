@@ -35,6 +35,7 @@ FUNDS = [
     {"name": "Arbor FIC FIA",                                                      "cnpj": "21689246000192", "cnpjFmt": "21.689.246/0001-92"},
     {"name": "Charles River FIF Ações",                                            "cnpj": "14438229000117", "cnpjFmt": "14.438.229/0001-17"},
     {"name": "SPX Falcon FIF CIC Ações RL",                                        "cnpj": "17397315000117", "cnpjFmt": "17.397.315/0001-17"},
+    {"name": "Opportunity Global Equity Real Institucional FIC FIF Ações IE RL", "cnpj": "46351969000108", "cnpjFmt": "46.351.969/0001-08"},
 ]
 
 FIRST_MONTHLY_YEAR = 2021   # CVM: arquivos mensais a partir daqui
