@@ -2998,13 +2998,16 @@ function updatePortfolio() {
     }
   }
 
+  // portReturns: só acumula a partir de firstRealIdx (todos os fundos com dados)
+  // Antes disso o portfólio não existe — não pesos parciais.
   const portReturns = new Float64Array(n);
-  for (const cnpj of selected) {
-    const rets = historyData.funds[cnpj].returns;
-    const w    = wNorm[cnpj];
-    // Only accumulate from this fund's real inception onward
-    const fundStart = getFirstRealIndex(cnpj);
-    for (let i = fundStart; i < n; i++) portReturns[i] += rets[i] * w;
+  for (let i = firstRealIdx; i < n; i++) {
+    let r = 0;
+    for (const cnpj of selected) {
+      const ret = historyData.funds[cnpj].returns[i];
+      r += wNorm[cnpj] * (isReal(ret) ? ret : 0);
+    }
+    portReturns[i] = r;
   }
 
   // CAGR real da série
