@@ -5,15 +5,20 @@ add_fund.py — Adiciona um ou mais fundos ao histórico do site.
 Uso:
     python scripts/add_fund.py '[{"cnpj":"...","nome":"...","exibicao":"...","curto":"...","tipo":"...","trib":"...","expo":"...","banco":"..."}]'
 
-Campos por fundo:
+Campos obrigatórios:
     cnpj      — CNPJ só com dígitos (ex: 46351969000108)
     nome      — nome completo CVM
     exibicao  — nome no ranking e painéis (ex: "Opportunity Global")
     curto     — nome em gráficos e seletores (ex: "Opportunity")
-    tipo      — "Long Only" | "Long Biased" | "Multimercado"
+    tipo      — "Long Only" | "Long Biased" | "Multimercado" | "Long & Short"
     trib      — "RV" | "TR"
     expo      — "Brasil" | "Internacional" | "Majoritariamente Brasil"
     banco     — custodiante (ex: "Itaú", "BTG", "XP")
+
+Campos opcionais (inferidos do tipo+expo se omitidos):
+    expo_liquida_normal  — exposição líquida típica 0.0–1.0 (ex: 0.70)
+    expo_liquida_crise   — exposição líquida em crise severa (ex: 0.50)
+    benchmark            — "ibov" | "sp500" | "mixed"
 """
 
 import sys, json, zipfile, io, math, datetime, urllib.request
@@ -29,8 +34,42 @@ FETCH_PATH      = SCRIPTS_DIR / "fetch_data.py"
 
 REQUIRED_KEYS = {"cnpj", "nome", "exibicao", "curto", "tipo", "trib", "expo", "banco"}
 
+# ── Exposure defaults by (tipo, expo) ─────────────────────────────────────
 
-# ── Fetch CVM ──────────────────────────────────────────────────────────────────
+def default_exposure(tipo: str, expo: str) -> dict:
+    """
+    Returns default exposure profile based on fund type and geography.
+    Can be overridden per-fund via expo_liquida_normal/crise/benchmark fields.
+    """
+    is_intl = "Internacional" in expo
+
+    if "Long & Short" in tipo:
+        return {
+            "net_normal":  0.0,
+            "net_crisis":  0.0,
+            "benchmark":   "sp500" if is_intl else "ibov",
+        }
+    if "Long Biased" in tipo:
+        return {
+            "net_normal":  0.65,
+            "net_crisis":  0.40,
+            "benchmark":   "sp500" if is_intl else "ibov",
+        }
+    if "Multimercado" in tipo:
+        return {
+            "net_normal":  0.30,
+            "net_crisis":  0.10,
+            "benchmark":   "mixed",
+        }
+    # Long Only (default)
+    return {
+        "net_normal":  1.0,
+        "net_crisis":  0.95,
+        "benchmark":   "sp500" if is_intl else "ibov",
+    }
+
+
+# ── Fetch CVM ──────────────────────────────────────────────────────────────
 
 def fetch_zip(url: str, timeout: int = 120) -> str | None:
     try:
@@ -77,8 +116,6 @@ def extract_fund(data: dict, cnpj_digits: str, cnpj_fmt: str) -> dict[str, float
     return result
 
 
-# Cache de arquivos CVM para não baixar o mesmo ZIP duas vezes
-# quando múltiplos fundos são adicionados de uma vez
 _zip_cache: dict[str, dict | None] = {}
 
 def fetch_cached(url: str, timeout: int = 120) -> dict | None:
@@ -117,7 +154,7 @@ def fetch_full_history(cnpj_digits: str, cnpj_fmt: str) -> dict[str, float]:
     return quotas
 
 
-# ── Interpolação e retornos ────────────────────────────────────────────────────
+# ── Interpolação e retornos ────────────────────────────────────────────────
 
 def interpolate(quotas: dict[str, float], all_dates: list[str]) -> dict[str, float]:
     if not quotas:
@@ -182,14 +219,9 @@ def pearson_safe(ca: str, cb: str,
     return round(num/(sa*sb), 4) if sa*sb > 0 else 0.0
 
 
-# ── Atualizar history.json (todos os fundos novos de uma vez) ─────────────────
+# ── Atualizar history.json ────────────────────────────────────────────────
 
 def update_history(new_funds: list[dict]) -> None:
-    """
-    Recebe lista de {'cnpj_fmt', 'nome_exibicao', 'quotas'}.
-    Acrescenta todos ao history.json de uma vez — mais eficiente que
-    chamar um por um porque aproveita o cache de ZIPs da CVM.
-    """
     print(f"\n── Atualizando history.json")
 
     hist = {}
@@ -201,7 +233,6 @@ def update_history(new_funds: list[dict]) -> None:
         qs = dict(zip(fd["dates"], fd["quotas"]))
         all_fund_quotas[cnpj] = {d: v for d, v in qs.items() if v > 0}
 
-    # Adicionar fundos novos
     for nf in new_funds:
         all_fund_quotas[nf["cnpj_fmt"]] = nf["quotas"]
 
@@ -212,7 +243,6 @@ def update_history(new_funds: list[dict]) -> None:
     for cnpj, qs in all_fund_quotas.items():
         all_fund_quotas[cnpj] = interpolate(qs, all_dates)
 
-    # Nomes: preservar existentes + adicionar novos
     nome_map = {fd["cnpj_fmt"]: fd["nome_exibicao"] for fd in new_funds}
     for cnpj, fd in hist.get("funds", {}).items():
         if cnpj not in nome_map:
@@ -263,7 +293,7 @@ def update_history(new_funds: list[dict]) -> None:
     print(f"  ✓ history.json: {len(all_dates)} datas, {n_years:.1f} anos, {size_kb} KB")
 
 
-# ── Atualizar fetch_data.py ────────────────────────────────────────────────────
+# ── Atualizar fetch_data.py ───────────────────────────────────────────────
 
 def update_fetch_data(funds: list[dict]) -> None:
     print(f"\n── Atualizando fetch_data.py")
@@ -284,32 +314,55 @@ def update_fetch_data(funds: list[dict]) -> None:
         FETCH_PATH.write_text(src)
 
 
-# ── Atualizar index.html ───────────────────────────────────────────────────────
+# ── Atualizar index.html ──────────────────────────────────────────────────
 
 def update_index(funds: list[dict]) -> None:
     print(f"\n── Atualizando index.html")
     src = INDEX_PATH.read_text()
+
     for f in funds:
         if f["cnpj_fmt"] in src:
             print(f"  {f['exibicao']}: já está em FUND_META")
             continue
+
+        # FUND_META entry
         new_meta = (
             f'  "{f["cnpj_fmt"]}": {{ nome:"{f["exibicao"]}", short:"{f["curto"]}", '
             f'inception:"{f["inception_date"]}", initialQuota:{f["initial_quota"]}, '
             f'maxQuota:{f["max_quota"]}, tipo:"{f["tipo"]}", trib:"{f["trib"]}", '
             f'expo:"{f["expo"]}", banco:"{f["banco"]}", obs:"" }},\n'
         )
-        src = src.replace('};\n\nconst CHART_COLORS', f'{new_meta}}};\n\nconst CHART_COLORS', 1)
+        src = src.replace('};\n\nconst TRIB_LABEL', f'{new_meta}}};\n\nconst TRIB_LABEL', 1)
+
+        # JS FUNDS array (for selectors)
         src = src.replace(
             '];\n\nlet sortKey',
             f'  {{ cnpjFmt: "{f["cnpj_fmt"]}", name: "{f["exibicao"]}", short: "{f["curto"]}" }},\n];\n\nlet sortKey',
             1
         )
-        print(f"  ✓ {f['exibicao']} (nome='{f['exibicao']}', short='{f['curto']}')")
+
+        # FUND_EXPOSURE entry for stress test
+        expo = f["exposure"]
+        new_exposure = (
+            f'  "{f["cnpj_fmt"]}": {{ '
+            f'net_normal:{expo["net_normal"]}, '
+            f'net_crisis:{expo["net_crisis"]}, '
+            f'primary:"{expo["benchmark"]}" '
+            f'}}, // {f["exibicao"]}\n'
+        )
+        src = src.replace(
+            '};\n\n// Historical stress scenarios',
+            f'{new_exposure}}};\n\n// Historical stress scenarios',
+            1
+        )
+
+        print(f"  ✓ {f['exibicao']} — FUND_META + FUNDS + FUND_EXPOSURE")
+        print(f"     expo: normal={expo['net_normal']} crise={expo['net_crisis']} benchmark={expo['benchmark']}")
+
     INDEX_PATH.write_text(src)
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
+# ── Main ──────────────────────────────────────────────────────────────────
 
 def main():
     if len(sys.argv) < 2:
@@ -320,14 +373,11 @@ def main():
         raw = json.loads(sys.argv[1])
     except json.JSONDecodeError as e:
         print(f"ERRO: JSON inválido — {e}")
-        print("Verifique se usou aspas simples ao redor do JSON e aspas duplas dentro.")
         sys.exit(1)
 
-    # Aceita tanto lista quanto objeto único
     if isinstance(raw, dict):
         raw = [raw]
 
-    # Validar campos
     for i, f in enumerate(raw):
         missing = REQUIRED_KEYS - set(f.keys())
         if missing:
@@ -343,8 +393,17 @@ def main():
         d = f["cnpj"].strip().replace(".", "").replace("/", "").replace("-", "").zfill(14)
         cnpj_fmt = f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:14]}"
 
+        # Resolve exposure profile
+        expo_defaults = default_exposure(f["tipo"], f["expo"])
+        exposure = {
+            "net_normal": f.get("expo_liquida_normal", expo_defaults["net_normal"]),
+            "net_crisis":  f.get("expo_liquida_crise",  expo_defaults["net_crisis"]),
+            "benchmark":   f.get("benchmark",            expo_defaults["benchmark"]),
+        }
+
         print(f"── {f['exibicao']} ({cnpj_fmt})")
         print(f"   {f['tipo']} | {f['trib']} | {f['expo']} | {f['banco']}")
+        print(f"   Exposição: normal={exposure['net_normal']} crise={exposure['net_crisis']} benchmark={exposure['benchmark']}")
 
         print(f"   Buscando histórico na CVM…")
         quotas = fetch_full_history(d, cnpj_fmt)
@@ -358,23 +417,24 @@ def main():
         initial_quota  = quotas[inception_date]
         max_quota_val  = max(quotas.values())
         max_quota_date = max(quotas, key=quotas.get)
-        print(f"   Inception: {inception_date} · {len(quotas)} cotas · cota inicial: {initial_quota:.6f}")
-        print(f"   Máxima histórica: {max_quota_val:.6f} em {max_quota_date}")
+        print(f"   Inception: {inception_date} · {len(quotas)} cotas")
+        print(f"   Máxima: {max_quota_val:.6f} em {max_quota_date}")
 
         entry = {
-            "cnpj_digits":   d,
-            "cnpj_fmt":      cnpj_fmt,
-            "nome":          f["nome"],
-            "exibicao":      f["exibicao"],
-            "curto":         f["curto"],
-            "tipo":          f["tipo"],
-            "trib":          f["trib"],
-            "expo":          f["expo"],
-            "banco":         f["banco"],
+            "cnpj_digits":    d,
+            "cnpj_fmt":       cnpj_fmt,
+            "nome":           f["nome"],
+            "exibicao":       f["exibicao"],
+            "curto":          f["curto"],
+            "tipo":           f["tipo"],
+            "trib":           f["trib"],
+            "expo":           f["expo"],
+            "banco":          f["banco"],
             "inception_date": inception_date,
             "initial_quota":  initial_quota,
             "max_quota":      max_quota_val,
             "max_quota_date": max_quota_date,
+            "exposure":       exposure,
         }
         processed.append(entry)
         history_entries.append({
@@ -385,16 +445,17 @@ def main():
         print()
 
     if not processed:
-        print("Nenhum fundo processado com sucesso.")
+        print("Nenhum fundo processado.")
         sys.exit(1)
 
     update_history(history_entries)
     update_fetch_data(processed)
     update_index(processed)
 
-    print(f"\n✓ {len(processed)} fundo(s) adicionado(s) com sucesso!")
+    print(f"\n✓ {len(processed)} fundo(s) adicionado(s)!")
     for p in processed:
         print(f"  · {p['exibicao']} ({p['cnpj_fmt']}) — desde {p['inception_date']}")
+        print(f"    expo: normal={p['exposure']['net_normal']} crise={p['exposure']['net_crisis']} benchmark={p['exposure']['benchmark']}")
 
 
 if __name__ == "__main__":
