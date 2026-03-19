@@ -7552,8 +7552,8 @@ runOptimizer = function() {
 // GLOBAL CUSTOM TOOLTIP — intercepts all data-tip attributes
 // Replaces every native browser tooltip with a styled custom one.
 // ════════════════════════════════════════════════════════════════════════════
-(function() {
-  const tip  = document.getElementById('g-tip');
+document.addEventListener('DOMContentLoaded', function() {
+  const tip = document.getElementById('g-tip');
   if (!tip) return;
 
   let activeEl = null;
@@ -7585,7 +7585,6 @@ runOptimizer = function() {
     tip.style.top  = y + 'px';
   }
 
-  // Use event delegation on document — catches dynamically added elements too
   document.addEventListener('mouseover', function(e) {
     const el = e.target.closest('[data-tip]');
     if (el && el !== activeEl) show(el, e);
@@ -7594,16 +7593,13 @@ runOptimizer = function() {
 
   document.addEventListener('mouseout', function(e) {
     const el = e.target.closest('[data-tip]');
-    if (el) {
-      // Only hide if leaving the element entirely (not moving to child)
-      if (!el.contains(e.relatedTarget)) hide();
-    }
+    if (el && !el.contains(e.relatedTarget)) hide();
   });
 
   document.addEventListener('mousemove', move);
   document.addEventListener('scroll', hide, true);
   document.addEventListener('click', hide);
-})();
+});
 
 updateHeaders();
 load();
