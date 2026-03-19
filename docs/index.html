@@ -1113,7 +1113,7 @@
     background: color-mix(in srgb, var(--red) 10%, transparent);
     color: var(--red);
   }
-  .alpha-inline.neu { color: var(--muted); }
+  .alpha-inline.neu { background: color-mix(in srgb, var(--muted) 10%, transparent); color: var(--muted); }
 
 
   /* ── Novas métricas ── */
@@ -6243,7 +6243,7 @@ const _addInlineAlpha = function() {
     if (td.querySelector('.alpha-inline')) return;
 
     const sign = alpha >= 0 ? '+' : '';
-    const cls  = Math.abs(alpha) < 0.5 ? 'neu' : alpha > 0 ? 'pos' : 'neg';
+    const cls  = Math.abs(alpha) < 0.2 ? 'neu' : alpha > 0 ? 'pos' : 'neg';
     const pill = document.createElement('span');
     pill.className = 'alpha-inline ' + cls;
     const _period = {cagr12:'12M',cagr36:'36M',cagr60:'60M'}[currentSort]||'';
