@@ -464,6 +464,41 @@ def update_history(anchor: datetime.date) -> None:
         print(f"    → Forçando backfill completo para incluí-los")
         last_date_in_history = None  # força backfill completo de todos os meses
 
+    # ── Detectar fundos com histórico esparso (add_fund rodou com CVM incompleta) ─
+    # Um fundo adicionado quando a CVM tinha poucas cotas vai ter muitos zeros/gaps.
+    # Se um fundo tem menos de 60% das cotas esperadas desde sua inception,
+    # forçamos backfill completo para recuperar cotas que chegaram depois.
+    if last_date_in_history is not None:  # só se não já forçou backfill
+        sparse_funds = []
+        for f in FUNDS:
+            cnpj = f["cnpjFmt"]
+            if cnpj not in quotas:
+                continue
+            qs = quotas[cnpj]
+            real_cotas = sum(1 for v in qs.values() if v and v > 0)
+            if real_cotas == 0:
+                continue
+            # Encontrar a data mais antiga de cota real
+            sorted_real = sorted(d for d, v in qs.items() if v and v > 0)
+            inception_str = sorted_real[0]
+            # Dias de mercado esperados desde inception até hoje (aprox 252/ano)
+            import datetime as _dt
+            try:
+                inc = _dt.date.fromisoformat(inception_str)
+                today_d = _dt.date.fromisoformat(last_date_in_history)
+                years = (today_d - inc).days / 365.25
+                expected = int(years * 252)
+                if expected > 60 and real_cotas < expected * 0.6:
+                    sparse_funds.append(f["name"])
+                    print(f"  ⚠ {f['name']}: apenas {real_cotas} cotas reais "
+                          f"(esperado ~{expected} para {years:.1f} anos desde {inception_str})")
+            except Exception:
+                pass
+        if sparse_funds:
+            print(f"  → Fundos com histórico esparso: {', '.join(sparse_funds)}")
+            print(f"    → Forçando backfill completo para recuperar cotas CVM retroativas")
+            last_date_in_history = None
+
     # ── Determinar meses a buscar ────────────────────────────────────────────
     to_fetch = months_to_fetch(last_date_in_history, anchor)
     print(f"  Meses a buscar: {len(to_fetch)} "
