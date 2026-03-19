@@ -296,7 +296,7 @@ def update_index(funds: list[dict]) -> None:
         new_meta = (
             f'  "{f["cnpj_fmt"]}": {{ nome:"{f["exibicao"]}", short:"{f["curto"]}", '
             f'inception:"{f["inception_date"]}", initialQuota:{f["initial_quota"]}, '
-            f'maxQuota:{f["initial_quota"]}, tipo:"{f["tipo"]}", trib:"{f["trib"]}", '
+            f'maxQuota:{f["max_quota"]}, tipo:"{f["tipo"]}", trib:"{f["trib"]}", '
             f'expo:"{f["expo"]}", banco:"{f["banco"]}", obs:"" }},\n'
         )
         src = src.replace('};\n\nconst CHART_COLORS', f'{new_meta}}};\n\nconst CHART_COLORS', 1)
@@ -356,7 +356,10 @@ def main():
         sorted_dates   = sorted(quotas.keys())
         inception_date = sorted_dates[0]
         initial_quota  = quotas[inception_date]
+        max_quota_val  = max(quotas.values())
+        max_quota_date = max(quotas, key=quotas.get)
         print(f"   Inception: {inception_date} · {len(quotas)} cotas · cota inicial: {initial_quota:.6f}")
+        print(f"   Máxima histórica: {max_quota_val:.6f} em {max_quota_date}")
 
         entry = {
             "cnpj_digits":   d,
@@ -370,6 +373,8 @@ def main():
             "banco":         f["banco"],
             "inception_date": inception_date,
             "initial_quota":  initial_quota,
+            "max_quota":      max_quota_val,
+            "max_quota_date": max_quota_date,
         }
         processed.append(entry)
         history_entries.append({
