@@ -2994,7 +2994,7 @@ function updatePortfolio() {
   for (const cnpj of selected) {
     const rets = historyData.funds[cnpj].returns;
     for (let i = 0; i < rets.length; i++) {
-      if (rets[i] !== 0) { firstRealIdx = Math.max(firstRealIdx, Math.max(0, i-1)); break; }
+      if (isReal(rets[i])) { firstRealIdx = Math.max(firstRealIdx, Math.max(0, i-1)); break; }
     }
   }
 
@@ -6572,20 +6572,27 @@ initChartToggles = function() {
 // ── Helpers de cálculo ─────────────────────────────────────────────────────
 
 
-// Returns only the real returns for a fund (skipping zeros before inception)
+// Pre-inception sentinel: null (new) or 0 (legacy history.json)
+function isReal(r) { return r !== null && r !== undefined && r !== 0; }
+
+// Returns only the real returns for a fund (skipping pre-inception nulls/zeros)
 function getRealReturns(cnpj) {
-  const allRets = historyData.funds[cnpj].returns;
+  const allRets = historyData.funds[cnpj]?.returns || [];
   for (let i = 0; i < allRets.length; i++) {
-    if (allRets[i] !== 0) return allRets.slice(Math.max(0, i - 1));
+    if (isReal(allRets[i])) {
+      const slice = allRets.slice(Math.max(0, i - 1));
+      // Replace any remaining nulls/zeros mid-series with 0 (gaps, not pre-inception)
+      return slice.map(r => (r === null || r === undefined) ? 0 : r);
+    }
   }
-  return allRets;
+  return allRets.map(r => (r === null || r === undefined) ? 0 : r);
 }
 
 // Returns the index offset where the fund's real history begins
 function getFirstRealIndex(cnpj) {
   const allRets = historyData.funds[cnpj]?.returns || [];
   for (let i = 0; i < allRets.length; i++) {
-    if (allRets[i] !== 0) return Math.max(0, i - 1);
+    if (isReal(allRets[i])) return Math.max(0, i - 1);
   }
   return 0;
 }
@@ -6597,7 +6604,8 @@ function getCommonStartIndex(cnpjs) {
 
 // Safe return: 0 if before fund's inception
 function safeReturn(cnpj, t) {
-  return t >= getFirstRealIndex(cnpj) ? (historyData.funds[cnpj]?.returns[t] || 0) : 0;
+  const r = historyData.funds[cnpj]?.returns[t];
+  return (t >= getFirstRealIndex(cnpj) && r !== null && r !== undefined) ? r : 0;
 }
 
 function computeAdvancedMetrics(cnpj) {
@@ -6608,7 +6616,7 @@ function computeAdvancedMetrics(cnpj) {
   const allRets = fd.returns;
   let firstReal = 0;
   for (let i = 0; i < allRets.length; i++) {
-    if (allRets[i] !== 0) { firstReal = Math.max(0, i - 1); break; }
+    if (isReal(allRets[i])) { firstReal = Math.max(0, i - 1); break; }
   }
   const rets  = allRets.slice(firstReal);
   const dates = historyData.commonDates.slice(firstReal + 1); // +1 because returns are diffs
