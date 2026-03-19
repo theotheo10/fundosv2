@@ -257,7 +257,10 @@ def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict) -> di
 
     prev      = prev_max_quotas.get(fund["cnpjFmt"], {})
     prev_max  = prev.get("maxQuota") or 0.0
-    if end_quota >= prev_max:
+    # maxQuota = max(histórico completo, cota atual)
+    # prev_max_quotas já vem do history.json (via reconstruct_max_quotas_from_history)
+    # ou do data.json anterior — em ambos os casos, comparamos com a cota atual
+    if end_quota > prev_max:
         max_quota      = end_quota
         max_quota_date = end_date
         print(f"  nova máxima: {max_quota} em {max_quota_date}")
@@ -706,22 +709,24 @@ def main() -> None:
     out_path  = Path(__file__).parent.parent / "docs" / "data.json"
     hist_path = Path(__file__).parent.parent / "docs" / "history.json"
 
-    prev_max_quotas = {}
+    # Sempre usa history.json como fonte primária para maxQuota —
+    # é o único lugar com o histórico completo de cotas.
+    # data.json anterior é usado apenas para fundos ausentes do history.
+    prev_max_quotas = reconstruct_max_quotas_from_history(hist_path)
+
     if out_path.exists():
         try:
             prev = json.loads(out_path.read_text())
             for f in prev.get("funds", []):
-                if f.get("cnpjFmt") and f.get("maxQuota"):
-                    prev_max_quotas[f["cnpjFmt"]] = {
+                cnpj = f.get("cnpjFmt")
+                if cnpj and cnpj not in prev_max_quotas and f.get("maxQuota"):
+                    prev_max_quotas[cnpj] = {
                         "maxQuota":     f["maxQuota"],
                         "maxQuotaDate": f.get("maxQuotaDate", ""),
                     }
-            print(f"Carregados {len(prev_max_quotas)} maxQuotas do data.json anterior")
+            print(f"Carregados {len(prev_max_quotas)} maxQuotas (history + data.json)")
         except Exception as e:
             print(f"Não foi possível ler data.json anterior: {e}")
-
-    if not prev_max_quotas:
-        prev_max_quotas = reconstruct_max_quotas_from_history(hist_path)
 
     results = [process_fund(f, anchor, prev_max_quotas) for f in FUNDS]
 
