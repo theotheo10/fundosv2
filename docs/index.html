@@ -2336,8 +2336,8 @@ function buildDetailPanel(f, isExp) {
 
   // Tributação em linguagem simples
   const tribExplain = meta.trib === 'RV'
-    ? 'IR apenas no resgate (15%) — sem come-cotas. Todo o capital trabalha até o dia do resgate.'
-    : 'Come-cotas em maio e novembro: IR antecipado semestralmente. Menos eficiente para horizontes longos.';
+    ? 'IR de 15% apenas no resgate. Sem come-cotas.'
+    : 'Come-cotas em maio e novembro — IR antecipado semestralmente.';
 
   return `<div class="detail-panel ${isExp ? 'open' : ''}" id="detail-${id}">
     <div class="detail-inner">
