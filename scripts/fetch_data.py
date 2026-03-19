@@ -623,6 +623,74 @@ def reconstruct_max_quotas_from_history(hist_path: Path) -> dict:
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
+
+def fetch_sp500(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a60: datetime.date) -> dict:
+    """Busca S&P 500 (^GSPC) e câmbio USD/BRL (BRL=X) no Yahoo Finance.
+    Retorna CAGRs em BRL: converte preços do índice pela taxa de câmbio de cada data.
+    """
+    def _yahoo(ticker, period1, period2):
+        url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+               f"?interval=1d&period1={period1}&period2={period2}")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read())
+        result     = data["chart"]["result"][0]
+        timestamps = result["timestamp"]
+        closes     = result["indicators"]["quote"][0]["close"]
+        return {
+            datetime.datetime.utcfromtimestamp(ts).date().isoformat(): price
+            for ts, price in zip(timestamps, closes) if price is not None
+        }
+
+    period1 = int(datetime.datetime.combine(
+        a60 - datetime.timedelta(days=10), datetime.time(),
+        tzinfo=datetime.timezone.utc).timestamp())
+    period2 = int(datetime.datetime.combine(
+        anchor + datetime.timedelta(days=5), datetime.time(),
+        tzinfo=datetime.timezone.utc).timestamp())
+
+    try:
+        sp_map  = _yahoo("%5EGSPC", period1, period2)
+        fx_map  = _yahoo("BRL%3DX", period1, period2)  # USD/BRL
+
+        # S&P em BRL = preço_SP500 × câmbio_USD/BRL
+        def sp_brl(date_str):
+            sp  = sp_map.get(date_str)
+            fx  = fx_map.get(date_str)
+            if sp and fx and fx > 0:
+                return sp * fx
+            # Fallback: busca data mais próxima disponível nos dois
+            sp_dates = sorted(sp_map.keys())
+            fx_dates = sorted(fx_map.keys())
+            sp_cands = [d for d in sp_dates if d <= date_str]
+            fx_cands = [d for d in fx_dates if d <= date_str]
+            if not sp_cands or not fx_cands:
+                return None
+            sp_v = sp_map[sp_cands[-1]]
+            fx_v = fx_map[fx_cands[-1]]
+            return sp_v * fx_v if sp_v and fx_v and fx_v > 0 else None
+
+        p_anchor = sp_brl(anchor.isoformat())
+        p12      = sp_brl(a12.isoformat())
+        p36      = sp_brl(a36.isoformat())
+        p60      = sp_brl(a60.isoformat())
+
+        def sp_cagr(p_s, p_e, d_s, d_e):
+            if not p_s or not p_e: return None
+            return cagr(p_s, p_e, years_apart(d_s, d_e))
+
+        result_sp = {
+            "cagr12": sp_cagr(p12,  p_anchor, a12.isoformat(),  anchor.isoformat()),
+            "cagr36": sp_cagr(p36,  p_anchor, a36.isoformat(),  anchor.isoformat()),
+            "cagr60": sp_cagr(p60,  p_anchor, a60.isoformat(),  anchor.isoformat()),
+        }
+        vals = {k: f"{v:.2f}%" if v is not None else "N/D" for k, v in result_sp.items()}
+        print(f"  S&P500 BRL 12M={vals['cagr12']} 36M={vals['cagr36']} 60M={vals['cagr60']}")
+        return result_sp
+    except Exception as e:
+        print(f"  ✗ S&P500 falhou: {e}")
+        return {"cagr12": None, "cagr36": None, "cagr60": None}
+
 def main() -> None:
     today = datetime.date.today()
     print(f"Executando para {today.isoformat()}")
@@ -668,11 +736,15 @@ def main() -> None:
     print(f"\n── CDI")
     cdi = fetch_cdi(anchor, a12, a36, a60)
 
+    print(f"\n── S&P 500")
+    sp500 = fetch_sp500(anchor, a12, a36, a60)
+
     data_out = {
         "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "anchorDate":  anchor.isoformat(),
         "ibov":        ibov,
         "cdi":         cdi,
+        "sp500":       sp500,
         "funds":       results,
     }
 
