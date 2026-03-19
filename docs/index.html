@@ -74,7 +74,8 @@
   }
 
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  table { border-collapse: collapse; }
+  .table-wrap table { width: 100%; min-width: 760px; }
 
   thead th {
     font-family: 'Courier New', monospace; font-size: 0.68rem;
@@ -358,7 +359,7 @@
   }
   .port-alloc-row {
     display: grid;
-    grid-template-columns: 120px 1fr 36px 82px 62px 56px 56px;
+    grid-template-columns: 120px 1fr 36px 82px 70px 72px 64px;
     align-items: center; gap: 0.6rem;
     margin-bottom: 0.5rem;
   }
@@ -390,7 +391,7 @@
   }
   .port-alloc-total {
     display: grid;
-    grid-template-columns: 120px 1fr 36px 82px 62px 56px 56px;
+    grid-template-columns: 120px 1fr 36px 82px 70px 72px 64px;
     align-items: center; gap: 0.6rem;
     margin-top: 0.55rem;
     padding-top: 0.55rem;
@@ -410,7 +411,7 @@
   .port-alloc-total-val.muted { color: var(--muted); font-weight: normal; }
   .port-alloc-header {
     display: grid;
-    grid-template-columns: 120px 1fr 36px 82px 62px 56px 56px;
+    grid-template-columns: 120px 1fr 36px 82px 70px 72px 64px;
     gap: 0.6rem; margin-bottom: 0.45rem;
   }
   .port-alloc-header span {
@@ -946,18 +947,6 @@
 
   /* ── Heatmap correlação interativo ── */
   .corr-heatmap { overflow-x:hidden; width:100%; }
-  .corr-heatmap table { border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.58rem; width:100%; table-layout:fixed; }
-  .corr-heatmap th {
-    padding:4px 3px; color:var(--muted); font-weight:normal;
-    border-bottom:1px solid var(--border); white-space:nowrap; text-align:center;
-    overflow:hidden; text-overflow:ellipsis;
-  }
-  .corr-heatmap th:first-child { text-align:left; width:72px; }
-  .corr-heatmap td {
-    padding:4px 3px; text-align:center; cursor:pointer;
-    transition:outline 0.1s; white-space:nowrap;
-  }
-  .corr-heatmap td:hover { outline:2px solid var(--accent); outline-offset:-2px; }
   .corr-scatter-modal {
     position:fixed; inset:0; background:rgba(0,0,0,0.45);
     display:flex; align-items:center; justify-content:center;
@@ -2430,11 +2419,11 @@ const FUND_EXPOSURE = {
 // brl_depreciation: BRL depreciation vs USD (positive = BRL weakens)
 // duration_days: approximate duration
 const STRESS_SCENARIOS = [
-  { name:"Covid (mar/2020)",       ibov_ret:-0.449, sp500_usd:-0.340, brl_dep:+0.300, days:30,  label:"pior mês histórico recente" },
-  { name:"Crise Brasil (jun/2022)",ibov_ret:-0.280, sp500_usd:-0.240, brl_dep:+0.080, days:90,  label:"crise inflação/juros" },
-  { name:"Dilma/Petrolão (2015)",  ibov_ret:-0.410, sp500_usd:-0.120, brl_dep:+0.500, days:365, label:"crise doméstica severa" },
   { name:"Crise financeira (2008)",ibov_ret:-0.600, sp500_usd:-0.565, brl_dep:+0.350, days:365, label:"crise sistêmica global" },
   { name:"Taper tantrum (2013)",   ibov_ret:-0.280, sp500_usd:+0.000, brl_dep:+0.150, days:180, label:"risco emergentes" },
+  { name:"Dilma/Petrolão (2015)",  ibov_ret:-0.410, sp500_usd:-0.120, brl_dep:+0.500, days:365, label:"crise doméstica severa" },
+  { name:"Covid (mar/2020)",       ibov_ret:-0.449, sp500_usd:-0.340, brl_dep:+0.300, days:30,  label:"pior mês histórico recente" },
+  { name:"Crise Brasil (jun/2022)",ibov_ret:-0.280, sp500_usd:-0.240, brl_dep:+0.080, days:90,  label:"crise inflação/juros" },
 ];
 
 function render() {
@@ -2922,7 +2911,8 @@ function renderPortfolioStress(selected, wNorm) {
       <span style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Stress test histórico</span>
       ${!hasBetas ? `<span style="font-family:'Courier New',monospace;font-size:0.53rem;color:var(--amber)">betas OLS disponíveis após próximo update — usando perfil declarado</span>` : ''}
     </div>
-    <table style="width:100%;border-collapse:collapse">
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+      <colgroup><col style="width:auto"><col style="width:120px"><col style="width:130px"></colgroup>
       <thead><tr style="border-bottom:1px solid var(--border)">
         <th style="${thStyleL}">Cenário</th>
         <th style="${thStyle}" data-tip="Queda estimada do portfólio assumindo exposição líquida típica de cada gestor.">Expo. normal</th>
@@ -3066,29 +3056,11 @@ function updatePortfolio() {
   // Build synthesis sentence
   const synthParts = [];
   if (portTarget?.expReturn != null) synthParts.push(`retorno estimado de <strong>+${portTarget.expReturn.toFixed(1)}% ao ano</strong>`);
-  if (portVol36) synthParts.push(`oscilação histórica de <strong>${portVol36.toFixed(0)}% ao ano</strong>`);
-  const stressLoss = (function() {
-    // Estimate max drawdown for the portfolio from history (worst 20-day window)
-    if (!historyData) return null;
-    const wNorm2 = Object.fromEntries(selected.map(c => [c, weights[c]/total]));
-    const n = historyData.funds[selected[0]]?.returns?.length || 0;
-    if (n < 20) return null;
-    let worst = 0;
-    for (let i = 0; i <= n - 20; i++) {
-      let cum = 1.0;
-      for (let j = i; j < i+20; j++) {
-        let portRet = 0;
-        for (const c of selected) portRet += (wNorm2[c]||0) * (historyData.funds[c]?.returns[j]||0);
-        cum *= (1 + portRet);
-      }
-      if ((cum-1) < worst) worst = cum-1;
-    }
-    return worst < -0.02 ? worst * 100 : null;
-  })();
+  if (portVol36) synthParts.push(`volatilidade histórica de <strong>${portVol36.toFixed(1)}% ao ano</strong>`);
+  if (portTarget?.sharpe != null) synthParts.push(`Sharpe de <strong>${portTarget.sharpe.toFixed(2)}</strong>`);
   const synthVerd = synthParts.length > 0
-    ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(', ')}${stressLoss ? `, e histórqueda máxima de <strong style="color:var(--red)">${stressLoss.toFixed(0)}% em 20 pregões</strong> (histórico desde 2021)` : ''}.</div>`
+    ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(' · ')}.</div>`
     : '';
-
   document.getElementById('portMetrics').innerHTML = `${synthVerd}
     <div class="port-metrics-grid">
       <div class="port-metric"><div class="port-metric-label" data-tip="CAGR ponderado do portfólio nos últimos 12 meses.">CAGR 12M</div>${fmtM(cagr12w)}</div>
@@ -6032,29 +6004,70 @@ let corrScatterChart = null;
 function buildCorrHeatmap(selected) {
   if (!historyData || !historyData.correlation || selected.length < 2) return null;
   const corr  = historyData.correlation;
-  const names = selected.map(function(c) { return shortName(c); });
+  const n     = selected.length;
 
-  let html = '<div class="corr-heatmap"><table>';
-  html += '<tr><th></th>' + names.map(function(n){ return `<th>${n}</th>`; }).join('') + '</tr>';
+  // Helper: color cell by correlation value
+  function cellStyle(v) {
+    const abs = Math.abs(v);
+    const bg  = v > 0
+      ? `rgba(184,50,50,${(abs*0.55).toFixed(2)})`
+      : `rgba(26,122,82,${(abs*0.55).toFixed(2)})`;
+    const col = abs > 0.72 ? '#fff' : abs < 0.3 ? 'var(--text)' : 'var(--text)';
+    return `background:${bg};color:${col}`;
+  }
 
-  selected.forEach(function(ca, i) {
-    html += `<tr><th style="text-align:left;padding-right:8px">${names[i]}</th>`;
-    selected.forEach(function(cb, j) {
-      if (i === j) {
-        html += '<td style="color:var(--muted)">—</td>';
-        return;
+  // Short name (max 7 chars for column headers)
+  function abbr(cnpj) {
+    const s = shortName(cnpj);
+    return s.length > 8 ? s.slice(0, 7) + '…' : s;
+  }
+
+  // ── Triangular lower-left heatmap ────────────────────────────────────
+  // Rows = fund i (from 2nd), Cols = fund j (from 1st to i-1)
+  // Diagonal = fund name label spanning
+
+  const tdBase = `padding:5px 6px;text-align:center;font-family:'Courier New',monospace;font-size:0.6rem;cursor:pointer;transition:outline 0.1s`;
+  const thBase = `padding:5px 6px;font-family:'Courier New',monospace;font-size:0.58rem;font-weight:normal;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px`;
+
+  // Column headers (fund 0 to n-2, since last fund has no column)
+  let html = `<div style="overflow-x:hidden;width:100%">
+  <table style="border-collapse:collapse;width:100%;table-layout:fixed">
+  <colgroup>
+    <col style="width:72px">`;
+  for (let j = 0; j < n - 1; j++) html += `<col>`;
+  html += `</colgroup>
+  <thead><tr>
+    <th style="${thBase};text-align:left"></th>`;
+  for (let j = 0; j < n - 1; j++) {
+    html += `<th style="${thBase}" data-tip="${shortName(selected[j])}">${abbr(selected[j])}</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+
+  // Rows: i from 1 to n-1
+  for (let i = 1; i < n; i++) {
+    html += `<tr>`;
+    // Row label
+    html += `<td style="padding:5px 8px 5px 0;font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px" data-tip="${shortName(selected[i])}">${abbr(selected[i])}</td>`;
+    // Cells: j from 0 to i-1 (lower triangle)
+    for (let j = 0; j < n - 1; j++) {
+      if (j < i) {
+        const v = corr[selected[i]]?.[selected[j]] ?? 0;
+        html += `<td style="${tdBase};${cellStyle(v)}" onclick="openCorrScatter('${selected[i]}','${selected[j]}')" data-tip="${shortName(selected[i])} × ${shortName(selected[j])}: ${v.toFixed(2)}">${v.toFixed(2)}</td>`;
+      } else if (j === i) {
+        // Diagonal — fund name
+        html += `<td style="${tdBase};color:var(--muted);border-bottom:0.5px solid var(--border)">—</td>`;
+      } else {
+        // Upper triangle — empty
+        html += `<td style="${tdBase}"></td>`;
       }
-      const v   = corr[ca]?.[cb] ?? 0;
-      const abs = Math.abs(v);
-      const bg  = `rgba(${Math.round(abs*180)},${Math.round((1-abs)*80+80)},80,0.22)`;
-      const col = abs > 0.7 ? 'var(--red)' : abs < 0.35 ? 'var(--green)' : 'var(--text)';
-      html += `<td style="background:${bg};color:${col}" onclick="openCorrScatter('${ca}','${cb}')">${v.toFixed(2)}</td>`;
-    });
-    html += '</tr>';
-  });
-  html += '</table></div>';
+    }
+    html += `</tr>`;
+  }
+
+  html += `</tbody></table></div>`;
   return html;
 }
+
 
 function openCorrScatter(ca, cb) {
   if (!historyData) return;
