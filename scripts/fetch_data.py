@@ -543,7 +543,7 @@ def update_history(anchor: datetime.date) -> None:
         for i in range(1, len(common_dates)):
             q0 = qs.get(common_dates[i-1])
             q1 = qs.get(common_dates[i])
-            rets.append((q1 / q0) - 1 if q0 and q1 else 0.0)
+            rets.append((q1 / q0) - 1 if q0 and q1 else None)  # None = pre-inception or gap
         returns_by_fund[fund["cnpjFmt"]] = rets
 
     # ── Correlação de Pearson ────────────────────────────────────────────────
@@ -560,7 +560,7 @@ def update_history(anchor: datetime.date) -> None:
         rb = returns_by_fund[cb]
         # Build aligned pairs where both have real data
         pairs = [(ra[i], rb[i]) for i in range(min(len(ra), len(rb)))
-                 if ra[i] != 0.0 and rb[i] != 0.0]
+                 if ra[i] is not None and rb[i] is not None]
         n = len(pairs)
         if n < 30: return 0.0
         a = [p[0] for p in pairs]
@@ -580,12 +580,13 @@ def update_history(anchor: datetime.date) -> None:
         # Skip leading zeros (pre-inception)
         start = 0
         for i, r in enumerate(rets):
-            if r != 0.0:
+            if r is not None:
                 start = max(0, i - 1)
                 break
         cum = peak = 1.0
         dd_max = 0.0
         for r in rets[start:]:
+            if r is None: continue
             cum *= (1 + r)
             if cum > peak: peak = cum
             dd = (cum - peak) / peak
@@ -597,7 +598,7 @@ def update_history(anchor: datetime.date) -> None:
         fund["cnpjFmt"]: {
             "nome":        fund["name"],
             "dates":       common_dates,
-            "quotas":      [quotas[fund["cnpjFmt"]].get(d, 0.0) for d in common_dates],
+            "quotas":      [quotas[fund["cnpjFmt"]].get(d) for d in common_dates],  # None = pre-inception
             "returns":     returns_by_fund[fund["cnpjFmt"]],
             "maxDrawdown": max_dd(returns_by_fund[fund["cnpjFmt"]]),
         }
@@ -811,8 +812,8 @@ def compute_fund_betas(history_path: Path, index_rets: dict) -> dict:
             r_s  = sp500_r.get(d)
             if r_i is None or r_s is None:
                 continue
-            if r_f == 0.0:
-                continue  # skip pre-inception zeros (fund not yet active)
+            if r_f is None:
+                continue  # skip pre-inception (fund not yet active)
             X_ibov.append(r_i)
             X_sp.append(r_s)
             Y.append(r_f)
