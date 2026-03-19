@@ -4525,6 +4525,11 @@ function renderNormalizedChart() {
               var sign = v >= 0 ? '+' : '';
               if (mode === 'normalized') return '  ' + c.dataset.label + ':  ' + sign + v.toFixed(1) + '%';
               return '  ' + c.dataset.label + ':  ' + v.toFixed(2) + '%';
+            },
+            labelColor: function(c) {
+              var col = c.dataset.borderColor;
+              if (!col || col === 'transparent') return {backgroundColor:'rgba(128,128,128,0.4)',borderColor:'rgba(128,128,128,0.4)'};
+              return {backgroundColor: col, borderColor: col};
             }
           }
         }
@@ -5457,8 +5462,22 @@ function _mcRenderChart(labels, p10, p25, p50, p75, p90, det) {
             },
             filter: function(item) {
               return !['P25b','P75b','P75'].includes(item.dataset.label);
+            },
+            labelColor: function(c) {
+              // Solid color swatches — no grey outline
+              const colorMap = {
+                'P10':  { background: 'rgba(184,50,50,0.5)',  border: 'rgba(184,50,50,0.5)' },
+                'P25':  { background: 'rgba(184,50,50,0.5)',  border: 'rgba(184,50,50,0.5)' },
+                'P90':  { background: 'rgba(26,122,82,0.6)',  border: 'rgba(26,122,82,0.6)' },
+                'Mediana':   { background: '#1a4a8a', border: '#1a4a8a' },
+                'Taxa fixa': { background: '#e05c2a', border: '#e05c2a' },
+              };
+              const col = colorMap[c.dataset.label];
+              if (!col) return { backgroundColor: 'transparent', borderColor: 'transparent' };
+              return { backgroundColor: col.background, borderColor: col.border };
             }
-          }
+          },
+          itemSort: function(a, b) { return b.parsed.y - a.parsed.y; }
         }
       },
       scales: {
@@ -5787,11 +5806,18 @@ function _mcRenderRetireChart(labels, p10, p25, p50, p75, p90) {
             label:function(c){
               const skip = ['P10r','P25r','P25rb','P75r','P75rb'];
               if (skip.includes(c.dataset.label)) return null;
-              const map = {'P90r':'P90','Mediana':'Cenário típico (mediana)'};
+              const map = {'P90r':'P90 (melhor 10%)','Mediana':'Cenário típico (mediana)'};
               return '  ' + (map[c.dataset.label]||c.dataset.label) + ':  ' + mcFmtShort(c.parsed.y);
             },
-            filter:function(i){ return !['P25r','P25rb','P75r','P75rb','P10r'].includes(i.dataset.label); }
-          }
+            filter:function(i){ return !['P25r','P25rb','P75r','P75rb','P10r'].includes(i.dataset.label); },
+            labelColor:function(c){
+              const m = {'P90r':{background:'rgba(26,122,82,0.6)',border:'rgba(26,122,82,0.6)'},'Mediana':{background:'#1a4a8a',border:'#1a4a8a'}};
+              const col = m[c.dataset.label];
+              if (!col) return {backgroundColor:'transparent',borderColor:'transparent'};
+              return {backgroundColor:col.background,borderColor:col.border};
+            }
+          },
+          itemSort:function(a,b){ return b.parsed.y - a.parsed.y; }
         }
       },
       scales:{
