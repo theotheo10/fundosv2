@@ -1080,20 +1080,21 @@
   /* Benchmark inline pill */
   .alpha-inline {
     display: inline-block;
-    font-family: 'Courier New', monospace; font-size: 0.58rem;
-    padding: 1px 5px; border-radius: 4px;
-    margin-left: 5px; vertical-align: middle;
-    font-weight: normal;
+    font-family: 'Courier New', monospace; font-size: 0.55rem;
+    padding: 0px 4px; border-radius: 3px;
+    margin-left: 4px; vertical-align: middle;
+    font-weight: normal; letter-spacing: 0.02em;
+    opacity: 0.82;
   }
   .alpha-inline.pos {
-    background: var(--green-light); color: var(--green);
-    border: 0.5px solid color-mix(in srgb, var(--green) 25%, transparent);
+    background: color-mix(in srgb, var(--green) 10%, transparent);
+    color: var(--green);
   }
   .alpha-inline.neg {
-    background: var(--red-light); color: var(--red);
-    border: 0.5px solid color-mix(in srgb, var(--red) 25%, transparent);
+    background: color-mix(in srgb, var(--red) 10%, transparent);
+    color: var(--red);
   }
-  .alpha-inline.neu { background: var(--border); color: var(--muted); }
+  .alpha-inline.neu { color: var(--muted); }
 
 
   /* ── Novas métricas ── */
@@ -1503,7 +1504,7 @@
         <th class="sortable" data-key="cagr12"    id="th-cagr12" title="Retorno ao ano nos últimos 12 meses. Taxa ANUALIZADA — não é o retorno total do período.">12M · a.a. ↕</th>
         <th class="sortable" data-key="cagr36"    id="th-cagr36" title="Retorno médio ao ano nos últimos 3 anos. Taxa ANUALIZADA — ex: +18% significa +18% por ano, não +18% no total.">36M · a.a. ↕</th>
         <th class="sortable" data-key="cagr60"    id="th-cagr60" title="Retorno médio ao ano nos últimos 5 anos. Taxa ANUALIZADA. Janela mais longa = mais confiável, inclui mais ciclos de mercado.">60M · a.a. ↕</th>
-        <th class="sortable col-alpha" data-key="alpha" id="th-alpha" title="Quanto o gestor ganhou ALÉM do mercado.&#10;Positivo = superou o IBOV (ou CDI para multimercados).&#10;Negativo = ficou abaixo do índice.&#10;Responde: vale pagar a taxa de gestão?">Alpha ↕</th>
+        <th class="sortable col-alpha" data-key="alpha" id="th-alpha" title="Excesso de retorno anualizado vs. IBOV no período da coluna de ordenação ativa.&#10;Positivo = gestor superou o índice. Negativo = ficou abaixo.&#10;Medida central de skill do gestor — quanto do retorno veio de decisões ativas, não do mercado.">Alpha ↕</th>
         <th class="sortable" data-key="inception" id="th-inception" title="Retorno médio ao ano desde o início do fundo. Inclui todos os ciclos, crises e altas desde a criação.">Desde início ↕</th>
         <th class="sortable" data-key="tenure"    id="th-tenure" title="Há quanto tempo o fundo existe. Histórico mais longo = estimativas mais confiáveis.">Histórico ↕</th>
       </tr>
@@ -2006,6 +2007,7 @@ function toggleTheme() {
 
 let funds        = [];
 let ibov         = { cagr12: null, cagr36: null, cagr60: null };
+let sp500         = { cagr12: null, cagr36: null, cagr60: null };
 let cdi          = { cagr12: null, cagr36: null, cagr60: null };
 let currentSort  = 'cagr36';
 let sortDir      = 1;
@@ -2421,6 +2423,7 @@ function render() {
 
   if (ibovPos === null) html += buildIbovRow();
   html += buildCdiRow();
+  html += buildSP500Row();
   document.getElementById('fundBody').innerHTML = html;
 }
 
@@ -2456,6 +2459,27 @@ function buildCdiRow() {
     <td>${fmtPct(cdi.cagr12)}</td>
     <td>${fmtPct(cdi.cagr36)}</td>
     <td>${fmtPct(cdi.cagr60)}</td>
+    <td><span class="cagr-val na">—</span></td>
+    <td><span class="cagr-val na">—</span></td>
+    <td><span class="tenure">—</span></td>
+  </tr>`;
+}
+
+function buildSP500Row() {
+  const anchorFmt = window.anchorDate
+    ? (() => { const [y,m,d] = window.anchorDate.split('-'); return `${d}/${m}/${y}`; })()
+    : '—';
+  return `<tr class="ibov-row">
+    <td><div class="fund-name-cell">
+      <span class="rank ibov" style="background:color-mix(in srgb,var(--amber) 12%,transparent);color:var(--amber)">S&P</span>
+      <div>
+        <div class="fund-name">S&P 500 (em R$)</div>
+        <div class="fund-cnpj">^GSPC × USD/BRL · até ${anchorFmt}</div>
+      </div>
+    </div></td>
+    <td>${fmtPct(sp500.cagr12)}</td>
+    <td>${fmtPct(sp500.cagr36)}</td>
+    <td>${fmtPct(sp500.cagr60)}</td>
     <td><span class="cagr-val na">—</span></td>
     <td><span class="cagr-val na">—</span></td>
     <td><span class="tenure">—</span></td>
@@ -2501,8 +2525,9 @@ async function load() {
       dateEl.textContent += ` · gerado ${pad(gen.getUTCDate())}/${pad(gen.getUTCMonth()+1)} às ${pad(gen.getUTCHours())}:${pad(gen.getUTCMinutes())} UTC`;
     }
 
-    if (data.ibov) ibov = data.ibov;
-    if (data.cdi)  cdi  = data.cdi;
+    if (data.ibov)  ibov  = data.ibov;
+    if (data.cdi)   cdi   = data.cdi;
+    if (data.sp500) sp500 = data.sp500;
     updateHeaders();
     render();
     initMCSelect();
@@ -4036,9 +4061,8 @@ function fmtAlpha(v) {
   const sign = v >= 0 ? '+' : '';
   const cls  = v >= 0 ? 'pos' : 'neg';
   const tip  = (v >= 0
-    ? sign + v.toFixed(1) + 'pp acima do benchmark (IBOV ou CDI) no período'
-    : v.toFixed(1) + 'pp abaixo do benchmark (IBOV ou CDI) no período')
-    + '\nJanela = coluna de ordenação ativa (12M, 36M ou 60M)';
+    ? sign + v.toFixed(1) + 'pp acima do IBOV no período da coluna'
+    : v.toFixed(1) + 'pp abaixo do IBOV no período da coluna');
   return '<span class="cagr-val ' + cls + '" style="font-size:0.78rem" title="' + tip + '">' + sign + v.toFixed(1) + 'pp</span>';
 }
 
@@ -6164,7 +6188,7 @@ const _addInlineAlpha = function() {
     const cls  = Math.abs(alpha) < 0.5 ? 'neu' : alpha > 0 ? 'pos' : 'neg';
     const pill = document.createElement('span');
     pill.className = 'alpha-inline ' + cls;
-    pill.title = (alpha >= 0 ? 'Acima' : 'Abaixo') + ' do benchmark em ' + Math.abs(alpha).toFixed(1) + 'pp';
+    pill.title = 'Alpha vs. IBOV: ' + sign + alpha.toFixed(1) + 'pp no período ' + ({cagr12:'12M',cagr36:'36M',cagr60:'60M'}[currentSort]||'');
     pill.textContent = sign + alpha.toFixed(1) + 'pp';
     td.appendChild(pill);
   });
