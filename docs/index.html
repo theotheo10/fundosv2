@@ -7225,22 +7225,40 @@ function computeAdvancedMetrics(cnpj) {
   }
   const calmar = mdd < 0 ? cagr / Math.abs(mdd * 100) : null;
 
-  // Beta vs equal-weighted market proxy (all funds in history)
-  const eqRets = [];
-  const allCnpjs = Object.keys(historyData.funds);
-  for (let i = 0; i < n; i++) {
-    let r = 0;
-    allCnpjs.forEach(c => {
-      const cr = historyData.funds[c].returns;
-      r += (cr[firstReal + i] || 0);
-    });
-    eqRets.push(r / allCnpjs.length);
+  // Beta: usa betas OLS do data.json quando disponíveis (benchmark correto por tipo/expo)
+  // Fallback: regressão vs. IBOV proxy diário se OLS não disponível
+  const _olsBetas = fundBetas[cnpj] || {};
+  const _meta     = FUND_META[cnpj] || {};
+  const _isIntl   = (_meta.expo || '').includes('Internacional');
+  const _isMM     = (_meta.tipo || '').includes('Multimercado') || (_meta.tipo || '').includes('Long & Short');
+
+  let beta, betaBenchmark;
+  if (_olsBetas.beta_ibov != null && _olsBetas.n_obs >= 60) {
+    // Use OLS beta vs. benchmark correto para o tipo de fundo
+    if (_isIntl) {
+      beta = _olsBetas.beta_sp500 ?? _olsBetas.beta_ibov;
+      betaBenchmark = 'S&P 500 (BRL)';
+    } else if (_isMM) {
+      // Para multimercado/L&S, usar o beta com maior contribuição absoluta
+      const absIbov = Math.abs(_olsBetas.beta_ibov || 0);
+      const absSp   = Math.abs(_olsBetas.beta_sp500 || 0);
+      beta = absIbov >= absSp ? _olsBetas.beta_ibov : _olsBetas.beta_sp500;
+      betaBenchmark = absIbov >= absSp ? 'IBOV' : 'S&P 500 (BRL)';
+    } else {
+      beta = _olsBetas.beta_ibov;
+      betaBenchmark = 'IBOV';
+    }
+  } else {
+    // Fallback: regressão diária vs. IBOV proxy (retorno diário constante)
+    const ibovDailyFB = Math.pow(1 + (ibov.cagr36 || 20) / 100, 1 / 252) - 1;
+    const ibovRets = rets.map(() => ibovDailyFB);
+    const meanMkt = ibovDailyFB;
+    const meanF2  = rets.reduce((s,r) => s+r, 0) / n;
+    const cov2 = rets.reduce((s,r,i) => s + (r - meanF2) * (ibovRets[i] - meanMkt), 0) / (n - 1);
+    const varM2 = rets.reduce((s,r) => s + (r - meanMkt) ** 2, 0) / (n - 1);
+    beta = varM2 > 0 ? cov2 / varM2 : 1.0;
+    betaBenchmark = _isIntl ? 'S&P 500 (proxy)' : 'IBOV (proxy)';
   }
-  const meanMkt = eqRets.reduce((s,r) => s+r, 0) / eqRets.length;
-  const meanF   = rets.reduce((s,r) => s+r, 0) / n;
-  const cov = rets.reduce((s,r,i) => s + (r-meanF)*(eqRets[i]-meanMkt), 0) / (n-1);
-  const varM = eqRets.reduce((s,r) => s + (r-meanMkt)**2, 0) / (n-1);
-  const beta = varM > 0 ? cov / varM : 1.0;
 
   // Information Ratio vs IBOV proxy
   const excessIbov = rets.map(r => r - ibovDaily);
@@ -7280,7 +7298,7 @@ function computeAdvancedMetrics(cnpj) {
   const propensity = totalQ > 0 ? (beats / totalQ) * 100 : 0;
 
   return {
-    cagr, sortino, calmar, beta, ir, teAnn,
+    cagr, sortino, calmar, beta, betaBenchmark, ir, teAnn,
     propensity, alphaAnn,
     rollingAlpha, rollingDates,
     raMin: rollingAlpha.length ? Math.min(...rollingAlpha) : null,
@@ -7384,7 +7402,7 @@ function renderAdvMetricsTable() {
     ${th('sortino',    'Sortino',    'Sortino ratio: (retorno − CDI) ÷ semi-desvio descendente.\nSuperior ao Sharpe para fundos com assimetria positiva: não penaliza volatilidade para cima.\nAcima de 1,0 é excelente; acima de 0,7 é razoável para equity brasileira.\nReferência: Estrada (2008), J. Portfolio Management.')}
     ${th('calmar',     'Calmar',     'Calmar ratio: CAGR ÷ |máximo drawdown histórico|.\nResponde: quanto de retorno o fundo entregou para cada 1% de queda máxima?\nAcima de 1,0 significa que o CAGR supera o pior drawdown em módulo.\nReferência: Young (1991).')}
     ${th('ir',         'IR',         'Information Ratio: alpha anualizado vs. IBOV ÷ tracking error.\nMede se o gestor gera alpha de forma eficiente — não só se gerou, mas se gerou com consistência.\nIR > 0,5 é considerado bom; IR > 0,75 é excelente (Grinold & Kahn, Active Portfolio Management).\nIR negativo = gestor destruiu valor vs. simplesmente comprar o IBOV.')}
-    ${th('beta',       'Beta',       'Beta vs. portfólio equal-weight dos fundos disponíveis (proxy de mercado do universo).\nBeta 1,0 = se move igual ao mercado. Beta 0,5 = metade. Beta 1,5 = amplifica 50%.\nLong Only tipicamente β ≈ 0,9–1,2 · Long Biased β ≈ 0,5–0,8 · Multimercado pode ter β < 0,5.\nFundo com CAGR 18% e β 0,6 gerou mais alpha ajustado ao risco que CAGR 20% com β 1,2.')}
+    ${th('beta',       'Beta',       'Beta vs. benchmark natural do fundo:\nLong Only / Long Biased Brasil → IBOV\nLong Only / Long Biased Internacional → S&P 500 (em BRL)\nMultimercado / Long & Short → benchmark de maior contribuição\nFonte: regressão OLS multifator do fetch_data.py quando disponível (≥60 pregões), senão proxy diário.\nBeta 1,0 = move igual ao benchmark · 0,5 = metade da oscilação · 1,5 = amplifica 50%.')}
     ${th('propensity', 'Beat IBOV',  'Frequência com que o fundo superou o IBOV em janelas de 3 meses (63 pregões), recalculadas mensalmente.\nUm fundo que bate o IBOV em 70% dos trimestres tem processo de geração de alpha mais robusto que 45%.\nAbaixo de 50%: fundo perde para o índice na maioria dos trimestres.\nReferência: Manulife/John Hancock — "propensity to outperform".')}
     ${th('raLatest',   'Alpha 12M',  'Alpha rolante mais recente: excesso de retorno anualizado vs. IBOV na janela de 12M encerrada na última data.\nCompare com o alpha médio histórico para detectar mudanças de tendência.\nAlpha recente muito diferente do histórico pode indicar mudança no processo do gestor ou ciclo desfavorável.')}
     ${th('raMin',      'Range Alpha','Intervalo [mínimo, máximo] do alpha rolante de 12M ao longo de todo o histórico disponível.\nIntervalo estreito = consistência. Intervalo amplo = dependência do ciclo de mercado.\nFundos com alpha mínimo muito negativo têm maior risco de captura de drawdown específico do estilo.', 'text-align:right')}
@@ -7399,7 +7417,9 @@ function renderAdvMetricsTable() {
     const srVal  = m.sortino != null ? m.sortino.toFixed(2) : 'N/D';
     const caVal  = m.calmar  != null ? m.calmar.toFixed(2)  : 'N/D';
     const irVal  = m.ir      != null ? m.ir.toFixed(2)      : 'N/D';
-    const betaV  = m.beta.toFixed(2);
+    const betaV  = m.beta != null
+      ? m.beta.toFixed(2) + '<span style="font-size:0.5rem;color:var(--muted);margin-left:3px">' + (m.betaBenchmark || '') + '</span>'
+      : 'N/D';
     const propV  = m.propensity.toFixed(0) + '%';
     const raLat  = m.raLatest != null ? (m.raLatest >= 0 ? '+' : '') + m.raLatest.toFixed(1) + '%' : 'N/D';
     const raMin  = m.raMin  != null ? (m.raMin  >= 0 ? '+' : '') + m.raMin.toFixed(0)  : '?';
