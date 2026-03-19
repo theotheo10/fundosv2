@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-19T06:16:20.002858+00:00",
+  "generatedAt": "2026-03-19T06:21:21.902985+00:00",
   "anchorDate": "2026-03-17",
   "ibov": {
     "cagr12": 37.92264033724011,
@@ -309,6 +309,27 @@
       "cagr36": 27.527949798841146,
       "cagr60": 19.337490804773005,
       "cagrInception": 16.558179684194172,
+      "error": false
+    },
+    {
+      "name": "Opportunity Global Equity Real Institucional FIC FIF Ações IE RL",
+      "cnpj": "46.351.969/0001-08",
+      "cnpjFmt": "46.351.969/0001-08",
+      "latestDate": "2026-03-17",
+      "latestQuota": 2.35684793,
+      "isDelayed": false,
+      "delayDays": 0,
+      "maxQuota": 2.35684793,
+      "maxQuotaDate": "2026-03-17",
+      "inceptionDate": "2022-12-16",
+      "anchorDate": "2026-03-17",
+      "anchor12m": "2025-03-17",
+      "anchor36m": "2023-03-17",
+      "anchor60m": "2021-03-17",
+      "cagr12": 27.439544582422414,
+      "cagr36": 30.012359498688458,
+      "cagr60": null,
+      "cagrInception": 30.187590628161452,
       "error": false
     }
   ]
