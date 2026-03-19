@@ -6700,10 +6700,10 @@ function computeAdvancedMetrics(cnpj) {
     cagr, sortino, calmar, beta, ir, teAnn,
     propensity, alphaAnn,
     rollingAlpha, rollingDates,
-    raMin: Math.min(...rollingAlpha),
-    raMax: Math.max(...rollingAlpha),
-    raLatest: rollingAlpha[rollingAlpha.length - 1],
-    raMean: rollingAlpha.reduce((s,x) => s+x, 0) / rollingAlpha.length,
+    raMin: rollingAlpha.length ? Math.min(...rollingAlpha) : null,
+    raMax: rollingAlpha.length ? Math.max(...rollingAlpha) : null,
+    raLatest: rollingAlpha.length ? rollingAlpha[rollingAlpha.length - 1] : null,
+    raMean: rollingAlpha.length ? rollingAlpha.reduce((s,x) => s+x, 0) / rollingAlpha.length : null,
     mddPct: mdd * 100,
     ddDev, cdiCagr36, ibovCagr36,
   };
@@ -6712,7 +6712,7 @@ function computeAdvancedMetrics(cnpj) {
 // Cache
 const _metricsCache = {};
 function getAdvMetrics(cnpj) {
-  if (!_metricsCache[cnpj]) _metricsCache[cnpj] = computeAdvancedMetrics(cnpj);
+  if (_metricsCache[cnpj] === undefined) _metricsCache[cnpj] = computeAdvancedMetrics(cnpj);
   return _metricsCache[cnpj];
 }
 
