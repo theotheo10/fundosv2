@@ -302,13 +302,17 @@
   .fund-weight-input {
     font-family: 'Courier New', monospace; font-size: 0.75rem;
     width: 44px; padding: 3px 4px; text-align: right;
-    border: 1px solid transparent; border-radius: 3px;
-    background: transparent; color: var(--text); outline: none;
+    border: 1px solid var(--border); border-radius: 3px;
+    background: var(--bg); color: var(--text); outline: none;
+    cursor: text;
+  }
+  .fund-weight-input:not(:disabled):hover {
+    border-color: var(--accent);
   }
   .fund-weight-input:focus {
     border-color: var(--accent); background: var(--bg);
   }
-  .fund-weight-input:disabled { opacity: 0.2; }
+  .fund-weight-input:disabled { opacity: 0.25; cursor: not-allowed; border-color: transparent; background: transparent; }
 
   /* Coluna direita */
   .port-right {
@@ -1648,6 +1652,7 @@
       <div class="port-metrics-panel">
         <div class="port-section-label" style="margin-bottom:0.8rem">Métricas do portfólio</div>
         <div id="portMetrics" class="port-empty">Selecione ao menos um fundo e defina os pesos</div>
+        <div id="portStressContainer"></div>
       </div>
       <div class="port-alloc-panel" id="portAllocPanel" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.5rem">
@@ -2050,6 +2055,7 @@ function toggleTheme() {
 
 let funds        = [];
 let ibov         = { cagr12: null, cagr36: null, cagr60: null };
+let fundBetas    = {};
 let sp500         = { cagr12: null, cagr36: null, cagr60: null };
 let cdi          = { cagr12: null, cagr36: null, cagr60: null };
 let currentSort  = 'cagr36';
@@ -2336,8 +2342,8 @@ function buildDetailPanel(f, isExp) {
 
   // Tributação em linguagem simples
   const tribExplain = meta.trib === 'RV'
-    ? 'IR apenas no resgate (15%) — sem come-cotas. Todo o capital trabalha até o dia do resgate.'
-    : 'Come-cotas em maio e novembro: IR antecipado semestralmente. Menos eficiente para horizontes longos.';
+    ? 'IR de 15% apenas no resgate. Sem come-cotas.'
+    : 'Come-cotas em maio e novembro — IR antecipado semestralmente.';
 
   return `<div class="detail-panel ${isExp ? 'open' : ''}" id="detail-${id}">
     <div class="detail-inner">
@@ -2393,6 +2399,42 @@ function buildDetailPanel(f, isExp) {
     </div>
   </div>`;
 }
+
+
+// ── Fund exposure profile for stress testing ─────────────────────────────
+// net_normal: typical net long exposure (0=market neutral, 1=fully long)
+// net_crisis: estimated exposure in severe crisis (most LB funds reduce)
+// primary: "ibov" | "sp500" | "mixed"
+const FUND_EXPOSURE = {
+  "22.232.927/0001-90": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Tarpon
+  "17.400.251/0001-66": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Organon
+  "18.302.338/0001-63": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Ártica
+  "37.495.383/0001-26": { net_normal:0.70, net_crisis:0.50, primary:"ibov"   }, // Genoa (líq. ~70%, reduz em crise)
+  "42.698.666/0001-05": { net_normal:0.30, net_crisis:0.10, primary:"mixed"  }, // Artax (macro global, expo variável)
+  "24.623.392/0001-03": { net_normal:0.55, net_crisis:0.30, primary:"ibov"   }, // Guepardo (30-80%, defensivo)
+  "28.747.685/0001-53": { net_normal:1.00, net_crisis:0.85, primary:"ibov"   }, // Kapitalo (TE~10% vs IBOV)
+  "10.500.884/0001-05": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Real Investor
+  "35.744.790/0001-02": { net_normal:0.00, net_crisis:0.00, primary:"sp500"  }, // Schroder L&S (líq. -30 a +30%)
+  "38.954.217/0001-03": { net_normal:0.50, net_crisis:0.25, primary:"ibov"   }, // Pátria (0-100%, flexível)
+  "32.073.525/0001-43": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Absolute Pace
+  "21.689.246/0001-92": { net_normal:1.00, net_crisis:0.95, primary:"sp500"  }, // Arbor (internacional)
+  "14.438.229/0001-17": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Charles River
+  "17.397.315/0001-17": { net_normal:0.80, net_crisis:0.65, primary:"ibov"   }, // SPX Falcon
+  "46.351.969/0001-08": { net_normal:1.00, net_crisis:0.95, primary:"sp500"  }, // Opportunity Global
+};
+
+// Historical stress scenarios
+// ibov_ret: IBOV total return during crisis (decimal)
+// sp500_usd: S&P500 USD return
+// brl_depreciation: BRL depreciation vs USD (positive = BRL weakens)
+// duration_days: approximate duration
+const STRESS_SCENARIOS = [
+  { name:"Covid (mar/2020)",       ibov_ret:-0.449, sp500_usd:-0.340, brl_dep:+0.300, days:30,  label:"pior mês histórico recente" },
+  { name:"Crise Brasil (jun/2022)",ibov_ret:-0.280, sp500_usd:-0.240, brl_dep:+0.080, days:90,  label:"crise inflação/juros" },
+  { name:"Dilma/Petrolão (2015)",  ibov_ret:-0.410, sp500_usd:-0.120, brl_dep:+0.500, days:365, label:"crise doméstica severa" },
+  { name:"Crise financeira (2008)",ibov_ret:-0.600, sp500_usd:-0.565, brl_dep:+0.350, days:365, label:"crise sistêmica global" },
+  { name:"Taper tantrum (2013)",   ibov_ret:-0.280, sp500_usd:+0.000, brl_dep:+0.150, days:180, label:"risco emergentes" },
+];
 
 function render() {
   // Apply active filters
@@ -2580,9 +2622,10 @@ async function load() {
       dateEl.textContent += ` · gerado ${pad(gen.getUTCDate())}/${pad(gen.getUTCMonth()+1)} às ${pad(gen.getUTCHours())}:${pad(gen.getUTCMinutes())} UTC`;
     }
 
-    if (data.ibov)  ibov  = data.ibov;
-    if (data.cdi)   cdi   = data.cdi;
-    if (data.sp500) sp500 = data.sp500;
+    if (data.ibov)       ibov      = data.ibov;
+    if (data.cdi)        cdi       = data.cdi;
+    if (data.sp500)      sp500     = data.sp500;
+    if (data.fund_betas) fundBetas = data.fund_betas;
     updateHeaders();
     render();
     initMCSelect();
@@ -2698,10 +2741,11 @@ function buildFundSelector() {
         min="0" max="100" value="0" step="1" disabled
         oninput="onSliderInput(${i})">
       <input type="text" class="fund-weight-input" id="wi-${i}" data-cnpj="${cnpj}"
-        value="0%" disabled
+        value="0%"
         onblur="onWeightBlur(${i})"
-        onkeydown="if(event.key==='Enter')this.blur()"
-        onfocus="this.select()">
+        onkeydown="if(event.key==='Enter')this.blur();else if(event.key==='Tab'){event.preventDefault();this.blur();}"
+        onfocus="this.select()"
+        onclick="this.select()">
     </div>`;
   }).join('');
   document.getElementById('fundSelector').innerHTML = html;
@@ -2717,7 +2761,7 @@ function onCheckChange(i) {
     sl.value   = 0;
     wi.value   = '0%';
     sl.disabled = true;
-    wi.disabled = true;
+    wi.disabled = false;  // always editable — typing re-enables
     row.classList.add('inactive');
   } else {
     sl.disabled = false;
@@ -2741,16 +2785,32 @@ function onSliderInput(i) {
 
 function onWeightBlur(i) {
   const wi   = document.getElementById('wi-' + i);
-  const sl   = document.getElementById('sl-' + i);
-  const cnpj = document.getElementById('chk-' + i).dataset.cnpj;
-  // Aceita "55", "55%", "55.5"
+  const sl   = document.getElementById('sl-'  + i);
+  const chk  = document.getElementById('chk-' + i);
+  const row  = document.getElementById('frow-'+ i);
+  const cnpj = chk.dataset.cnpj;
   let val = parseFloat(wi.value.replace('%','').replace(',','.')) || 0;
   val = Math.max(0, Math.round(val));
-  // Cap: total sem este fundo + este <= 100
+  // Se digitou valor > 0 e fundo não está selecionado, seleciona automaticamente
+  if (val > 0 && !chk.checked) {
+    chk.checked = true;
+    sl.disabled = false;
+    wi.disabled = false;
+    row.classList.remove('inactive');
+    row.classList.add('active');
+  }
+  // Se zerou, desmarca
+  if (val === 0 && chk.checked) {
+    chk.checked = false;
+    sl.disabled = true;
+    wi.disabled = true;
+    row.classList.remove('active');
+    row.classList.add('inactive');
+  }
   const others = getTotalExcept(cnpj);
   val = Math.min(val, 100 - others);
   sl.value = val;
-  wi.value = val + '%';
+  wi.value = val > 0 ? val + '%' : '0%';
   updatePortfolio();
 }
 
@@ -2783,6 +2843,121 @@ function subtractMonthsStr(dateStr, n) {
   const lastDay = new Date(ny, nm, 0).getDate();
   const nd = Math.min(day, lastDay);
   return `${ny}-${String(nm).padStart(2,'0')}-${String(nd).padStart(2,'0')}`;
+}
+
+
+// ── Portfolio stress test using factor model ──────────────────────────────
+function renderPortfolioStress(selected, wNorm) {
+  const el = document.getElementById('portStressContainer');
+  if (!el) return;
+
+  // Compute S&P BRL return = S&P USD + BRL depreciation + cross term
+  function sp500_brl_ret(sp_usd, brl_dep) {
+    // In BRL: (1 + sp_usd) * (1 + brl_dep) - 1
+    return (1 + sp_usd) * (1 + brl_dep) - 1;
+  }
+
+  // For each fund: estimate stress return using beta regression + exposure
+  // R_fund = exposure_adj * (beta_ibov * R_ibov + beta_sp500 * R_sp500_brl) + alpha_period
+  // In severe crisis: use crisis exposure (funds reduce net long)
+  function fundStressReturn(cnpj, scenario, useCrisisExposure) {
+    const betas = fundBetas[cnpj] || {};
+    const expo  = FUND_EXPOSURE[cnpj] || { net_normal:1.0, net_crisis:0.8, primary:"ibov" };
+
+    // Betas from regression (if available) or fallback from exposure profile
+    let b_ibov = betas.beta_ibov;
+    let b_sp   = betas.beta_sp500;
+
+    // If no regression data yet, estimate from exposure
+    if (b_ibov == null) {
+      if (expo.primary === "ibov")   { b_ibov = expo.net_normal; b_sp = 0.05; }
+      else if (expo.primary === "sp500") { b_ibov = 0.05; b_sp = expo.net_normal; }
+      else { b_ibov = expo.net_normal * 0.5; b_sp = expo.net_normal * 0.5; }
+    }
+
+    // Exposure adjustment: in crisis, net long contracts
+    const netAdj = useCrisisExposure
+      ? expo.net_crisis / Math.max(expo.net_normal, 0.01)
+      : 1.0;
+
+    const r_ibov   = scenario.ibov_ret;
+    const r_sp_brl = sp500_brl_ret(scenario.sp500_usd, scenario.brl_dep);
+
+    // Factor model return
+    let r_factor = netAdj * (b_ibov * r_ibov + b_sp * r_sp_brl);
+
+    // Correlation stress: in severe crisis (ibov < -30%), correlations converge
+    // We apply a mild damping to diversification benefit
+    if (Math.abs(scenario.ibov_ret) > 0.3) {
+      // Less diversification benefit in extreme scenarios
+      r_factor *= 1.05; // slight amplification from correlation spike
+    }
+
+    // Alpha residual over period (annualised alpha * days/252)
+    const alpha_ann = (betas.alpha_ann || 0) / 100;
+    const alpha_period = Math.pow(1 + alpha_ann, scenario.days / 252) - 1;
+
+    return r_factor + alpha_period * 0.3; // alpha contributes partially (uncertain in crisis)
+  }
+
+  // Portfolio return = weighted sum of fund returns + correlation adjustment
+  function portfolioStressReturn(scenario, useCrisisExposure) {
+    let portRet = 0;
+    for (const cnpj of selected) {
+      const w = wNorm[cnpj] || 0;
+      portRet += w * fundStressReturn(cnpj, scenario, useCrisisExposure);
+    }
+    return portRet;
+  }
+
+  // Render
+  const hasBetas = Object.keys(fundBetas).length > 0;
+  let html = `<div style="margin-top:1.2rem;padding:0.8rem 1rem;background:var(--bg);border-radius:8px;border:0.5px solid var(--border)">
+    <div style="font-family:'Courier New',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.7rem">
+      Stress test histórico — impacto estimado no portfólio
+    </div>`;
+
+  if (!hasBetas) {
+    html += `<div style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">
+      Aguardando próxima execução do workflow para calcular betas por regressão OLS.
+      Usando estimativas por perfil de exposição declarada.
+    </div>`;
+  }
+
+  html += `<table style="width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:0.65rem">
+    <thead><tr style="border-bottom:1px solid var(--border)">
+      <th style="text-align:left;padding:3px 8px 3px 0;color:var(--muted);font-weight:normal">Cenário</th>
+      <th style="text-align:right;padding:3px 8px;color:var(--muted);font-weight:normal" data-tip="Retorno estimado do portfólio assumindo exposição normal">Retorno est.</th>
+      <th style="text-align:right;padding:3px 8px;color:var(--muted);font-weight:normal" data-tip="Estimativa com redução de exposição líquida em crise (fundos Long Biased reduzem posição)">Com redução expo.</th>
+      <th style="text-align:right;padding:3px 0;color:var(--muted);font-weight:normal">Duração</th>
+    </tr></thead><tbody>`;
+
+  STRESS_SCENARIOS.forEach(sc => {
+    const r_normal = portfolioStressReturn(sc, false);
+    const r_crisis = portfolioStressReturn(sc, true);
+    const fmt = v => `<span style="color:${v < 0 ? 'var(--red)' : 'var(--green)'};font-weight:${Math.abs(v) > 0.15 ? 'bold' : 'normal'}">${v >= 0 ? '+' : ''}${(v*100).toFixed(1)}%</span>`;
+    const dur = sc.days >= 365 ? Math.round(sc.days/30) + ' meses' : sc.days + ' pregões';
+    html += `<tr style="border-bottom:0.5px solid var(--border)">
+      <td style="padding:5px 8px 5px 0">
+        <div style="color:var(--text)">${sc.name}</div>
+        <div style="color:var(--muted);font-size:0.58rem">${sc.label}</div>
+      </td>
+      <td style="text-align:right;padding:5px 8px">${fmt(r_normal)}</td>
+      <td style="text-align:right;padding:5px 8px">${fmt(r_crisis)}</td>
+      <td style="text-align:right;padding:5px 0;color:var(--muted)">${dur}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>
+    <div style="margin-top:0.5rem;font-size:0.57rem;color:var(--muted);line-height:1.6">
+      Metodologia: regressão OLS (R_fundo = α + β_ibov × R_ibov + β_SP500 × R_SP500_BRL) sobre retornos diários históricos.
+      Exposição líquida em crise estimada por perfil declarado de cada gestor.
+      ${hasBetas ? 'Betas calculados sobre ' + Object.values(fundBetas)[0]?.n_obs + ' pregões.' : ''}
+      <strong>Estimativa conservadora — subestima correlações em crise sistêmica.</strong>
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
 }
 
 function updatePortfolio() {
@@ -2898,24 +3073,26 @@ function updatePortfolio() {
     return worst < -0.02 ? worst * 100 : null;
   })();
   const synthVerd = synthParts.length > 0
-    ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(', ')}${stressLoss ? `, e histórico de quedas de até <strong style="color:var(--red)">${stressLoss.toFixed(0)}% em 20 pregões adversos</strong>` : ''}.</div>`
+    ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(', ')}${stressLoss ? `, e histórqueda máxima de <strong style="color:var(--red)">${stressLoss.toFixed(0)}% em 20 pregões</strong> (histórico desde 2021)` : ''}.</div>`
     : '';
 
   document.getElementById('portMetrics').innerHTML = `${synthVerd}
     <div class="port-metrics-grid">
-      <div class="port-metric"><div class="port-metric-label" title="CAGR ponderado do portfólio nos últimos 12 meses (média geométrica anualizada dos retornos diários)">CAGR 12M</div>${fmtM(cagr12w)}</div>
-      <div class="port-metric"><div class="port-metric-label" title="CAGR ponderado do portfólio nos últimos 36 meses — janela mais estável que o 12M para avaliar performance estrutural">CAGR 36M</div>${fmtM(cagr36w)}</div>
-      <div class="port-metric"><div class="port-metric-label" title="Volatilidade anualizada: desvio padrão dos retornos diários × √252, ponderado pelos pesos e matriz de correlação histórica">Volatilidade a.a.</div>${fmtM(vol)}</div>
-      <div class="port-metric"><div class="port-metric-label" title="Maximum drawdown: maior queda pico-a-vale registrada no período histórico disponível. Medida de risco de cauda de alta relevância prática.">Max. drawdown</div>${fmtM(maxDD * 100, true)}</div>
-      <div class="port-metric"><div class="port-metric-label" title="Drawdown atual: distância percentual da cota corrente ao pico histórico (underwater). Zero indica nova máxima histórica.">Drawdown atual</div>${fmtM(ddAtual * 100, true)}</div>
+      <div class="port-metric"><div class="port-metric-label" data-tip="CAGR ponderado do portfólio nos últimos 12 meses.">CAGR 12M</div>${fmtM(cagr12w)}</div>
+      <div class="port-metric"><div class="port-metric-label" data-tip="CAGR ponderado do portfólio nos últimos 36 meses — janela mais estável para avaliar performance estrutural.">CAGR 36M</div>${fmtM(cagr36w)}</div>
+      <div class="port-metric"><div class="port-metric-label" data-tip="Volatilidade anualizada: desvio padrão dos retornos diários × √252, ponderado pelos pesos e correlação histórica.">Volatilidade a.a.</div>${fmtM(vol)}</div>
+      <div class="port-metric"><div class="port-metric-label" data-tip="Maior queda pico-a-vale do portfólio no histórico disponível (2021 → hoje).
+Nota: histórico curto — não captura crises anteriores a 2021 como 2008 ou 2015.
+Use o stress test para simular cenários de crise histórica.">Max. drawdown</div>${fmtM(maxDD * 100, true)}</div>
+      <div class="port-metric"><div class="port-metric-label" data-tip="Distância da cota atual ao pico histórico do portfólio. Zero = nova máxima histórica.">Drawdown atual</div>${fmtM(ddAtual * 100, true)}</div>
       <div class="port-metric"><div class="port-metric-label">Patrimônio alocado</div><span class="port-metric-val neu">${patrimonio > 0 ? 'R$\u00a0' + brlAlocado.toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</span></div>
       <div class="port-metric" style="border-top:1px solid var(--border);padding-top:0.65rem;margin-top:0.1rem;grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:0">
         <div>
-          <div class="port-metric-label" title="Retorno alvo estimado: média ponderada dos retornos esperados individuais (pesos √T por janela temporal, penalização por dispersão ciclical, pull de mean-reversion para anchor de 60M).">Retorno alvo* <span style="font-size:0.52rem;opacity:0.65">(bruto de I.R.)</span></div>
+          <div class="port-metric-label" data-tip="Retorno esperado estimado: média ponderada dos retornos dos fundos, com peso maior em janelas mais longas e ajuste de mean-reversion.">Retorno alvo* <span style="font-size:0.52rem;opacity:0.65">(bruto de I.R.)</span></div>
           ${fmtTarget(portTarget?.expReturn)}
         </div>
         <div>
-          <div class="port-metric-label" title="Índice de Sharpe: (retorno alvo − CDI) ÷ volatilidade. Acima de 0,5 é razoável para fundos de ações brasileiros.">Sharpe</div>
+          <div class="port-metric-label" data-tip="Sharpe: (retorno alvo − CDI) ÷ volatilidade. Acima de 0,5 é razoável para ações brasileiras.">Sharpe</div>
           ${fmtSharpe(portTarget?.sharpe)}
         </div>
       </div>
@@ -3065,6 +3242,7 @@ ${tipLines}${dispNote}${rawNote}</div>
   renderIR();
   renderCCTimeline();
   checkConcentrationAlerts();
+  renderPortfolioStress(selected, wNorm);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -3275,7 +3453,7 @@ function renderIR() {
     const aporte = patrimonio * w;
     const meta   = FUND_META[cnpj] || {};
     const trib   = meta.trib || 'RV';
-    const nome   = (historyData.funds[cnpj]?.nome) || meta.nome || cnpj;
+    const nome   = meta.nome || (historyData.funds[cnpj]?.nome) || cnpj;
 
     // Retorno alvo do fundo
     const fData  = funds.find(f => f.cnpjFmt === cnpj);
@@ -4398,12 +4576,19 @@ function renderHeatmap() {
   // Monthly returns per fund
   const fundMonthRets = {};
   cnpjs.forEach(function(cnpj) {
-    const rets = historyData.funds[cnpj].returns;
+    const allRets = historyData.funds[cnpj].returns;
+    // Find first real (non-zero) return index to detect inception
+    var inceptionIdx = 0;
+    for (var ri = 0; ri < allRets.length; ri++) {
+      if (allRets[ri] !== 0) { inceptionIdx = ri; break; }
+    }
     fundMonthRets[cnpj] = {};
     monthKeys.forEach(function(ym) {
       var s = months[ym].start, e = months[ym].end;
+      // If entire month is before inception, mark as null (fund didn't exist)
+      if (e < inceptionIdx) { fundMonthRets[cnpj][ym] = null; return; }
       var cum = 1.0;
-      for (var i = s; i < e && i < rets.length; i++) cum *= (1 + rets[i]);
+      for (var i = s; i < e && i < allRets.length; i++) cum *= (1 + allRets[i]);
       fundMonthRets[cnpj][ym] = (cum - 1) * 100;
     });
   });
@@ -4414,13 +4599,19 @@ function renderHeatmap() {
   function annualRet(cnpj, year) {
     var yms = monthKeys.filter(function(ym){ return ym.slice(0,4) === year; });
     if (!yms.length) return null;
+    // If all months in this year are null (pre-inception), return null
+    var hasData = yms.some(function(ym){ return fundMonthRets[cnpj][ym] !== null && fundMonthRets[cnpj][ym] !== undefined; });
+    if (!hasData) return null;
     var cum = 1.0;
-    yms.forEach(function(ym){ cum *= (1 + (fundMonthRets[cnpj][ym] || 0) / 100); });
+    yms.forEach(function(ym){
+      var v = fundMonthRets[cnpj][ym];
+      if (v !== null && v !== undefined) cum *= (1 + v / 100);
+    });
     return (cum - 1) * 100;
   }
 
   function stats(cnpj) {
-    var vals = monthKeys.map(function(ym){ return fundMonthRets[cnpj][ym]; }).filter(function(v){ return v != null; });
+    var vals = monthKeys.map(function(ym){ return fundMonthRets[cnpj][ym]; }).filter(function(v){ return v !== null && v !== undefined; });
     if (!vals.length) return { best: null, worst: null, pctPos: null };
     return {
       best:   Math.max.apply(null, vals),
@@ -4452,9 +4643,9 @@ function renderHeatmap() {
     var label = (y === currentYear) ? y + ' <span style="font-size:0.5rem;opacity:0.6">YTD</span>' : y;
     html += '<th style="min-width:52px">' + label + '</th>';
   });
-  html += '<th style="min-width:44px" title="Melhor mês">Mel.</th>';
-  html += '<th style="min-width:44px" title="Pior mês">Pior</th>';
-  html += '<th style="min-width:44px" title="% meses positivos">+%</th>';
+  html += '<th style="min-width:44px" data-tip="Melhor mês individual no período">Mel.</th>';
+  html += '<th style="min-width:44px" data-tip="Pior mês individual no período">Pior</th>';
+  html += '<th style="min-width:44px" data-tip="% de meses com retorno positivo">+%</th>';
   html += '</tr></thead><tbody>';
 
   // Sort funds by total return over available period
@@ -4471,13 +4662,13 @@ function renderHeatmap() {
   sortedCnpjs.forEach(function(cnpj) {
     var nome = (FUND_META[cnpj] && FUND_META[cnpj].short) || historyData.funds[cnpj].nome.split(' ')[0];
     var st = stats(cnpj);
-    html += '<tr><td class="fund-label" title="' + historyData.funds[cnpj].nome + '" style="font-size:0.68rem">' + nome + '</td>';
+    html += '<tr><td class="fund-label" data-tip="' + ((FUND_META[cnpj]||{}).nome || historyData.funds[cnpj].nome) + '" style="font-size:0.68rem">' + nome + '</td>';
     years.forEach(function(y) {
       var v = annualRet(cnpj, y);
       var bg = heatColor(v);
       var tc = textColor(v);
       var txt = v != null ? (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : '—';
-      html += '<td style="background:' + bg + ';color:' + tc + ';font-size:0.7rem" title="' + historyData.funds[cnpj].nome + ' ' + y + '">' + txt + '</td>';
+      html += '<td style="background:' + bg + ';color:' + tc + ';font-size:0.7rem" data-tip="' + nome + ' · ' + y + '">' + txt + '</td>';
     });
     // Best month
     var bTxt = st.best != null ? (st.best >= 0 ? '+' : '') + st.best.toFixed(1) + '%' : '—';
@@ -5965,7 +6156,7 @@ function exportPortfolioCSV() {
     const target  = fData ? calcTargetReturn(fData) : null;
     const vol     = (function() {
       if (!historyData || !historyData.funds[cnpj]) return '';
-      const r = historyData.funds[cnpj].returns;
+      const r = getRealReturns(cnpj);
       const n = r.length, mean = r.reduce((a,b)=>a+b,0)/n;
       const vari = r.reduce((a,x)=>a+(x-mean)**2,0)/(n-1);
       return (Math.sqrt(vari*252)*100).toFixed(1);
@@ -6320,9 +6511,28 @@ initChartToggles = function() {
 
 // ── Helpers de cálculo ─────────────────────────────────────────────────────
 
+
+// Returns only the real returns for a fund (skipping zeros before inception)
+function getRealReturns(cnpj) {
+  const allRets = historyData.funds[cnpj].returns;
+  for (let i = 0; i < allRets.length; i++) {
+    if (allRets[i] !== 0) return allRets.slice(Math.max(0, i - 1));
+  }
+  return allRets;
+}
+
 function computeAdvancedMetrics(cnpj) {
   if (!historyData || !historyData.funds[cnpj]) return null;
-  const rets  = historyData.funds[cnpj].returns;
+  const fd = historyData.funds[cnpj];
+
+  // Find first non-zero return — skip the interpolated zero period before inception
+  const allRets = fd.returns;
+  let firstReal = 0;
+  for (let i = 0; i < allRets.length; i++) {
+    if (allRets[i] !== 0) { firstReal = Math.max(0, i - 1); break; }
+  }
+  const rets  = allRets.slice(firstReal);
+  const dates = historyData.commonDates.slice(firstReal + 1); // +1 because returns are diffs
   const n     = rets.length;
   if (n < 60) return null;
 
@@ -6358,7 +6568,10 @@ function computeAdvancedMetrics(cnpj) {
   const allCnpjs = Object.keys(historyData.funds);
   for (let i = 0; i < n; i++) {
     let r = 0;
-    allCnpjs.forEach(c => { r += (historyData.funds[c].returns[i] || 0); });
+    allCnpjs.forEach(c => {
+      const cr = historyData.funds[c].returns;
+      r += (cr[firstReal + i] || 0);
+    });
     eqRets.push(r / allCnpjs.length);
   }
   const meanMkt = eqRets.reduce((s,r) => s+r, 0) / n;
@@ -6379,7 +6592,7 @@ function computeAdvancedMetrics(cnpj) {
   const WINDOW = 252;
   const rollingAlpha = [];
   const rollingDates = [];
-  const dates = historyData.commonDates;
+  // dates already sliced to fund's real period
   for (let i = 0; i <= n - WINDOW; i++) {
     let cf = 1, ci = 1;
     for (let j = i; j < i + WINDOW; j++) {
@@ -7336,7 +7549,7 @@ function runComparador() {
   const metrics = [
     ['Retorno esperado*', 'CAGR anualizado sobre o período histórico disponível. Não é garantia de retorno futuro.', fmt(mA.cagr,1,true), fmt(mB.cagr,1,true), true, mA.cagr, mB.cagr],
     ['Volatilidade a.a.', 'Desvio padrão anualizado dos retornos diários — quanto o portfólio oscila por ano.', fmt(mA.vol,1), fmt(mB.vol,1), false, mA.vol, mB.vol],
-    ['Max. drawdown', 'Maior queda pico-a-vale registrada no período histórico.', fmt(mA.mdd,1), fmt(mB.mdd,1), false, mA.mdd, mB.mdd],
+    ['Max. drawdown', 'Maior queda pico-a-vale registrada no período histórico (desde 2021).', fmt(mA.mdd,1), fmt(mB.mdd,1), true, -Math.abs(mA.mdd), -Math.abs(mB.mdd)],
     ['Sharpe', '(Retorno − CDI) ÷ volatilidade total. Eficiência do retorno por unidade de toda a oscilação.', fmtR(mA.sharpe), fmtR(mB.sharpe), true, mA.sharpe, mB.sharpe],
     ['Sortino', '(Retorno − CDI) ÷ volatilidade DESCENDENTE. Penaliza apenas retornos abaixo do CDI.', fmtR(mA.sortino), fmtR(mB.sortino), true, mA.sortino, mB.sortino],
     ['Calmar', 'Retorno ÷ |max drawdown|. Quanto de CAGR o portfólio entregou por cada 1% de queda máxima.', fmtR(mA.calmar), fmtR(mB.calmar), true, mA.calmar, mB.calmar],
@@ -7346,8 +7559,8 @@ function runComparador() {
 
   let html = `
     <div class="ch label"></div>
-    <div class="ch a" title="Carteira A">Carteira A</div>
-    <div class="ch b" title="Carteira B">Carteira B</div>
+    <div class="ch a">Carteira A</div>
+    <div class="ch b">Carteira B</div>
     <div class="ch">Vantagem</div>`;
 
   metrics.forEach(([label, tip, vA, vB, hib, numA, numB]) => {
@@ -7365,7 +7578,7 @@ function runComparador() {
       }
     }
     html += `
-      <div class="cv label" title="${tip}">${label}</div>
+      <div class="cv label" data-tip="${tip}">${label}</div>
       <div class="${clsA}" style="text-align:right">${vA}</div>
       <div class="${clsB}" style="text-align:right">${vB}</div>
       <div class="cv" style="text-align:right">${advantage}</div>`;
