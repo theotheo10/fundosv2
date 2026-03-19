@@ -504,7 +504,7 @@
   }
   .ir-table thead th:first-child { text-align: left; }
   .ir-table tbody td {
-    padding: 0.55rem 0.7rem; text-align: right;
+    padding: 0.55rem 1rem; text-align: right;
     border-bottom: 1px solid var(--border);
     font-family: 'Courier New', monospace; font-size: 0.75rem;
   }
@@ -2912,53 +2912,49 @@ function renderPortfolioStress(selected, wNorm) {
 
   // Render
   const hasBetas = Object.keys(fundBetas).length > 0;
-  let html = `<div style="margin-top:1.2rem;padding:0.8rem 1rem;background:var(--bg);border-radius:8px;border:0.5px solid var(--border)">
-    <div style="font-family:'Courier New',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.7rem">
-      Stress test histórico — impacto estimado no portfólio
-    </div>`;
 
-  if (!hasBetas) {
-    html += `<div style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">
-      Aguardando próxima execução do workflow para calcular betas por regressão OLS.
-      Usando estimativas por perfil de exposição declarada.
-    </div>`;
-  }
-
-  html += `<table style="width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:0.65rem">
-    <thead><tr style="border-bottom:1px solid var(--border)">
-      <th style="text-align:left;padding:3px 8px 3px 0;color:var(--muted);font-weight:normal">Cenário</th>
-      <th style="text-align:right;padding:3px 8px;color:var(--muted);font-weight:normal" data-tip="Retorno estimado do portfólio assumindo exposição normal">Retorno est.</th>
-      <th style="text-align:right;padding:3px 8px;color:var(--muted);font-weight:normal" data-tip="Estimativa com redução de exposição líquida em crise (fundos Long Biased reduzem posição)">Com redução expo.</th>
-      <th style="text-align:right;padding:3px 0;color:var(--muted);font-weight:normal">Duração</th>
-    </tr></thead><tbody>`;
+  let html = `<div style="margin-top:1.4rem;border-top:0.5px solid var(--border);padding-top:1rem">
+    <div style="display:flex;align-items:baseline;gap:0.5rem;margin-bottom:0.8rem">
+      <span style="font-family:'Courier New',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Stress test histórico</span>
+      ${!hasBetas ? `<span style="font-family:'Courier New',monospace;font-size:0.54rem;color:var(--amber)">estimativas por perfil declarado — betas via OLS disponíveis após próximo update</span>` : ''}
+    </div>
+    <table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:1px solid var(--border)">
+        <th style="text-align:left;padding:0 12px 5px 0;font-family:'Courier New',monospace;font-size:0.57rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Cenário</th>
+        <th style="text-align:right;padding:0 8px 5px;font-family:'Courier New',monospace;font-size:0.57rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)" data-tip="Retorno estimado assumindo exposição líquida típica de cada gestor em mercado normal.">Expo. normal</th>
+        <th style="text-align:right;padding:0 0 5px 8px;font-family:'Courier New',monospace;font-size:0.57rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)" data-tip="Estimativa com fundos Long Biased e Multimercado reduzindo exposição líquida em crise severa.">Expo. em crise</th>
+      </tr></thead>
+      <tbody>`;
 
   STRESS_SCENARIOS.forEach(sc => {
     const r_normal = portfolioStressReturn(sc, false);
     const r_crisis = portfolioStressReturn(sc, true);
-    const fmt = v => `<span style="color:${v < 0 ? 'var(--red)' : 'var(--green)'};font-weight:${Math.abs(v) > 0.15 ? 'bold' : 'normal'}">${v >= 0 ? '+' : ''}${(v*100).toFixed(1)}%</span>`;
-    const dur = sc.days >= 365 ? Math.round(sc.days/30) + ' meses' : sc.days + ' pregões';
+    const fmt = v => {
+      const big = Math.abs(v) > 0.20;
+      const col = v < -0.20 ? 'var(--red)' : v < 0 ? 'color-mix(in srgb,var(--red) 65%,var(--text))' : 'var(--green)';
+      return `<span style="font-family:'Courier New',monospace;color:${col};font-weight:${big?'600':'normal'}">${v>=0?'+':''}${(v*100).toFixed(1)}%</span>`;
+    };
+    const dur = sc.days >= 365 ? Math.round(sc.days/30) + 'm' : sc.days + 'd';
     html += `<tr style="border-bottom:0.5px solid var(--border)">
-      <td style="padding:5px 8px 5px 0">
-        <div style="color:var(--text)">${sc.name}</div>
-        <div style="color:var(--muted);font-size:0.58rem">${sc.label}</div>
-      </td>
-      <td style="text-align:right;padding:5px 8px">${fmt(r_normal)}</td>
-      <td style="text-align:right;padding:5px 8px">${fmt(r_crisis)}</td>
-      <td style="text-align:right;padding:5px 0;color:var(--muted)">${dur}</td>
-    </tr>`;
+        <td style="padding:7px 12px 7px 0;vertical-align:middle">
+          <span style="font-family:Georgia,serif;font-size:0.78rem;color:var(--text)">${sc.name}</span>
+          <span style="font-family:'Courier New',monospace;font-size:0.55rem;color:var(--muted);margin-left:6px">${sc.label} · ${dur}</span>
+        </td>
+        <td style="text-align:right;padding:7px 8px;vertical-align:middle;white-space:nowrap">${fmt(r_normal)}</td>
+        <td style="text-align:right;padding:7px 0 7px 8px;vertical-align:middle;white-space:nowrap">${fmt(r_crisis)}</td>
+      </tr>`;
   });
 
   html += `</tbody></table>
-    <div style="margin-top:0.5rem;font-size:0.57rem;color:var(--muted);line-height:1.6">
-      Metodologia: regressão OLS (R_fundo = α + β_ibov × R_ibov + β_SP500 × R_SP500_BRL) sobre retornos diários históricos.
-      Exposição líquida em crise estimada por perfil declarado de cada gestor.
-      ${hasBetas ? 'Betas calculados sobre ' + Object.values(fundBetas)[0]?.n_obs + ' pregões.' : ''}
-      <strong>Estimativa conservadora — subestima correlações em crise sistêmica.</strong>
+    <div style="margin-top:0.6rem;font-family:'Courier New',monospace;font-size:0.56rem;color:var(--muted);line-height:1.65">
+      Modelo: R = α + β_ibov·R_ibov + β_S&P·R_S&P(BRL). Expo. em crise por perfil declarado do gestor.${hasBetas ? ' Betas OLS: ' + (Object.values(fundBetas)[0]?.n_obs||'—') + ' pregões.' : ''}
+      Estimativa conservadora — subestima correlações em crise sistêmica.
     </div>
   </div>`;
 
   el.innerHTML = html;
 }
+
 
 function updatePortfolio() {
   const weights  = getWeights();
@@ -2985,8 +2981,19 @@ function updatePortfolio() {
   const patrimonio = parsePatrimonio();
   const wNorm      = Object.fromEntries(selected.map(c => [c, weights[c] / total]));
 
-  // Retornos ponderados
+  // Retornos ponderados — usando apenas datas com dados reais em todos os fundos
+  // Cada fundo começa na sua própria inception (zeros antes são descartados)
   const n = historyData.funds[selected[0]].returns.length;
+
+  // Find the latest inception among selected funds (first real return index)
+  let firstRealIdx = 0;
+  for (const cnpj of selected) {
+    const rets = historyData.funds[cnpj].returns;
+    for (let i = 0; i < rets.length; i++) {
+      if (rets[i] !== 0) { firstRealIdx = Math.max(firstRealIdx, Math.max(0, i-1)); break; }
+    }
+  }
+
   const portReturns = new Float64Array(n);
   for (const cnpj of selected) {
     const rets = historyData.funds[cnpj].returns;
@@ -3012,17 +3019,19 @@ function updatePortfolio() {
   const idx12 = dates.reduce((best, d, i) => d <= d12 ? i : best, -1);
   const idx36 = dates.reduce((best, d, i) => d <= d36 ? i : best, -1);
 
-  const cagr12w = idx12 >= 0 ? cagrFromSlice(idx12, portReturns.length) : null;
-  const cagr36w = idx36 >= 0 ? cagrFromSlice(idx36, portReturns.length) : null;
+  const cagr12w = idx12 >= 0 ? cagrFromSlice(Math.max(idx12, firstRealIdx), portReturns.length) : null;
+  const cagr36w = idx36 >= 0 ? cagrFromSlice(Math.max(idx36, firstRealIdx), portReturns.length) : null;
 
-  // Volatilidade anualizada
-  const mean     = portReturns.reduce((a,b) => a+b, 0) / n;
-  const variance = portReturns.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
+  // Volatilidade anualizada — apenas sobre período com dados reais
+  const portRetsReal = portReturns.slice(firstRealIdx);
+  const nReal   = portRetsReal.length;
+  const mean     = portRetsReal.reduce((a,b) => a+b, 0) / nReal;
+  const variance = portRetsReal.reduce((a,r) => a + (r-mean)**2, 0) / (nReal-1);
   const vol      = Math.sqrt(variance * 252) * 100;
 
   // Drawdown máximo e atual
   let cum = 1, peak = 1, maxDD = 0;
-  for (const r of portReturns) {
+  for (const r of portRetsReal) {
     cum *= (1 + r);
     if (cum > peak) peak = cum;
     const dd = (cum - peak) / peak;
@@ -3107,7 +3116,7 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
   for (const cnpj of selected) {
     const fd = historyData.funds[cnpj];
     if (!fd) continue;
-    const rets = fd.returns;
+    const rets = getRealReturns(cnpj);  // trim pre-inception zeros
     const n    = rets.length;
     const mean = rets.reduce((a, b) => a + b, 0) / n;
     const var_ = rets.reduce((a, r) => a + (r - mean) ** 2, 0) / (n - 1);
@@ -3484,13 +3493,13 @@ function renderIR() {
   let html = `<div class="ir-table-wrap"><table class="ir-table">
     <thead><tr>
       <th>Fundo</th>
-      <th title="Retorno alvo estimado com base no histórico do fundo (bruto de IR)">Retorno alvo*</th>
+      <th data-tip="Retorno esperado anualizado com base no histórico. Bruto de IR.">Retorno alvo*</th>
       <th>Aporte</th>
-      <th title="Valor bruto projetado no resgate, antes de qualquer tributação">Valor bruto</th>
-      <th title="Total de imposto de renda pago — inclui come-cotas (fundos TR) e IR no resgate">IR total pago</th>
-      <th title="Alíquota real considerando o custo de oportunidade do capital antecipado via come-cotas. RV = sempre 15%. TR = mais, porque o come-cotas retira capital que deixou de crescer.">Custo real do IR</th>
-      <th title="O que fica no seu bolso após todos os impostos">O que fica com você</th>
-      <th title="Taxa de crescimento anual já descontado o imposto de renda">Retorno a.a. líquido</th>
+      <th data-tip="Valor projetado no resgate antes de qualquer tributação.">Valor bruto</th>
+      <th data-tip="Total de IR pago — inclui come-cotas semestrais (TR) e IR no resgate.">IR total pago</th>
+      <th data-tip="Alíquota efetiva real. RV = 15%. TR = mais, pois o come-cotas retira capital que deixou de crescer.">Custo real do IR</th>
+      <th data-tip="Valor líquido após todos os impostos.">O que fica com você</th>
+      <th data-tip="CAGR líquido: taxa de crescimento anual após todos os impostos.">Retorno a.a. líquido</th>
     </tr></thead><tbody>`;
 
   for (const row of rows) {
