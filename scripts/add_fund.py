@@ -255,9 +255,10 @@ def update_history(new_funds: list[dict]) -> None:
         returns     = safe_returns(qs, fund_dates)
         cum = pk = 1.0; mdd = 0.0
         for r in returns:
-            cum *= (1+r)
+            if r is None: continue  # pré-inception ou gap
+            cum *= (1 + r)
             if cum > pk: pk = cum
-            dd = (cum-pk)/pk
+            dd = (cum - pk) / pk
             if dd < mdd: mdd = dd
         funds_out[cnpj] = {
             "nome":        nome_map.get(cnpj, cnpj),
