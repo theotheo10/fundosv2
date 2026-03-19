@@ -1442,6 +1442,29 @@
   .opt-beta-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
   .opt-beta-row label { cursor: pointer; }
 
+
+  /* ── Global custom tooltip (replaces all native title= tooltips) ── */
+  #g-tip {
+    position: fixed;
+    background: var(--text); color: var(--bg);
+    font-family: 'Courier New', monospace; font-size: 0.60rem;
+    padding: 9px 13px; border-radius: 6px;
+    white-space: pre-wrap; word-break: break-word;
+    max-width: 320px; min-width: 120px;
+    pointer-events: none;
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 0.13s ease, transform 0.13s ease;
+    z-index: 99999; line-height: 1.75;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.28);
+  }
+  #g-tip.visible {
+    opacity: 1; transform: translateY(0);
+  }
+  /* Kill ALL native tooltips */
+  [data-tip] { cursor: help; }
+  button[data-tip], .sortable[data-tip], .filter-chip[data-tip],
+  .opt-btn[data-tip], label[data-tip] { cursor: pointer; }
+
 </style>
 </head>
 <body>
@@ -1470,7 +1493,7 @@
 <div id="tab-ranking" class="tab-pane active">
 
 <div class="filter-bar">
-  <span class="filter-label" title="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia:</span>
+  <span class="filter-label" data-tip="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia:</span>
   <button class="filter-chip active" data-filter="tipo" data-val="" onclick="setFilter('tipo','',this)">Todos</button>
   <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
   <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
@@ -1481,14 +1504,14 @@
   <button class="filter-chip" data-filter="expo" data-val="Brasil" onclick="setFilter('expo','Brasil',this)">Brasil</button>
   <button class="filter-chip" data-filter="expo" data-val="Internacional" onclick="setFilter('expo','Internacional',this)">Internacional</button>
   <span class="filter-sep"></span>
-  <span class="filter-label" title="RV = sem come-cotas, IR só no resgate (melhor para longo prazo). TR = IR antecipado em maio e novembro (come-cotas).">Imposto:</span>
+  <span class="filter-label" data-tip="RV = sem come-cotas, IR só no resgate (melhor para longo prazo). TR = IR antecipado em maio e novembro (come-cotas).">Imposto:</span>
   <button class="filter-chip active" data-filter="trib" data-val="" onclick="setFilter('trib','',this)">Todos</button>
-  <button class="filter-chip" data-filter="trib" data-val="RV" onclick="setFilter('trib','RV',this)" title="Renda Variável: paga IR apenas no resgate (15%). Sem come-cotas — todo o capital trabalha até você resgatar.">Sem come-cotas (RV)</button>
-  <button class="filter-chip" data-filter="trib" data-val="TR" onclick="setFilter('trib','TR',this)" title="Tabela Regressiva: IR antecipado em maio e novembro. Mais ineficiente para horizontes longos.">Com come-cotas (TR)</button>
+  <button class="filter-chip" data-filter="trib" data-val="RV" onclick="setFilter('trib','RV',this)" data-tip="Renda Variável: paga IR apenas no resgate (15%). Sem come-cotas — todo o capital trabalha até você resgatar.">Sem come-cotas (RV)</button>
+  <button class="filter-chip" data-filter="trib" data-val="TR" onclick="setFilter('trib','TR',this)" data-tip="Tabela Regressiva: IR antecipado em maio e novembro. Mais ineficiente para horizontes longos.">Com come-cotas (TR)</button>
 </div>
 
 <div class="period-bar" id="periodBarEl">
-  <span class="filter-label" title="Compare os fundos em uma janela de datas que você escolher, em vez dos períodos padrão.">Comparar em período específico:</span>
+  <span class="filter-label" data-tip="Compare os fundos em uma janela de datas que você escolher, em vez dos períodos padrão.">Comparar em período específico:</span>
   <label>De: <input type="date" id="periodStart" onchange="onPeriodChange()"></label>
   <label>Até: <input type="date" id="periodEnd" onchange="onPeriodChange()"></label>
   <span id="periodBadge" style="display:none" class="period-badge"></span>
@@ -1501,12 +1524,12 @@
     <thead>
       <tr>
         <th>#&nbsp;&nbsp;Fundo</th>
-        <th class="sortable" data-key="cagr12"    id="th-cagr12" title="Retorno ao ano nos últimos 12 meses. Taxa ANUALIZADA — não é o retorno total do período.">12M · a.a. ↕</th>
-        <th class="sortable" data-key="cagr36"    id="th-cagr36" title="Retorno médio ao ano nos últimos 3 anos. Taxa ANUALIZADA — ex: +18% significa +18% por ano, não +18% no total.">36M · a.a. ↕</th>
-        <th class="sortable" data-key="cagr60"    id="th-cagr60" title="Retorno médio ao ano nos últimos 5 anos. Taxa ANUALIZADA. Janela mais longa = mais confiável, inclui mais ciclos de mercado.">60M · a.a. ↕</th>
-        <th class="sortable col-alpha" data-key="alpha" id="th-alpha" title="Excesso de retorno anualizado vs. IBOV no período da coluna de ordenação ativa.&#10;Positivo = gestor superou o índice. Negativo = ficou abaixo.&#10;Medida central de skill do gestor — quanto do retorno veio de decisões ativas, não do mercado.">Alpha ↕</th>
-        <th class="sortable" data-key="inception" id="th-inception" title="Retorno médio ao ano desde o início do fundo. Inclui todos os ciclos, crises e altas desde a criação.">Desde início ↕</th>
-        <th class="sortable" data-key="tenure"    id="th-tenure" title="Há quanto tempo o fundo existe. Histórico mais longo = estimativas mais confiáveis.">Histórico ↕</th>
+        <th class="sortable" data-key="cagr12"    id="th-cagr12" data-tip="Retorno ao ano nos últimos 12 meses. Taxa ANUALIZADA — não é o retorno total do período.">12M · a.a. ↕</th>
+        <th class="sortable" data-key="cagr36"    id="th-cagr36" data-tip="Retorno médio ao ano nos últimos 3 anos. Taxa ANUALIZADA — ex: +18% significa +18% por ano, não +18% no total.">36M · a.a. ↕</th>
+        <th class="sortable" data-key="cagr60"    id="th-cagr60" data-tip="Retorno médio ao ano nos últimos 5 anos. Taxa ANUALIZADA. Janela mais longa = mais confiável, inclui mais ciclos de mercado.">60M · a.a. ↕</th>
+        <th class="sortable col-alpha" data-key="alpha" id="th-alpha" data-tip="Excesso de retorno anualizado vs. IBOV no período da coluna de ordenação ativa.&#10;Positivo = gestor superou o índice. Negativo = ficou abaixo.&#10;Medida central de skill do gestor — quanto do retorno veio de decisões ativas, não do mercado.">Alpha ↕</th>
+        <th class="sortable" data-key="inception" id="th-inception" data-tip="Retorno médio ao ano desde o início do fundo. Inclui todos os ciclos, crises e altas desde a criação.">Desde início ↕</th>
+        <th class="sortable" data-key="tenure"    id="th-tenure" data-tip="Há quanto tempo o fundo existe. Histórico mais longo = estimativas mais confiáveis.">Histórico ↕</th>
       </tr>
     </thead>
     <tbody id="fundBody"></tbody>
@@ -1549,11 +1572,11 @@
             <div class="opt-mode-label">Objetivo clássico</div>
             <div class="opt-obj-group">
               <button class="opt-btn mode-classic active" id="optObjSharpe" onclick="setOptObj('sharpe')"
-                title="Portfólio tangente: maximiza o Índice de Sharpe — (retorno alvo − CDI) ÷ volatilidade total.&#10;Solução analítica exata: w* = Σ⁻¹(μ−CDI) normalizado.&#10;O portfólio mais eficiente em termos de retorno por unidade de TODA a volatilidade.&#10;Referência: Markowitz (1952), Sharpe (1966).">Máx. Sharpe</button>
+                data-tip="Portfólio tangente: maximiza o Índice de Sharpe — (retorno alvo − CDI) ÷ volatilidade total.&#10;Solução analítica exata: w* = Σ⁻¹(μ−CDI) normalizado.&#10;O portfólio mais eficiente em termos de retorno por unidade de TODA a volatilidade.&#10;Referência: Markowitz (1952), Sharpe (1966).">Máx. Sharpe</button>
               <button class="opt-btn mode-classic" id="optObjVol" onclick="setOptObj('vol')"
-                title="Mínima variância global: minimiza σ²=wᵀΣw sujeito a Σwᵢ=1, wᵢ≥0.&#10;Solução analítica: w* = Σ⁻¹·1 normalizado.&#10;O portfólio de menor oscilação possível — sem considerar retorno.&#10;Útil quando há incerteza elevada sobre retornos esperados.">Mín. variância</button>
+                data-tip="Mínima variância global: minimiza σ²=wᵀΣw sujeito a Σwᵢ=1, wᵢ≥0.&#10;Solução analítica: w* = Σ⁻¹·1 normalizado.&#10;O portfólio de menor oscilação possível — sem considerar retorno.&#10;Útil quando há incerteza elevada sobre retornos esperados.">Mín. variância</button>
               <button class="opt-btn mode-classic" id="optObjReturn" onclick="setOptObj('return')"
-                title="Maximiza o retorno esperado ponderado dos fundos selecionados.&#10;Usa softmax com temperatura T=3 para diversificar entre os melhores retornos esperados sem concentrar 100% no único melhor.&#10;Não considera risco — portfólio mais agressivo possível.">Máx. retorno</button>
+                data-tip="Maximiza o retorno esperado ponderado dos fundos selecionados.&#10;Usa softmax com temperatura T=3 para diversificar entre os melhores retornos esperados sem concentrar 100% no único melhor.&#10;Não considera risco — portfólio mais agressivo possível.">Máx. retorno</button>
             </div>
           </div>
           <div>
@@ -1563,18 +1586,18 @@
             </div>
             <div class="opt-obj-group">
               <button class="opt-btn mode-advanced" id="optObjSortino" onclick="setOptObj('sortino')"
-                title="Máx. Sortino: maximiza (retorno alvo − CDI) ÷ semi-desvio descendente do portfólio.&#10;Semi-desvio = volatilidade apenas dos retornos ABAIXO do CDI — ignora volatilidade para cima.&#10;Implementação: semi-covariância Sᵢⱼ = E[min(rᵢ−CDI,0)·min(rⱼ−CDI,0)] × 252.&#10;w* = S⁻¹(μ−CDI) normalizado (análogo ao Sharpe, com Σ substituída por S).&#10;Referência: Estrada (2008), J. Portfolio Management.&#10;Superior ao Sharpe para fundos com assimetria positiva (retornos extremos para cima).">Máx. Sortino</button>
+                data-tip="Máx. Sortino: maximiza (retorno alvo − CDI) ÷ semi-desvio descendente do portfólio.&#10;Semi-desvio = volatilidade apenas dos retornos ABAIXO do CDI — ignora volatilidade para cima.&#10;Implementação: semi-covariância Sᵢⱼ = E[min(rᵢ−CDI,0)·min(rⱼ−CDI,0)] × 252.&#10;w* = S⁻¹(μ−CDI) normalizado (análogo ao Sharpe, com Σ substituída por S).&#10;Referência: Estrada (2008), J. Portfolio Management.&#10;Superior ao Sharpe para fundos com assimetria positiva (retornos extremos para cima).">Máx. Sortino</button>
               <button class="opt-btn mode-advanced" id="optObjCalmar" onclick="setOptObj('calmar')"
-                title="Máx. Calmar: maximiza CAGR_portfólio ÷ |máx. drawdown histórico do portfólio|.&#10;O max drawdown é calculado sobre a série temporal real dos retornos ponderados — não é a média dos drawdowns individuais.&#10;Metodologia: pesos candidatos gerados por Sharpe; seleção da combinação pelo Calmar real da série.&#10;Encontra o portfólio com melhor retorno por unidade de 'dor máxima' histórica.&#10;Referência: Young (1991); Steinki &amp; Mohammad (SSRN 2662054).">Máx. Calmar</button>
+                data-tip="Máx. Calmar: maximiza CAGR_portfólio ÷ |máx. drawdown histórico do portfólio|.&#10;O max drawdown é calculado sobre a série temporal real dos retornos ponderados — não é a média dos drawdowns individuais.&#10;Metodologia: pesos candidatos gerados por Sharpe; seleção da combinação pelo Calmar real da série.&#10;Encontra o portfólio com melhor retorno por unidade de 'dor máxima' histórica.&#10;Referência: Young (1991); Steinki &amp; Mohammad (SSRN 2662054).">Máx. Calmar</button>
               <button class="opt-btn mode-advanced" id="optObjIR" onclick="setOptObj('ir')"
-                title="Máx. Information Ratio: maximiza alpha anualizado vs. IBOV ÷ tracking error.&#10;Tracking error = σ(retorno_portfólio − retorno_IBOV) = volatilidade do excesso de retorno.&#10;Implementação: identical ao Máx. Sharpe, mas usando IBOV como taxa livre de risco em vez do CDI.&#10;Diferença: enquanto Sharpe premia superar o CDI (~12,8%), IR premia superar o IBOV (~19,9%) — critério mais exigente.&#10;Encontra o portfólio mais eficiente em gerar alpha sobre o benchmark de referência.&#10;Referência: Grinold &amp; Kahn (1999), Active Portfolio Management.">Máx. IR vs. IBOV</button>
+                data-tip="Máx. Information Ratio: maximiza alpha anualizado vs. IBOV ÷ tracking error.&#10;Tracking error = σ(retorno_portfólio − retorno_IBOV) = volatilidade do excesso de retorno.&#10;Implementação: identical ao Máx. Sharpe, mas usando IBOV como taxa livre de risco em vez do CDI.&#10;Diferença: enquanto Sharpe premia superar o CDI (~12,8%), IR premia superar o IBOV (~19,9%) — critério mais exigente.&#10;Encontra o portfólio mais eficiente em gerar alpha sobre o benchmark de referência.&#10;Referência: Grinold &amp; Kahn (1999), Active Portfolio Management.">Máx. IR vs. IBOV</button>
             </div>
           </div>
           <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
         </div>
         <div class="opt-beta-row">
           <input type="checkbox" id="optBetaAdj" onchange="updateBetaAdjNote()">
-          <label for="optBetaAdj" title="Usa Jensen's alpha como retorno esperado de cada fundo, em vez do CAGR bruto.&#10;Jensen's alpha = CAGR − [CDI + β × (IBOV − CDI)]&#10;Penaliza fundos cujo retorno é explicado pelo beta de mercado, não pela habilidade do gestor.&#10;Favorece gestores que entregam retorno genuíno, independente da exposição direcional ao mercado.&#10;Referência: Jensen (1968), J. of Finance.">Ajustar retornos pelo beta (Jensen's alpha)</label>
+          <label for="optBetaAdj" data-tip="Usa Jensen's alpha como retorno esperado de cada fundo, em vez do CAGR bruto.&#10;Jensen's alpha = CAGR − [CDI + β × (IBOV − CDI)]&#10;Penaliza fundos cujo retorno é explicado pelo beta de mercado, não pela habilidade do gestor.&#10;Favorece gestores que entregam retorno genuíno, independente da exposição direcional ao mercado.&#10;Referência: Jensen (1968), J. of Finance.">Ajustar retornos pelo beta (Jensen's alpha)</label>
           <span id="betaAdjNote" style="font-family:'Courier New',monospace;font-size:0.55rem;color:var(--accent);display:none">ativo</span>
         </div>
         <div class="opt-constraint-row">
@@ -1610,18 +1633,18 @@
       <div class="port-alloc-panel" id="portAllocPanel" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.5rem">
           <div class="port-section-label">Alocação</div>
-          <button class="export-btn" onclick="exportPortfolioCSV()" title="Baixar carteira como CSV">↓ CSV</button>
+          <button class="export-btn" onclick="exportPortfolioCSV()" data-tip="Baixar carteira como CSV">↓ CSV</button>
         </div>
         <div class="port-alloc-header">
           <span>Fundo</span><span></span><span>Peso</span><span>Valor</span>
-          <span title="Retorno alvo estimado (bruto de IR): média ponderada por √T com penalização por dispersão ciclical e pull de mean-reversion para anchor de 60M">Retorno alvo*</span>
-          <span title="Volatilidade anualizada: desvio padrão dos retornos diários × √252">Volatilidade</span>
-          <span title="Retorno dividido pela oscilação (índice Sharpe). Quanto maior, mais eficiente o fundo.">Ret./Risco</span>
+          <span data-tip="Retorno alvo estimado (bruto de IR): média ponderada por √T com penalização por dispersão ciclical e pull de mean-reversion para anchor de 60M">Retorno alvo*</span>
+          <span data-tip="Volatilidade anualizada: desvio padrão dos retornos diários × √252">Volatilidade</span>
+          <span data-tip="Retorno dividido pela oscilação (índice Sharpe). Quanto maior, mais eficiente o fundo.">Ret./Risco</span>
         </div>
         <div id="portAlloc"></div>
       </div>
       <div class="port-corr-panel">
-        <div class="port-section-label" style="margin-bottom:0.3rem" title="Quanto os fundos se movem juntos. Correlação alta (próxima de 1) significa que os fundos caem juntos — diversificação fraca. Correlação baixa ou negativa = proteção real. Clique em qualquer célula para ver o gráfico de retornos diários.">Correlação</div>
+        <div class="port-section-label" style="margin-bottom:0.3rem" data-tip="Quanto os fundos se movem juntos. Correlação alta (próxima de 1) significa que os fundos caem juntos — diversificação fraca. Correlação baixa ou negativa = proteção real. Clique em qualquer célula para ver o gráfico de retornos diários.">Correlação</div>
         <div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5">Vermelho = caem juntos · Verde = independentes · Clique para detalhe</div>
         <div id="portCorr" class="port-empty">Selecione ao menos 2 fundos</div>
         <div id="concAlert"></div>
@@ -1633,7 +1656,7 @@
   <!-- ── Simulador de IR ── -->
   <div class="ir-section" id="irSection">
     <div class="ir-header">
-      <span class="ir-header-title" title="Simula o impacto tributário por fundo. RV: 15% sobre o ganho no resgate. TR: come-cotas semestral (mai/nov) + alíquota regressiva no trecho final.">Impacto tributário — RV vs. TR</span>
+      <span class="ir-header-title" data-tip="Simula o impacto tributário por fundo. RV: 15% sobre o ganho no resgate. TR: come-cotas semestral (mai/nov) + alíquota regressiva no trecho final.">Impacto tributário — RV vs. TR</span>
       <div class="ir-slider-wrap">
         <span class="ir-slider-label">Prazo até o resgate:</span>
         <input type="range" class="ir-slider" id="irSlider" min="1" max="20" value="5" step="1"
@@ -1648,7 +1671,7 @@
   <!-- ── Simulador de Aportes + Monte Carlo ── -->
   <div class="mc-section" id="mcSection">
     <div class="mc-header">
-      <span class="mc-header-title" title="Simula N caminhos de retorno log-normais mensais com os parâmetros de retorno e volatilidade do portfólio. Exibe percentis P10–P90 do patrimônio ao longo do tempo.">Simulador de aportes — Monte Carlo</span>
+      <span class="mc-header-title" data-tip="Simula N caminhos de retorno log-normais mensais com os parâmetros de retorno e volatilidade do portfólio. Exibe percentis P10–P90 do patrimônio ao longo do tempo.">Simulador de aportes — Monte Carlo</span>
     </div>
     <div class="mc-body">
 
@@ -1685,7 +1708,7 @@
           <input type="number" id="mcInfl" value="4.5" min="0" max="30" step="0.5" oninput="mcScheduleRun()">
         </div>
         <div class="mc-ctrl">
-          <label title="O aporte mensal cresce esta % uma vez por ano, no início de cada ano">Crescimento anual dos aportes (%)</label>
+          <label data-tip="O aporte mensal cresce esta % uma vez por ano, no início de cada ano">Crescimento anual dos aportes (%)</label>
           <input type="number" id="mcGrowth" value="0" min="0" max="50" step="0.5" oninput="mcScheduleRun()" placeholder="0 = sem crescimento">
         </div>
       </div>
@@ -1696,7 +1719,7 @@
           <button class="mc-n-btn active" data-n="1000" onclick="mcSetN(this)">1k</button>
           <button class="mc-n-btn" data-n="5000" onclick="mcSetN(this)">5k</button>
           <button class="mc-n-btn" data-n="20000" onclick="mcSetN(this)">20k</button>
-          <button class="mc-n-btn" data-n="50000" onclick="mcSetN(this)" title="Ultra: 50k simulações — pode demorar alguns segundos">Ultra</button>
+          <button class="mc-n-btn" data-n="50000" onclick="mcSetN(this)" data-tip="Ultra: 50k simulações — pode demorar alguns segundos">Ultra</button>
         </div>
         <button class="mc-advanced-toggle" id="mcAdvToggle" onclick="mcToggleAdvanced()">⚙ avançado</button>
         <span style="font-family:'Courier New',monospace;font-size:0.6rem;color:var(--muted)" id="mcNote">Simulações por Monte Carlo</span>
@@ -1716,22 +1739,22 @@
 
       <div id="mcStats" class="mc-stats" style="display:none">
         <div class="mc-stat green">
-          <div class="mc-stat-label" title="Em metade dos cenários, o patrimônio final supera este valor. Estimativa central — não é o melhor nem o pior resultado.">Mediana (P50)</div>
+          <div class="mc-stat-label" data-tip="Em metade dos cenários, o patrimônio final supera este valor. Estimativa central — não é o melhor nem o pior resultado.">Mediana (P50)</div>
           <div class="mc-stat-val" id="mcP50">—</div>
           <div class="mc-stat-sub" id="mcP50Real">—</div>
         </div>
         <div class="mc-stat blue">
-          <div class="mc-stat-label" title="1 em cada 4 cenários chega aqui ou mais. O mercado cooperou mais do que o esperado.">P75 — terceiro quartil</div>
+          <div class="mc-stat-label" data-tip="1 em cada 4 cenários chega aqui ou mais. O mercado cooperou mais do que o esperado.">P75 — terceiro quartil</div>
           <div class="mc-stat-val" id="mcP75">—</div>
           <div class="mc-stat-sub" id="mcP75Real">—</div>
         </div>
         <div class="mc-stat amber">
-          <div class="mc-stat-label" title="Em 3 de cada 4 cenários o resultado fica acima deste valor. O mercado foi adverso mas não extremo.">P25 — primeiro quartil</div>
+          <div class="mc-stat-label" data-tip="Em 3 de cada 4 cenários o resultado fica acima deste valor. O mercado foi adverso mas não extremo.">P25 — primeiro quartil</div>
           <div class="mc-stat-val" id="mcP25">—</div>
           <div class="mc-stat-sub" id="mcP25Real">—</div>
         </div>
         <div class="mc-stat red">
-          <div class="mc-stat-label" title="Apenas 1 em 10 cenários fica abaixo deste valor. O pior cenário realista — não impossível, mas improvável.">P10 — tail risk</div>
+          <div class="mc-stat-label" data-tip="Apenas 1 em 10 cenários fica abaixo deste valor. O pior cenário realista — não impossível, mas improvável.">P10 — tail risk</div>
           <div class="mc-stat-val" id="mcP10">—</div>
           <div class="mc-stat-sub" id="mcP10Real">—</div>
         </div>
@@ -1766,7 +1789,7 @@
 
         <div class="mc-retire-controls">
           <div class="mc-ctrl">
-            <label title="Valor mensal em R$ de hoje que você quer sacar. Será corrigido pela inflação a cada ano.">Saque mensal (R$ de hoje)</label>
+            <label data-tip="Valor mensal em R$ de hoje que você quer sacar. Será corrigido pela inflação a cada ano.">Saque mensal (R$ de hoje)</label>
             <input type="number" id="mcSaque" value="15000" min="0" step="1000" oninput="mcRunRetire()">
           </div>
           <div class="mc-ctrl">
@@ -1783,12 +1806,12 @@
 
         <div class="swr-section" id="swrSection" style="display:none">
           <div class="swr-title">
-            <span title="Safe Withdrawal Rate: dado o patrimônio acumulado e o portfólio, calcula o saque mensal máximo que mantém probabilidade de sobrevivência ≥ 90% nos cenários Monte Carlo. Busca binária sobre o parâmetro de saque.">?</span>
+            <span data-tip="Safe Withdrawal Rate: dado o patrimônio acumulado e o portfólio, calcula o saque mensal máximo que mantém probabilidade de sobrevivência ≥ 90% nos cenários Monte Carlo. Busca binária sobre o parâmetro de saque.">?</span>
             Qual o saque máximo sustentável? — Taxa de Retirada Segura
           </div>
           <div class="swr-controls">
-            <label title="Número de anos que o patrimônio precisa durar">Prazo: <input type="number" id="swrAnos" value="25" min="5" max="50" step="1"> anos</label>
-            <label title="Probabilidade mínima de sobrevivência exigida">Segurança: <input type="number" id="swrPct" value="90" min="70" max="99" step="5">%</label>
+            <label data-tip="Número de anos que o patrimônio precisa durar">Prazo: <input type="number" id="swrAnos" value="25" min="5" max="50" step="1"> anos</label>
+            <label data-tip="Probabilidade mínima de sobrevivência exigida">Segurança: <input type="number" id="swrPct" value="90" min="70" max="99" step="5">%</label>
             <button class="swr-btn" id="swrBtn" onclick="calcSWR()">Calcular</button>
           </div>
           <div class="swr-result" id="swrResult"></div>
@@ -1810,7 +1833,7 @@
         </div>
 
         <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.8rem;" id="mcSeqHeader" style="display:none">
-          <span style="font-family:'Courier New',monospace;font-size:0.63rem;color:var(--muted)" title="Dois aposentados com o mesmo retorno médio e o mesmo patrimônio chegam a resultados radicalmente diferentes dependendo de QUANDO o mercado cai. Cair no início da aposentadoria é muito mais devastador.">⚠ Risco de sequência de retornos</span>
+          <span style="font-family:'Courier New',monospace;font-size:0.63rem;color:var(--muted)" data-tip="Dois aposentados com o mesmo retorno médio e o mesmo patrimônio chegam a resultados radicalmente diferentes dependendo de QUANDO o mercado cai. Cair no início da aposentadoria é muito mais devastador.">⚠ Risco de sequência de retornos</span>
           <button class="mc-seq-toggle" id="mcSeqToggle" onclick="mcToggleSeq()">ver análise</button>
         </div>
         <div class="mc-seq-panel" id="mcSeqPanel"></div>
@@ -1911,14 +1934,14 @@
 
 
     <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title" title="Métricas de risco ajustado que complementam o Sharpe e capturam dimensões ignoradas por ele: assimetria de retornos, magnitude da queda máxima e eficiência do alpha gerado.">Métricas de risco avançadas</div>
+      <div class="analysis-card-title" data-tip="Métricas de risco ajustado que complementam o Sharpe e capturam dimensões ignoradas por ele: assimetria de retornos, magnitude da queda máxima e eficiência do alpha gerado.">Métricas de risco avançadas</div>
       <div id="advMetricsContainer">
         <div style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">carregando…</div>
       </div>
     </div>
 
     <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title" title="O alpha de 12 meses (retorno acima do IBOV) recalculado mensalmente ao longo do histórico disponível. Revela se o gestor gera alpha de forma consistente ou se o número único esconde volatilidade significativa de resultados.">Alpha rolante 12M — evolução do excesso de retorno vs. IBOV</div>
+      <div class="analysis-card-title" data-tip="O alpha de 12 meses (retorno acima do IBOV) recalculado mensalmente ao longo do histórico disponível. Revela se o gestor gera alpha de forma consistente ou se o número único esconde volatilidade significativa de resultados.">Alpha rolante 12M — evolução do excesso de retorno vs. IBOV</div>
       <div style="margin-bottom:0.7rem">
         <select class="fund-selector-analise" id="rollingAlphaSelect" onchange="renderRollingAlpha()">
           <option value="">— selecione um fundo —</option>
@@ -1933,7 +1956,7 @@
     </div>
 
     <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title" title="Fronteira eficiente: curva que representa o melhor retorno possível para cada nível de volatilidade, dada a combinação dos fundos disponíveis. Portfólios abaixo da fronteira são sub-ótimos — é possível ter mais retorno com o mesmo risco, ou menos risco com o mesmo retorno.">Fronteira eficiente — universo de fundos disponíveis</div>
+      <div class="analysis-card-title" data-tip="Fronteira eficiente: curva que representa o melhor retorno possível para cada nível de volatilidade, dada a combinação dos fundos disponíveis. Portfólios abaixo da fronteira são sub-ótimos — é possível ter mais retorno com o mesmo risco, ou menos risco com o mesmo retorno.">Fronteira eficiente — universo de fundos disponíveis</div>
       <div style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted);margin-bottom:0.6rem">
         Cada ponto é um fundo individual. A curva é a fronteira eficiente: combinações ótimas long-only.
         Portfólios <em>à esquerda e acima</em> da nuvem de fundos só são alcançáveis por diversificação.
@@ -1984,6 +2007,7 @@ const FUND_META = {
   "21.689.246/0001-92": { nome:"Arbor",              short:"Arbor",    inception:"2015-03-23", initialQuota:1.0000, maxQuota:8.2977230,   tipo:"Long Only",    trib:"RV", expo:"Internacional",            banco:"BTG",      obs:"" },
   "14.438.229/0001-17": { nome:"Charles River",      short:"Charles",  inception:"2011-11-07", initialQuota:1.0000, maxQuota:13.4070715,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"C6",       obs:"" },
   "17.397.315/0001-17": { nome:"SPX Falcon",         short:"Falcon",   inception:"2012-09-17", initialQuota:1.0000, maxQuota:7.3045380,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"Itaú",     obs:"" },
+  "46.351.969/0001-08": { nome:"Opportunity Global", short:"Opportunity", inception:"2022-12-16", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva" };
 
@@ -2627,14 +2651,18 @@ async function loadHistory() {
 
 function buildFundSelector() {
   if (!historyData) return;
-  const cnpjs = Object.keys(historyData.funds).sort((a,b) =>
-    historyData.funds[a].nome.localeCompare(historyData.funds[b].nome));
+  const cnpjs = Object.keys(historyData.funds).sort((a,b) => {
+    const na = (FUND_META[a] || {}).nome || historyData.funds[a].nome;
+    const nb = (FUND_META[b] || {}).nome || historyData.funds[b].nome;
+    return na.localeCompare(nb);
+  });
 
   const html = cnpjs.map((cnpj, i) => {
-    const nome = historyData.funds[cnpj].nome;
+    const _meta = FUND_META[cnpj] || {};
+    const nome  = _meta.nome || historyData.funds[cnpj].nome;
     return `<div class="fund-row-port inactive" id="frow-${i}">
       <input type="checkbox" id="chk-${i}" data-cnpj="${cnpj}" onchange="onCheckChange(${i})">
-      <label class="fund-row-name" for="chk-${i}" title="${nome}">${nome}</label>
+      <label class="fund-row-name" for="chk-${i}" data-tip="${nome}">${nome}</label>
       <input type="range" class="fund-slider" id="sl-${i}" data-cnpj="${cnpj}"
         min="0" max="100" value="0" step="1" disabled
         oninput="onSliderInput(${i})">
@@ -2916,7 +2944,7 @@ function updatePortfolio() {
     allocPanel.style.display = 'block';
 
     const rows = selected.map((cnpj, i) => {
-      const nome   = historyData.funds[cnpj].nome;
+      const nome   = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome;
       const pct    = weights[cnpj];
       const brl    = patrimonio * pct / 100;
       const color  = PORT_COLORS[i % PORT_COLORS.length];
@@ -4580,7 +4608,7 @@ function initUnderwaterSelect() {
   Object.keys(historyData.funds).forEach(function(cnpj) {
     var opt = document.createElement('option');
     opt.value = cnpj;
-    opt.textContent = historyData.funds[cnpj].nome;
+    opt.textContent = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome;
     sel.appendChild(opt);
   });
   renderUnderwaterChart();
@@ -6188,7 +6216,14 @@ const _addInlineAlpha = function() {
     const cls  = Math.abs(alpha) < 0.5 ? 'neu' : alpha > 0 ? 'pos' : 'neg';
     const pill = document.createElement('span');
     pill.className = 'alpha-inline ' + cls;
-    pill.title = 'Alpha vs. IBOV: ' + sign + alpha.toFixed(1) + 'pp no período ' + ({cagr12:'12M',cagr36:'36M',cagr60:'60M'}[currentSort]||'');
+    const _period = {cagr12:'12M',cagr36:'36M',cagr60:'60M'}[currentSort]||'';
+    pill.setAttribute('data-tip',
+      'Alpha vs. IBOV — período ' + _period + '\n\n'
+      + sign + alpha.toFixed(1) + 'pp\n'
+      + (alpha >= 0
+          ? 'Gestor superou o Ibovespa em ' + alpha.toFixed(1) + 'pp.'
+          : 'Gestor ficou ' + Math.abs(alpha).toFixed(1) + 'pp abaixo do Ibovespa.')
+      + '\n\nAlpha = CAGR do fundo − CAGR do IBOV no mesmo período.');
     pill.textContent = sign + alpha.toFixed(1) + 'pp';
     td.appendChild(pill);
   });
@@ -6231,7 +6266,7 @@ initChartToggles = function() {
     btn.style.background = color;
     btn.style.borderColor = color;
     btn.style.color = '#fff';
-    btn.textContent = historyData.funds[cnpj].nome.split(' ')[0];
+    btn.textContent = (FUND_META[cnpj] || {}).short || historyData.funds[cnpj].nome.split(' ')[0];
     // Use shortName if available
     if (typeof shortName === 'function') btn.textContent = shortName(cnpj);
     btn.onclick = (function(c, col) {
@@ -6465,7 +6500,7 @@ function initRollingAlphaSelect() {
   Object.keys(historyData.funds).forEach(function(cnpj) {
     const opt = document.createElement('option');
     opt.value = cnpj;
-    opt.textContent = historyData.funds[cnpj].nome || cnpj;
+    opt.textContent = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome || cnpj;
     sel.appendChild(opt);
   });
 }
@@ -6593,7 +6628,7 @@ function renderRollingAlpha() {
     }
   });
 
-  const nome = historyData.funds[cnpj].nome;
+  const nome = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome;
   if (note) note.innerHTML = `Alpha 12M rolante de <strong>${nome}</strong> vs. IBOV proxy (cagr36 anualizado diariamente). Cada ponto = retorno anualizado dos últimos 252 pregões do fundo menos o do IBOV.`;
 }
 
@@ -7512,8 +7547,63 @@ runOptimizer = function() {
 };
 
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// GLOBAL CUSTOM TOOLTIP — intercepts all data-tip attributes
+// Replaces every native browser tooltip with a styled custom one.
+// ════════════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', function() {
+  const tip = document.getElementById('g-tip');
+  if (!tip) return;
+
+  let activeEl = null;
+
+  function show(el, e) {
+    const text = el.getAttribute('data-tip');
+    if (!text || !text.trim()) return;
+    tip.textContent = text;
+    tip.classList.add('visible');
+    move(e);
+    activeEl = el;
+  }
+
+  function hide() {
+    tip.classList.remove('visible');
+    activeEl = null;
+  }
+
+  function move(e) {
+    if (!tip.classList.contains('visible')) return;
+    const tw = tip.offsetWidth  || 260;
+    const th = tip.offsetHeight || 60;
+    const mg = 14;
+    let x = e.clientX + mg;
+    let y = e.clientY + mg;
+    if (x + tw > window.innerWidth  - mg) x = e.clientX - tw - mg;
+    if (y + th > window.innerHeight - mg) y = e.clientY - th - mg;
+    tip.style.left = x + 'px';
+    tip.style.top  = y + 'px';
+  }
+
+  document.addEventListener('mouseover', function(e) {
+    const el = e.target.closest('[data-tip]');
+    if (el && el !== activeEl) show(el, e);
+    else if (!el && activeEl) hide();
+  });
+
+  document.addEventListener('mouseout', function(e) {
+    const el = e.target.closest('[data-tip]');
+    if (el && !el.contains(e.relatedTarget)) hide();
+  });
+
+  document.addEventListener('mousemove', move);
+  document.addEventListener('scroll', hide, true);
+  document.addEventListener('click', hide);
+});
+
 updateHeaders();
 load();
 </script>
+<div id="g-tip"></div>
 </body>
 </html>
