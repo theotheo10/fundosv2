@@ -2035,6 +2035,7 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', dark ? '' : 'dark');
   document.getElementById('themeBtn').textContent = dark ? '☽ escuro' : '☀ claro';
   localStorage.setItem('theme', dark ? 'light' : 'dark');
+  savePrefs();
 }
 (function() {
   if (localStorage.getItem('theme') === 'dark') {
@@ -2222,7 +2223,7 @@ function calcPortfolioTargetReturn(selected, wNorm, historyData) {
     for (const cnpj of selected) {
       const fd = historyData.funds[cnpj];
       if (!fd) continue;
-      const rets = fd.returns;
+      const rets = getRealReturns(cnpj);
       const n    = rets.length;
       const mean = rets.reduce((a, b) => a + b, 0) / n;
       const var_ = rets.reduce((a, r) => a + (r - mean) ** 2, 0) / (n - 1);
@@ -2512,6 +2513,9 @@ function render() {
   }
 
   document.getElementById('fundBody').innerHTML = html;
+  // Debounced save — avoid hammering localStorage on every keystroke
+  clearTimeout(render._saveTimer);
+  render._saveTimer = setTimeout(savePrefs, 800);
 }
 
 function buildIbovRow() {
@@ -2619,6 +2623,8 @@ async function load() {
     updateHeaders();
     render();
     initMCSelect();
+    // Restore portfolio weights after fund selector is built
+    restorePortfolio(loadPrefs());
 
   } catch(e) {
     document.getElementById('statusDot').className = 'status-dot error';
@@ -2663,6 +2669,7 @@ function switchTab(name) {
       });
     });
   }
+  savePrefs();
 }
 
 // ── Portfolio ──────────────────────────────────────────────────────────────────
@@ -3228,6 +3235,7 @@ ${tipLines}${dispNote}${rawNote}</div>
   renderCCTimeline();
   checkConcentrationAlerts();
   renderPortfolioStress(selected, wNorm);
+  savePrefs();
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -3801,14 +3809,16 @@ function invertMatrix(M) {
 // Retorna matriz k×k de covariâncias anualizadas (×252) em (%²)
 function covMatrix(cnpjs, historyData) {
   const k    = cnpjs.length;
+  const commonStart = getCommonStartIndex(cnpjs);
   const rets = cnpjs.map(c => historyData.funds[c].returns);
   const n    = rets[0].length;
-  const means = rets.map(r => r.reduce((a, b) => a + b, 0) / n);
+  const means = rets.map((r, ri) => { const fIdx = getFirstRealIndex(cnpjs[ri]); const sl = r.slice(fIdx); return sl.reduce((a,b)=>a+b,0)/sl.length; });
   const cov   = Array.from({length: k}, () => new Array(k).fill(0));
   for (let i = 0; i < k; i++)
     for (let j = i; j < k; j++) {
       let s = 0;
-      for (let t = 0; t < n; t++)
+      const tPairStart = Math.max(getFirstRealIndex(cnpjs[i]), getFirstRealIndex(cnpjs[j]));
+  for (let t = tPairStart; t < n; t++)
         s += (rets[i][t] - means[i]) * (rets[j][t] - means[j]);
       cov[i][j] = cov[j][i] = (s / (n - 1)) * 252 * 10000; // (%²) anualizado
     }
@@ -4696,7 +4706,7 @@ function renderConsistency() {
   const nM = monthKeys.length;
 
   const rows = cnpjs.map(function(cnpj) {
-    const rets = historyData.funds[cnpj].returns;
+    const rets = getRealReturns(cnpj);
     var pos = 0, worst = 0, best = 0;
 
     // Monthly returns
@@ -5164,11 +5174,12 @@ function mcGetParams() {
       const wNorm = Object.fromEntries(selected.map(c => [c, weights[c] / total]));
       // Build weighted daily returns
       const n = historyData.funds[selected[0]].returns.length;
+  const _mcVolStart = getCommonStartIndex(selected);
       const portRets = new Float64Array(n);
       for (const cnpj of selected) {
         const rets = historyData.funds[cnpj].returns;
         const w    = wNorm[cnpj];
-        for (let i = 0; i < n; i++) portRets[i] += rets[i] * w;
+        for (let i = _mcVolStart; i < n; i++) portRets[i] += rets[i] * w;
       }
       const mean = portRets.reduce((a,b) => a+b, 0) / n;
       const vari = portRets.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
@@ -6080,7 +6091,8 @@ function openCorrScatter(ca, cb) {
   const nB = (FUND_META[cb]||{}).nome || cb;
   const corr = (historyData.correlation?.[ca]?.[cb] ?? 0);
   title.textContent = `${shortName(ca)} × ${shortName(cb)}`;
-  stats.innerHTML = `Pearson ρ = <strong style="color:${Math.abs(corr)>0.7?'var(--red)':Math.abs(corr)<0.35?'var(--green)':'var(--text)'}">${corr.toFixed(3)}</strong> · retornos diários · ${historyData.commonDates.length} pregões`;
+  const realN = retsA.filter((r,i) => r !== 0 && retsB[i] !== 0).length;
+  stats.innerHTML = `Pearson ρ = <strong style="color:${Math.abs(corr)>0.7?'var(--red)':Math.abs(corr)<0.35?'var(--green)':'var(--text)'}">${corr.toFixed(3)}</strong> · retornos diários · ${realN} pregões em comum`;
 
   modal.style.display = 'flex';
 
@@ -6089,10 +6101,17 @@ function openCorrScatter(ca, cb) {
   const retsB = historyData.funds[cb]?.returns || [];
   const n = Math.min(retsA.length, retsB.length);
 
-  // Sample at most 300 points to keep chart fast
-  const step = Math.max(1, Math.floor(n / 300));
-  const pts  = [];
-  for (let i = 0; i < n; i += step) pts.push({ x: retsA[i] * 100, y: retsB[i] * 100 });
+  // Only use days where BOTH funds have real non-zero returns (exclude pre-inception zeros)
+  const realPts = [];
+  for (let i = 0; i < n; i++) {
+    if (retsA[i] !== 0 && retsB[i] !== 0) {
+      realPts.push({ x: retsA[i] * 100, y: retsB[i] * 100 });
+    }
+  }
+
+  // Sample at most 400 points to keep chart fast
+  const step = Math.max(1, Math.floor(realPts.length / 400));
+  const pts  = realPts.filter((_, i) => i % step === 0);
 
   // Regression line
   const meanX = pts.reduce((s,p)=>s+p.x,0)/pts.length;
@@ -6547,6 +6566,25 @@ function getRealReturns(cnpj) {
   return allRets;
 }
 
+// Returns the index offset where the fund's real history begins
+function getFirstRealIndex(cnpj) {
+  const allRets = historyData.funds[cnpj]?.returns || [];
+  for (let i = 0; i < allRets.length; i++) {
+    if (allRets[i] !== 0) return Math.max(0, i - 1);
+  }
+  return 0;
+}
+
+// For a set of funds, returns the latest firstRealIndex (common start)
+function getCommonStartIndex(cnpjs) {
+  return Math.max(...cnpjs.map(c => getFirstRealIndex(c)));
+}
+
+// Safe return: 0 if before fund's inception
+function safeReturn(cnpj, t) {
+  return t >= getFirstRealIndex(cnpj) ? (historyData.funds[cnpj]?.returns[t] || 0) : 0;
+}
+
 function computeAdvancedMetrics(cnpj) {
   if (!historyData || !historyData.funds[cnpj]) return null;
   const fd = historyData.funds[cnpj];
@@ -6964,9 +7002,10 @@ function renderEfficientFrontier() {
     const t = calcTargetReturn(fData);
     if (!t) return;
     const fd = historyData.funds[cnpj];
-    const n2 = fd.returns.length;
-    const mean2 = fd.returns.reduce((a,b)=>a+b,0)/n2;
-    const var2  = fd.returns.reduce((a,r)=>a+(r-mean2)**2,0)/(n2-1);
+    const realRets2 = getRealReturns(cnpj);
+    const n2 = realRets2.length;
+    const mean2 = realRets2.reduce((a,b)=>a+b,0)/n2;
+    const var2  = realRets2.reduce((a,r)=>a+(r-mean2)**2,0)/(n2-1);
     const vol2  = Math.sqrt(var2*252)*100;
     fundPoints.push({
       x: parseFloat(vol2.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
@@ -7130,6 +7169,7 @@ function initNewAnalysis() {
 // portanto S é positiva semi-definida e inversível.
 function semiCovMatrix(cnpjs, historyData, cdiAnnual) {
   const k = cnpjs.length;
+  const _commonStart = getCommonStartIndex(cnpjs);
   const rets = cnpjs.map(c => historyData.funds[c].returns);
   const n = rets[0].length;
   const cdiDaily = Math.pow(1 + cdiAnnual / 100, 1 / 252) - 1;
@@ -7206,7 +7246,7 @@ function evalPortfolioAdvanced(w, cnpjs, mus, cdiTarget, ibovProxy, cov, history
   let sumSemiSq = 0;
   for (let t = 0; t < n; t++) {
     let r_p = 0;
-    cnpjs.forEach((c, i) => { r_p += w[i] * historyData.funds[c].returns[t]; });
+    cnpjs.forEach((c, i) => { r_p += w[i] * (t >= getFirstRealIndex(c) ? historyData.funds[c].returns[t] : 0); });
     const excess = r_p - cdiDaily;
     if (excess < 0) sumSemiSq += excess * excess;
   }
@@ -7217,7 +7257,7 @@ function evalPortfolioAdvanced(w, cnpjs, mus, cdiTarget, ibovProxy, cov, history
   let cum = 1, peak = 1, maxDD = 0;
   for (let t = 0; t < n; t++) {
     let r_p = 0;
-    cnpjs.forEach((c, i) => { r_p += w[i] * historyData.funds[c].returns[t]; });
+    cnpjs.forEach((c, i) => { r_p += w[i] * (t >= getFirstRealIndex(c) ? historyData.funds[c].returns[t] : 0); });
     cum *= (1 + r_p);
     if (cum > peak) peak = cum;
     const dd = (cum - peak) / peak;
@@ -7490,7 +7530,7 @@ function compCalcMetrics(portfolio) {
   const portRets = [];
   for (let t = 0; t < n; t++) {
     let r = 0;
-    cnpjs.forEach((c, i) => { r += weights[i] * (historyData.funds[c].returns[t] || 0); });
+    cnpjs.forEach((c, i) => { r += weights[i] * (t >= getFirstRealIndex(c) ? (historyData.funds[c].returns[t] || 0) : 0); });
     portRets.push(r);
   }
 
@@ -7530,7 +7570,7 @@ function compCalcMetrics(portfolio) {
   const allCnpjs = Object.keys(historyData.funds);
   const eqRets = [];
   for (let t = 0; t < n; t++) {
-    let r = 0; allCnpjs.forEach(c => { r += historyData.funds[c].returns[t] / allCnpjs.length; });
+    let r = 0; allCnpjs.forEach(c => { r += (t >= getFirstRealIndex(c) ? historyData.funds[c].returns[t] : 0) / allCnpjs.length; });
     eqRets.push(r);
   }
   const meanMkt = eqRets.reduce((s,r)=>s+r,0)/n;
@@ -7862,6 +7902,10 @@ runOptimizer = function() {
 // Replaces every native browser tooltip with a styled custom one.
 // ════════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
+  // Restore non-data prefs immediately (theme, tab, filters)
+  const _savedPrefs = loadPrefs();
+  if (_savedPrefs) restorePrefs(_savedPrefs);
+
   const tip = document.getElementById('g-tip');
   if (!tip) return;
 
@@ -7909,6 +7953,154 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('scroll', hide, true);
   document.addEventListener('click', hide);
 });
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// PERSISTÊNCIA DE PREFERÊNCIAS — localStorage
+// Salva e restaura escolhas do usuário entre sessões.
+// Dados calculados (CAGRs, betas, etc.) sempre vêm do data.json — nunca salvos.
+// ════════════════════════════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'fundosv2_prefs_v1';
+
+function savePrefs() {
+  try {
+    // Portfolio weights
+    const weights = {};
+    document.querySelectorAll('#fundSelector input[type=checkbox]').forEach((chk, i) => {
+      if (chk.checked && chk.dataset.cnpj) {
+        const sl = document.getElementById('sl-' + i);
+        const v  = parseInt(sl?.value || 0);
+        if (v > 0) weights[chk.dataset.cnpj] = v;
+      }
+    });
+
+    // Monte Carlo settings
+    const mcPrefs = {};
+    ['mcYears','mcAporte','mcGrowth','mcInfl','mcP0'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) mcPrefs[id] = el.value;
+    });
+    const fatTails = document.getElementById('mcFatTails');
+    if (fatTails) mcPrefs.mcFatTails = fatTails.checked;
+    const mcN = document.querySelector('.mc-n-btn.active');
+    if (mcN) mcPrefs.mcN = mcN.dataset.n;
+
+    // Patrimônio
+    const patEl = document.getElementById('patrimonioInput');
+
+    const prefs = {
+      weights,
+      patrimonio:   patEl?.value || '',
+      tab:          document.querySelector('.tab-btn.active')?.dataset.tab || 'ranking',
+      theme:        document.documentElement.getAttribute('data-theme') || 'light',
+      sortKey:      currentSort  || 'cagr36',
+      sortDir:      sortDir      || -1,
+      filterEst:    document.getElementById('filterEstrategia')?.value || '',
+      filterMer:    document.getElementById('filterMercado')?.value    || '',
+      filterTrib:   document.getElementById('filterTrib')?.value       || '',
+      mc:           mcPrefs,
+      savedAt:      Date.now(),
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+  } catch(e) {
+    // localStorage can be unavailable in private mode — fail silently
+  }
+}
+
+function loadPrefs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const prefs = JSON.parse(raw);
+    // Ignore prefs older than 90 days
+    if (prefs.savedAt && Date.now() - prefs.savedAt > 90 * 86400 * 1000) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return prefs;
+  } catch(e) {
+    return null;
+  }
+}
+
+function restorePrefs(prefs) {
+  if (!prefs) return;
+
+  // Theme
+  if (prefs.theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const btn = document.getElementById('themeToggle');
+    if (btn) btn.textContent = '☀';
+  }
+
+  // Tab
+  if (prefs.tab) switchTab(prefs.tab);
+
+  // Ranking sort
+  if (prefs.sortKey) currentSort = prefs.sortKey;
+  if (prefs.sortDir !== undefined) sortDir = prefs.sortDir;
+
+  // Filters
+  if (prefs.filterEst  !== undefined) { const el = document.getElementById('filterEstrategia'); if (el) el.value = prefs.filterEst; }
+  if (prefs.filterMer  !== undefined) { const el = document.getElementById('filterMercado');    if (el) el.value = prefs.filterMer; }
+  if (prefs.filterTrib !== undefined) { const el = document.getElementById('filterTrib');       if (el) el.value = prefs.filterTrib; }
+
+  // Patrimônio
+  if (prefs.patrimonio) {
+    const el = document.getElementById('patrimonioInput');
+    if (el) el.value = prefs.patrimonio;
+  }
+
+  // Monte Carlo
+  if (prefs.mc) {
+    ['mcYears','mcAporte','mcGrowth','mcInfl','mcP0'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && prefs.mc[id] !== undefined) el.value = prefs.mc[id];
+    });
+    if (prefs.mc.mcFatTails !== undefined) {
+      const el = document.getElementById('mcFatTails');
+      if (el) el.checked = prefs.mc.mcFatTails;
+    }
+    if (prefs.mc.mcN) {
+      document.querySelectorAll('.mc-n-btn').forEach(btn => {
+        const active = btn.dataset.n === String(prefs.mc.mcN);
+        btn.classList.toggle('active', active);
+        if (active) MCPortState.N = parseInt(prefs.mc.mcN);
+      });
+    }
+  }
+}
+
+function restorePortfolio(prefs) {
+  // Called after historyData is loaded — needs fund selector to exist
+  if (!prefs?.weights || !historyData) return;
+  const weights = prefs.weights;
+  const validCnpjs = new Set(Object.keys(historyData.funds));
+
+  document.querySelectorAll('#fundSelector input[type=checkbox]').forEach((chk, i) => {
+    const cnpj = chk.dataset.cnpj;
+    if (!cnpj || !validCnpjs.has(cnpj)) return;  // fund removed from site
+    const w = weights[cnpj];
+    if (!w || w <= 0) return;
+
+    const sl  = document.getElementById('sl-'  + i);
+    const wi  = document.getElementById('wi-'  + i);
+    const row = document.getElementById('frow-'+ i);
+    if (!sl || !wi || !row) return;
+
+    chk.checked   = true;
+    sl.disabled   = false;
+    wi.disabled   = false;
+    sl.value      = w;
+    wi.value      = w + '%';
+    row.classList.remove('inactive');
+    row.classList.add('active');
+  });
+
+  updatePortfolio();
+}
 
 updateHeaders();
 load();
