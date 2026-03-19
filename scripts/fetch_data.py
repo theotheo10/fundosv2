@@ -547,9 +547,24 @@ def update_history(anchor: datetime.date) -> None:
         returns_by_fund[fund["cnpjFmt"]] = rets
 
     # ── Correlação de Pearson ────────────────────────────────────────────────
-    def pearson(a: list, b: list) -> float:
-        n = len(a)
-        if n < 2: return 0.0
+    def first_real_idx(cnpj: str) -> int:
+        rets = returns_by_fund[cnpj]
+        for i, r in enumerate(rets):
+            if r != 0.0:
+                return max(0, i - 1)
+        return 0
+
+    def pearson_real(ca: str, cb: str) -> float:
+        """Pearson using only dates where both funds have real (non-zero) returns."""
+        ra = returns_by_fund[ca]
+        rb = returns_by_fund[cb]
+        # Build aligned pairs where both have real data
+        pairs = [(ra[i], rb[i]) for i in range(min(len(ra), len(rb)))
+                 if ra[i] != 0.0 and rb[i] != 0.0]
+        n = len(pairs)
+        if n < 30: return 0.0
+        a = [p[0] for p in pairs]
+        b = [p[1] for p in pairs]
         ma, mb = sum(a) / n, sum(b) / n
         num = sum((a[i] - ma) * (b[i] - mb) for i in range(n))
         sa  = math.sqrt(sum((x - ma) ** 2 for x in a))
@@ -557,14 +572,20 @@ def update_history(anchor: datetime.date) -> None:
         return round(num / (sa * sb), 4) if sa * sb > 0 else 0.0
 
     cnpjs = [f["cnpjFmt"] for f in FUNDS]
-    corr  = {ca: {cb: pearson(returns_by_fund[ca], returns_by_fund[cb])
+    corr  = {ca: {cb: (1.0 if ca == cb else pearson_real(ca, cb))
                   for cb in cnpjs} for ca in cnpjs}
 
     # ── Drawdown máximo ──────────────────────────────────────────────────────
     def max_dd(rets: list) -> float:
+        # Skip leading zeros (pre-inception)
+        start = 0
+        for i, r in enumerate(rets):
+            if r != 0.0:
+                start = max(0, i - 1)
+                break
         cum = peak = 1.0
         dd_max = 0.0
-        for r in rets:
+        for r in rets[start:]:
             cum *= (1 + r)
             if cum > peak: peak = cum
             dd = (cum - peak) / peak
@@ -790,8 +811,8 @@ def compute_fund_betas(history_path: Path, index_rets: dict) -> dict:
             r_s  = sp500_r.get(d)
             if r_i is None or r_s is None:
                 continue
-            if r_f == 0.0 and i < 30:
-                continue  # skip pre-inception zeros
+            if r_f == 0.0:
+                continue  # skip pre-inception zeros (fund not yet active)
             X_ibov.append(r_i)
             X_sp.append(r_s)
             Y.append(r_f)
