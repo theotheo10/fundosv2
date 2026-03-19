@@ -5,8 +5,24 @@ on:
     inputs:
       fundos:
         description: |
-          JSON com um ou mais fundos. Exemplo:
+          JSON com um ou mais fundos. Campos obrigatórios: cnpj, nome, exibicao, curto, tipo, trib, expo, banco.
+          Campos opcionais: expo_liquida_normal (0.0–1.0), expo_liquida_crise (0.0–1.0), benchmark ("ibov"|"sp500"|"mixed").
+          Se omitidos, os campos opcionais são inferidos do tipo+expo.
+          
+          Exemplos de tipo: "Long Only" | "Long Biased" | "Multimercado" | "Long & Short"
+          Exemplos de expo: "Brasil" | "Internacional" | "Majoritariamente Brasil"
+          
+          Long Only Brasil → expo normal:1.0, crise:0.95, benchmark:ibov
+          Long Only Internacional → expo normal:1.0, crise:0.95, benchmark:sp500
+          Long Biased Brasil → expo normal:0.65, crise:0.40, benchmark:ibov
+          Long & Short Internacional → expo normal:0.0, crise:0.0, benchmark:sp500
+          Multimercado → expo normal:0.30, crise:0.10, benchmark:mixed
+          
+          Exemplo mínimo:
           [{"cnpj":"46351969000108","nome":"Opportunity Global Equity Real Institucional FIC FIF Ações IE RL","exibicao":"Opportunity Global","curto":"Opportunity","tipo":"Long Only","trib":"RV","expo":"Internacional","banco":"Itaú"}]
+          
+          Exemplo com exposição explícita (Genoa):
+          [{"cnpj":"37495383000126","nome":"Genoa Capital Arpa CIC Classe FIM RL","exibicao":"Genoa Arpa","curto":"Genoa","tipo":"Long Biased","trib":"RV","expo":"Brasil","banco":"C6","expo_liquida_normal":0.70,"expo_liquida_crise":0.50}]
         required: true
 
 jobs:
@@ -32,4 +48,5 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/history.json docs/data.json scripts/fetch_data.py docs/index.html
           git diff --staged --quiet || git commit -m "feat: adiciona fundo(s) via add_fund workflow"
+          git pull --rebase origin main
           git push
