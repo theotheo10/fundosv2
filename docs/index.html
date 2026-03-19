@@ -95,7 +95,7 @@
   tbody tr.ibov-row td { background: var(--bg); }
   tbody tr.ibov-row:last-child { border-bottom: none; }
 
-  td { padding: 13px 16px; font-size: 0.84rem; text-align: right; vertical-align: middle; }
+  td { padding: 13px 16px; font-size: 0.84rem; text-align: right; vertical-align: middle; white-space: nowrap; }
   td:first-child { text-align: left; }
 
   .rank {
@@ -525,13 +525,15 @@
     position: fixed;
     background: var(--text); color: var(--bg);
     font-family: 'Courier New', monospace; font-size: 0.58rem;
-    padding: 10px 13px; border-radius: 6px; white-space: pre-line;
-    width: 340px;
+    padding: 10px 13px; border-radius: 6px; white-space: normal;
+    width: 300px;
     opacity: 0; pointer-events: none;
     transform: translateY(4px); transition: opacity 0.15s ease, transform 0.15s ease;
-    z-index: 9999; line-height: 1.8; text-align: left;
+    z-index: 9999; line-height: 1.75; text-align: left;
     box-shadow: 0 4px 16px rgba(0,0,0,0.25);
   }
+  .ir-custo-tip strong { display: block; margin-bottom: 4px; }
+  .ir-custo-tip strong + br { display: none; }
   .ir-trib-badge {
     display: inline-block; font-family: 'Courier New', monospace;
     font-size: 0.58rem; padding: 1px 5px; border-radius: 4px;
@@ -701,21 +703,38 @@
   /* underwater / drawdown */
   #underwaterCanvas { width:100%; height:100%; display:block; }
   /* consistency */
-  .consistency-table { width:100%; border-collapse:collapse; font-size:0.75rem; }
-  .consistency-table th { font-family:'Courier New',monospace; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); padding:4px 8px; text-align:right; border-bottom:1px solid var(--border); }
-  .consistency-table th:first-child { text-align:left; }
-  .consistency-table td { padding:6px 8px; text-align:right; border-bottom:1px solid var(--border); font-family:'Courier New',monospace; font-size:0.72rem; }
-  .consistency-table td:first-child { text-align:left; font-family:Georgia,serif; font-size:0.8rem; }
+  .consistency-table { width:100%; border-collapse:collapse; }
+  .consistency-table th {
+    font-family:'Courier New',monospace; font-size:0.57rem;
+    text-transform:uppercase; letter-spacing:0.09em; color:var(--muted);
+    padding:4px 10px 4px 0; text-align:right; border-bottom:1px solid var(--border);
+  }
+  .consistency-table th:first-child { text-align:left; padding-left:0; width:40%; }
+  .consistency-table th.th-bar { width:30%; }
+  .consistency-table td {
+    padding:6px 10px 6px 0; border-bottom:0.5px solid var(--border);
+    font-family:'Courier New',monospace; font-size:0.7rem; text-align:right;
+    vertical-align:middle;
+  }
+  .consistency-table td:first-child {
+    text-align:left; padding-left:0;
+    font-family:Georgia,serif; font-size:0.8rem; color:var(--text);
+  }
+  .cons-bar-cell { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+  .cons-bar-track { width:80px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; }
+  .cons-bar-fill  { height:100%; border-radius:2px; background:var(--green); }
+  .cons-pct { min-width:28px; text-align:right; }
   /* stress test */
   .stress-scenario { margin-bottom:0.8rem; padding:0.7rem 0.9rem; border:0.5px solid var(--border); border-radius:7px; }
   .stress-scenario-title { font-family:'Courier New',monospace; font-size:0.62rem; color:var(--muted); margin-bottom:0.4rem; }
   .stress-bars { display:flex; flex-direction:column; gap:4px; }
-  .stress-bar-row { display:flex; align-items:center; gap:6px; }
-  .stress-bar-name { font-size:0.65rem; color:var(--muted); width:110px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .stress-bar-track { flex:1; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+  .stress-bar-row { display:flex; align-items:center; gap:8px; }
+  .stress-bar-name { font-family:Georgia,serif; font-size:0.72rem; color:var(--text); width:130px; flex-shrink:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .stress-bar-track { flex:1; height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
   .stress-bar-fill { height:100%; border-radius:3px; background:var(--red); }
   .stress-bar-fill.recovery { background:var(--green); }
-  .stress-bar-val { font-family:'Courier New',monospace; font-size:0.62rem; width:48px; text-align:right; flex-shrink:0; }
+  .stress-bar-val { font-family:'Courier New',monospace; font-size:0.65rem; width:52px; text-align:right; flex-shrink:0; }
+  .stress-bar-rec { font-family:'Courier New',monospace; font-size:0.58rem; color:var(--muted); width:64px; text-align:right; flex-shrink:0; }
   /* aportes periodicos */
   .aportes-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:1rem; }
   .aportes-grid label { font-family:'Courier New',monospace; font-size:0.65rem; color:var(--muted); display:block; margin-bottom:3px; }
@@ -1449,12 +1468,12 @@
     background: var(--text); color: var(--bg);
     font-family: 'Courier New', monospace; font-size: 0.60rem;
     padding: 9px 13px; border-radius: 6px;
-    white-space: pre-wrap; word-break: break-word;
-    max-width: 320px; min-width: 120px;
+    white-space: pre-line; word-break: break-word;
+    max-width: 300px; min-width: 100px;
     pointer-events: none;
     opacity: 0; transform: translateY(4px);
     transition: opacity 0.13s ease, transform 0.13s ease;
-    z-index: 99999; line-height: 1.75;
+    z-index: 99999; line-height: 1.72;
     box-shadow: 0 4px 20px rgba(0,0,0,0.28);
   }
   #g-tip.visible {
@@ -2303,15 +2322,15 @@ function buildDetailPanel(f, isExp) {
   const alpha36 = calcAlpha(f, 'cagr36');
   const alphaStr = alpha36 != null
     ? (alpha36 >= 0
-        ? `<span style="color:var(--green);font-weight:bold">+${alpha36.toFixed(1)}pp acima do IBOV</span>`
-        : `<span style="color:var(--red);font-weight:bold">${alpha36.toFixed(1)}pp abaixo do IBOV</span>`)
+        ? `<span style="color:var(--green);font-weight:bold">+${alpha36.toFixed(1)} pp</span>`
+        : `<span style="color:var(--red);font-weight:bold">${alpha36.toFixed(1)} pp</span>`)
     : '—';
 
   // Drawdown atual — queda do pico
   const dd = calcDrawdown(f);
   const ddStr = dd != null
     ? (dd === 0
-        ? '<span style="color:var(--green)">No pico histórico ✓</span>'
+        ? '<span style="color:var(--green)">No pico ✓</span>'
         : `<span style="color:var(--red);font-weight:bold">${dd.toFixed(1)}% abaixo do pico</span>`)
     : '—';
 
@@ -2324,13 +2343,13 @@ function buildDetailPanel(f, isExp) {
     <div class="detail-inner">
 
       <div class="detail-col">
-        <div class="detail-col-header">Resultado vs. mercado</div>
+        <div class="detail-col-header">Desempenho</div>
         <div class="ditem">
-          <div class="dlabel">Últimos 3 anos (vs IBOV)</div>
+          <div class="dlabel">Alpha 36M vs. IBOV</div>
           <div class="dval" style="font-size:0.92rem">${alphaStr}</div>
         </div>
         <div class="ditem" style="margin-top:0.5rem">
-          <div class="dlabel">Queda atual desde o pico</div>
+          <div class="dlabel">Drawdown atual</div>
           <div class="dval" style="font-size:0.88rem">${ddStr}</div>
         </div>
         <div class="ditem" style="margin-top:0.5rem">
@@ -2396,22 +2415,31 @@ function render() {
     sortDir * (getSortVal(b, currentSort) - getSortVal(a, currentSort))
   );
 
-  let ibovPos = null;
-  if (['cagr12','cagr36','cagr60'].includes(currentSort)) {
-    const iv = ibov[currentSort];
-    if (iv !== null) {
-      ibovPos = sorted.findIndex(f => sortDir * getSortVal(f, currentSort) < sortDir * iv);
-      if (ibovPos === -1) ibovPos = sorted.length;
-    }
+  // Merge funds + benchmarks (IBOV, CDI, S&P) into a single sorted list
+  // Benchmarks only ranked when sorting by CAGR columns
+  const sortingByCagr = ['cagr12','cagr36','cagr60'].includes(currentSort);
+  const merged = sorted.map(f => ({
+    isFund: true,
+    sortVal: getSortVal(f, currentSort),
+    f
+  }));
+  if (sortingByCagr) {
+    const key = currentSort;
+    if (ibov[key]  != null) merged.push({ isFund:false, sortVal: ibov[key],  row: buildIbovRow()  });
+    if (cdi[key]   != null) merged.push({ isFund:false, sortVal: cdi[key],   row: buildCdiRow()   });
+    if (sp500[key] != null) merged.push({ isFund:false, sortVal: sp500[key], row: buildSP500Row() });
   }
+  merged.sort((a, z) => sortDir * (z.sortVal - a.sortVal));
 
+  let fundRank = 0;
   let html = '';
-  sorted.forEach((f, i) => {
-    if (ibovPos !== null && i === ibovPos) html += buildIbovRow();
-
-    const meta  = FUND_META[f.cnpjFmt] || {};
-    const nome  = meta.nome || f.name;
-    const rc    = sortDir === 1 ? (i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '') : '';
+  merged.forEach(function(item) {
+    if (!item.isFund) { html += item.row; return; }
+    const f    = item.f;
+    const i    = fundRank++;
+    const meta = FUND_META[f.cnpjFmt] || {};
+    const nome = meta.nome || f.name;
+    const rc   = sortDir === 1 ? (i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '') : '';
     const isExp = expandedCnpjs.has(f.cnpjFmt);
 
     if (f.error) {
@@ -2431,7 +2459,7 @@ function render() {
       <td><div class="fund-name-cell">
         <span class="rank ${rc}">${i+1}</span>
         <div>
-          <div class="fund-name">${nome}${f.isDelayed ? ` <span class="delayed-badge" title="Última cota disponível: ${f.latestDate} (${f.delayDays}d antes da referência ${window.anchorDate||''})">+${f.delayDays}d</span>` : ''} <span class="expand-arrow" data-arrow="${f.cnpjFmt}" style="transform:${isExp?'rotate(180deg)':'none'}">▾</span></div>
+          <div class="fund-name">${nome}${f.isDelayed ? ` <span class="delayed-badge" data-tip="Última cota disponível: ${f.latestDate} (${f.delayDays}d antes da referência ${window.anchorDate||''})">+${f.delayDays}d</span>` : ''} <span class="expand-arrow" data-arrow="${f.cnpjFmt}" style="transform:${isExp?'rotate(180deg)':'none'}">▾</span></div>
           <div class="fund-cnpj">${f.cnpjFmt}</div>
         </div>
       </div></td>
@@ -2445,9 +2473,12 @@ function render() {
     <tr class="detail-row"><td colspan="6">${buildDetailPanel(f, isExp)}</td></tr>`;
   });
 
-  if (ibovPos === null) html += buildIbovRow();
-  html += buildCdiRow();
-  html += buildSP500Row();
+  if (!sortingByCagr) {
+    html += buildIbovRow();
+    html += buildCdiRow();
+    html += buildSP500Row();
+  }
+
   document.getElementById('fundBody').innerHTML = html;
 }
 
@@ -2462,7 +2493,7 @@ function buildIbovRow() {
         <span style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--blue)">12M: ${ibov.cagr12!=null?'+'+(ibov.cagr12>=0?'':'')+ibov.cagr12.toFixed(1)+'%':'—'}</span>
         <span style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--blue)">36M: ${ibov.cagr36!=null?ibov.cagr36.toFixed(1)+'%':'—'}</span>
         <span style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--blue)">60M: ${ibov.cagr60!=null?ibov.cagr60.toFixed(1)+'%':'—'}</span>
-        <span style="font-family:'Courier New',monospace;font-size:0.56rem;color:var(--muted);margin-left:auto">fundos abaixo desta linha ficaram atrás do mercado · referência ${anchorFmt}</span>
+        <span style="font-family:'Courier New',monospace;font-size:0.56rem;color:var(--muted);margin-left:auto">referência ${anchorFmt}</span>
       </div>
     </td>
   </tr>`;
@@ -2477,7 +2508,7 @@ function buildCdiRow() {
       <span class="rank ibov" style="background:var(--green-light);color:var(--green)">CDI</span>
       <div>
         <div class="fund-name">CDI</div>
-        <div class="fund-cnpj">referência até ${anchorFmt} · Banco Central</div>
+        <div class="fund-cnpj">Banco Central · ${anchorFmt}</div>
       </div>
     </div></td>
     <td>${fmtPct(cdi.cagr12)}</td>
@@ -2498,7 +2529,7 @@ function buildSP500Row() {
       <span class="rank ibov" style="background:color-mix(in srgb,var(--amber) 12%,transparent);color:var(--amber)">S&P</span>
       <div>
         <div class="fund-name">S&P 500 (em R$)</div>
-        <div class="fund-cnpj">^GSPC × USD/BRL · até ${anchorFmt}</div>
+        <div class="fund-cnpj">^GSPC × BRL=X · ${anchorFmt}</div>
       </div>
     </div></td>
     <td>${fmtPct(sp500.cagr12)}</td>
@@ -3306,18 +3337,16 @@ function renderIR() {
         ${row.trib === 'TR' && (row.irComeCotas > 0 || row.irResgate > 0)
           ? `<div class="ir-custo-cell">
                <span style="display:block">${fmtBRL(row.irTotal)}</span>
-               <div class="ir-custo-tip">
-                 <strong>Come-cotas (antecipações em mai/nov)</strong>
-                 ${row.irComeCotas > 0 ? fmtBRL(row.irComeCotas) : 'nenhum no período'}
-                 Pago ao longo do tempo, sobre cada período semestral.
-                 A alíquota é sempre 15% — mas o capital pago deixa de crescer.
-                 
-                 <strong>IR no resgate (último trecho)</strong>
-                 ${row.irResgate > 0 ? fmtBRL(row.irResgate) : 'zero — trecho final coincidiu com come-cotas'}
-                 Sobre o rendimento entre o último come-cotas e o resgate.
-                 Alíquota calculada sobre o prazo deste trecho (não do aporte total):
-                 ≤ 180d → 22,5% · ≤ 360d → 20% · ≤ 720d → 17,5% · &gt; 720d → 15%.
-               </div>
+               <div class="ir-custo-tip"><strong>Come-cotas (antecipações em mai/nov)</strong>
+${row.irComeCotas > 0 ? fmtBRL(row.irComeCotas) : 'nenhum no período'}
+Pago ao longo do tempo, sobre cada período semestral.
+A alíquota é sempre 15% — mas o capital pago deixa de crescer.
+
+<strong>IR no resgate (último trecho)</strong>
+${row.irResgate > 0 ? fmtBRL(row.irResgate) : 'zero — trecho final coincidiu com come-cotas'}
+Sobre o rendimento entre o último come-cotas e o resgate.
+Alíquota calculada sobre o prazo deste trecho (não do aporte total):
+≤ 180d → 22,5% · ≤ 360d → 20% · ≤ 720d → 17,5% · &gt; 720d → 15%.</div>
              </div>`
           : `<span>${fmtBRL(row.irTotal)}</span>`
         }
@@ -3326,35 +3355,31 @@ function renderIR() {
         ${row.trib === 'RV'
           ? `<div class="ir-custo-cell">
                <span class="ir-val-neg" style="font-family:Courier New,monospace;font-weight:bold">${fmtPctIr(row.aliqEconomica)}</span>
-               <div class="ir-custo-tip">
-                 <strong>O que significa este número?</strong>
-                 De cada R$&nbsp;100 que esse fundo poderia ter rendido
-                 sem nenhum imposto, R$&nbsp;${row.aliqEconomica.toFixed(1)} foram para o fisco
-                 e R$&nbsp;${(100 - row.aliqEconomica).toFixed(1)} ficaram com você.
-                 
-                 Para fundos RV sem come-cotas, isso equivale
-                 exatamente à alíquota aplicada: 15%.
-               </div>
+               <div class="ir-custo-tip"><strong>O que significa este número?</strong>
+De cada R$&nbsp;100 que esse fundo poderia ter rendido
+sem nenhum imposto, R$&nbsp;${row.aliqEconomica.toFixed(1)} foram para o fisco
+e R$&nbsp;${(100 - row.aliqEconomica).toFixed(1)} ficaram com você.
+
+Para fundos RV sem come-cotas, isso equivale
+exatamente à alíquota aplicada: 15%.</div>
              </div>`
           : `<div class="ir-custo-cell">
                <span class="ir-custo-eco ir-val-neg">${fmtPctIr(row.aliqEconomica)}</span>
-               <div class="ir-custo-tip">
-                 <strong>O que significa este número?</strong>
-                 De cada R$&nbsp;100 que esse fundo poderia ter rendido
-                 sem nenhum imposto, R$&nbsp;${row.aliqEconomica.toFixed(1)} foram para o fisco
-                 e R$&nbsp;${(100 - row.aliqEconomica).toFixed(1)} ficaram com você.
-                 
-                 <strong>Por que é maior que 15%?</strong>
-                 O come-cotas antecipa IR a cada semestre. O capital
-                 pago ao fisco deixa de crescer nos anos seguintes —
-                 esse custo de oportunidade é invisível mas real.
-                 Quanto maior o prazo e o retorno, maior o impacto.
-                 
-                 <strong>Compare com fundos RV:</strong> sem come-cotas,
-                 todo o capital cresce até o resgate e só então
-                 paga 15%. Por isso RV sempre mostra 15% aqui,
-                 independente do prazo.
-               </div>
+               <div class="ir-custo-tip"><strong>O que significa este número?</strong>
+De cada R$&nbsp;100 que esse fundo poderia ter rendido
+sem nenhum imposto, R$&nbsp;${row.aliqEconomica.toFixed(1)} foram para o fisco
+e R$&nbsp;${(100 - row.aliqEconomica).toFixed(1)} ficaram com você.
+
+<strong>Por que é maior que 15%?</strong>
+O come-cotas antecipa IR a cada semestre. O capital
+pago ao fisco deixa de crescer nos anos seguintes —
+esse custo de oportunidade é invisível mas real.
+Quanto maior o prazo e o retorno, maior o impacto.
+
+<strong>Compare com fundos RV:</strong> sem come-cotas,
+todo o capital cresce até o resgate e só então
+paga 15%. Por isso RV sempre mostra 15% aqui,
+independente do prazo.</div>
              </div>`
         }
       </td>
@@ -3379,14 +3404,12 @@ function renderIR() {
       ${totCC > 0
         ? `<div class="ir-custo-cell">
              <span style="display:block">${fmtBRL(totTotal)}</span>
-             <div class="ir-custo-tip">
-               <strong>Come-cotas (antecipações)</strong>
-               ${fmtBRL(totCC)}
-               Soma de todos os come-cotas pagos pelos fundos TR.
-               
-               <strong>IR no resgate</strong>
-               ${totResgate > 0 ? fmtBRL(totResgate) : 'zero'}
-             </div>
+             <div class="ir-custo-tip"><strong>Come-cotas (antecipações)</strong>
+${fmtBRL(totCC)}
+Soma de todos os come-cotas pagos pelos fundos TR.
+
+<strong>IR no resgate</strong>
+${totResgate > 0 ? fmtBRL(totResgate) : 'zero'}</div>
            </div>`
         : `<span>${fmtBRL(totTotal)}</span>`
       }
@@ -3394,16 +3417,14 @@ function renderIR() {
     <td>
       <div class="ir-custo-cell">
         <span class="ir-custo-eco ir-val-neg">${fmtPctIr(totCustoEco)}</span>
-        <div class="ir-custo-tip">
-          <strong>Custo fiscal do portfólio</strong>
-          De cada R$&nbsp;100 de potencial deste portfólio,
-          R$&nbsp;${totCustoEco.toFixed(1)} de cada R$&nbsp;100 foram para o fisco.
-          
-          É a média ponderada pelo aporte de cada fundo.
-          Fundos RV sempre contribuem com 15%;
-          fundos TR contribuem com mais, dependendo
-          do prazo e do retorno (quanto maior, pior o come-cotas).
-        </div>
+        <div class="ir-custo-tip"><strong>Custo fiscal do portfólio</strong>
+De cada R$&nbsp;100 de potencial deste portfólio,
+R$&nbsp;${totCustoEco.toFixed(1)} de cada R$&nbsp;100 foram para o fisco.
+
+É a média ponderada pelo aporte de cada fundo.
+Fundos RV sempre contribuem com 15%;
+fundos TR contribuem com mais, dependendo
+do prazo e do retorno (quanto maior, pior o come-cotas).</div>
       </div>
     </td>
     <td class="ir-val-pos">${fmtBRL(totLiq)}</td>
@@ -3417,72 +3438,64 @@ function renderIR() {
   <div class="ir-legend">
     <div class="ir-pill">
       <span class="ir-pill-icon">ⓘ</span> RV
-      <div class="ir-custo-tip">
-        <strong>Renda Variável — tributação no resgate</strong>
-        Sem come-cotas. O capital cresce integralmente até o resgate.
-        No dia do resgate: 15% sobre o rendimento total.
-        
-        Resultado: a base de cálculo do IR é máxima,
-        mas todo o capital trabalhou por mais tempo.
-      </div>
+      <div class="ir-custo-tip"><strong>Renda Variável — tributação no resgate</strong>
+Sem come-cotas. O capital cresce integralmente até o resgate.
+No dia do resgate: 15% sobre o rendimento total.
+
+Resultado: a base de cálculo do IR é máxima,
+mas todo o capital trabalhou por mais tempo.</div>
     </div>
     <div class="ir-pill">
       <span class="ir-pill-icon">ⓘ</span> TR
-      <div class="ir-custo-tip">
-        <strong>Tabela Regressiva — come-cotas semestral</strong>
-        Em maio e novembro de cada ano, 15% sobre o rendimento
-        do período é antecipado ao fisco. O capital pago deixa
-        de crescer nos anos seguintes.
-        
-        No resgate, o trecho desde o último come-cotas paga:
-        ≤ 180 dias → 22,5% &nbsp;·&nbsp; ≤ 360d → 20%
-        ≤ 720 dias → 17,5% &nbsp;·&nbsp; &gt; 720d → 15%
-        
-        Quanto maior o prazo e o retorno, maior o custo
-        invisível do come-cotas antecipado.
-      </div>
+      <div class="ir-custo-tip"><strong>Tabela Regressiva — come-cotas semestral</strong>
+Em maio e novembro de cada ano, 15% sobre o rendimento
+do período é antecipado ao fisco. O capital pago deixa
+de crescer nos anos seguintes.
+
+No resgate, o trecho desde o último come-cotas paga:
+≤ 180 dias → 22,5% &nbsp;·&nbsp; ≤ 360d → 20%
+≤ 720 dias → 17,5% &nbsp;·&nbsp; &gt; 720d → 15%
+
+Quanto maior o prazo e o retorno, maior o custo
+invisível do come-cotas antecipado.</div>
     </div>
     <div class="ir-pill">
       <span class="ir-pill-icon">ⓘ</span> Custo fiscal
-      <div class="ir-custo-tip">
-        <strong>O que é o custo fiscal?</strong>
-        De cada R$&nbsp;100 que o fundo poderia ter rendido
-        sem nenhum imposto, quanto foi para o fisco?
-        
-        Inclui o IR efetivamente pago <em>e</em> o custo de
-        oportunidade do capital antecipado via come-cotas.
-        
-        RV sempre mostra 15% — é a alíquota exata aplicada.
-        TR mostra mais: o come-cotas destrói rendimento
-        composto, e esse custo cresce com o prazo.
-      </div>
+      <div class="ir-custo-tip"><strong>O que é o custo fiscal?</strong>
+De cada R$&nbsp;100 que o fundo poderia ter rendido
+sem nenhum imposto, quanto foi para o fisco?
+
+Inclui o IR efetivamente pago <em>e</em> o custo de
+oportunidade do capital antecipado via come-cotas.
+
+RV sempre mostra 15% — é a alíquota exata aplicada.
+TR mostra mais: o come-cotas destrói rendimento
+composto, e esse custo cresce com o prazo.</div>
     </div>
     <div class="ir-pill">
       <span class="ir-pill-icon">ⓘ</span> Ret. alvo
-      <div class="ir-custo-tip">
-        <strong>Como é calculado o retorno alvo?</strong>
-        Média ponderada dos CAGRs históricos do fundo
-        com pesos proporcionais a √período (não ao período).
-        
-        12M → peso 1,0 &nbsp;·&nbsp; 36M → peso 1,7 &nbsp;·&nbsp; 60M → peso 2,2
-        Inception → peso = √anos desde o início (se &gt; 5,5a)
-        
-        Pesos √T: o erro amostral de um CAGR decresce
-        com √T, então √T é o peso estatisticamente correto.
-        O 60M ainda domina, mas o 12M não é ignorado.
-        
-        <strong>Penalização por dispersão ciclical:</strong>
-        Se os CAGRs de diferentes períodos divergem muito
-        (ex: +30% em 12M vs +8% em 60M), o fundo está
-        num pico ou vale de ciclo. Aplicamos um desconto
-        proporcional à dispersão entre os períodos.
-        
-        <strong>Reversão à média (25%):</strong>
-        O resultado é puxado 25% em direção ao CAGR 60M,
-        suavizando distorções de momento de curto prazo.
-        
-        É uma estimativa — não uma garantia de retorno futuro.
-      </div>
+      <div class="ir-custo-tip"><strong>Como é calculado o retorno alvo?</strong>
+Média ponderada dos CAGRs históricos do fundo
+com pesos proporcionais a √período (não ao período).
+
+12M → peso 1,0 &nbsp;·&nbsp; 36M → peso 1,7 &nbsp;·&nbsp; 60M → peso 2,2
+Inception → peso = √anos desde o início (se &gt; 5,5a)
+
+Pesos √T: o erro amostral de um CAGR decresce
+com √T, então √T é o peso estatisticamente correto.
+O 60M ainda domina, mas o 12M não é ignorado.
+
+<strong>Penalização por dispersão ciclical:</strong>
+Se os CAGRs de diferentes períodos divergem muito
+(ex: +30% em 12M vs +8% em 60M), o fundo está
+num pico ou vale de ciclo. Aplicamos um desconto
+proporcional à dispersão entre os períodos.
+
+<strong>Reversão à média (25%):</strong>
+O resultado é puxado 25% em direção ao CAGR 60M,
+suavizando distorções de momento de curto prazo.
+
+É uma estimativa — não uma garantia de retorno futuro.</div>
     </div>
   </div>`;
 
@@ -4558,29 +4571,32 @@ function renderConsistency() {
     return '<div style="display:inline-block;width:' + Math.min(pct,100).toFixed(0) + '%;height:3px;background:var(--green);border-radius:2px;vertical-align:middle;margin-right:5px"></div>';
   }
 
+  function colBar(pct) {
+    var col = pct > 62 ? 'var(--green)' : pct > 50 ? 'var(--amber)' : 'var(--red)';
+    return '<div class="cons-bar-cell">'
+      + '<div class="cons-bar-track"><div class="cons-bar-fill" style="width:'
+      + Math.min(pct,100).toFixed(0) + '%;background:' + col + '"></div></div>'
+      + '<span class="cons-pct" style="color:' + col + '">' + pct.toFixed(0) + '%</span>'
+      + '</div>';
+  }
+
   var html = '<table class="consistency-table"><thead><tr>'
-    + '<th style="text-align:left">Fundo</th>'
-    + '<th title="% de meses com retorno positivo">% pos.</th>'
-    + '<th title="Melhor mês individual">Mel. mês</th>'
-    + '<th title="Pior mês individual">Pior mês</th>'
-    + '<th title="Maior drawdown histórico no período">Max DD</th>'
-    + '<th title="Maior sequência de meses positivos consecutivos">Seq. +</th>'
+    + '<th>Fundo</th>'
+    + '<th class="th-bar" data-tip="% de meses em que o fundo teve retorno positivo">% meses positivos</th>'
+    + '<th data-tip="Maior retorno mensal registrado no período">Mel. mês</th>'
+    + '<th data-tip="Maior queda mensal registrada no período">Pior mês</th>'
+    + '<th data-tip="Maior sequência consecutiva de meses positivos">Sequência +</th>'
     + '</tr></thead><tbody>';
 
   rows.forEach(function(r) {
-    var pctCol = colPos(r.pctPos);
     html += '<tr>'
       + '<td>' + r.nome + '</td>'
-      + '<td style="color:' + pctCol + '">'
-        + miniBar(r.pctPos)
-        + r.pctPos.toFixed(0) + '%</td>'
+      + '<td>' + colBar(r.pctPos) + '</td>'
       + '<td style="color:var(--green)">'
         + (r.best >= 0 ? '+' : '') + r.best.toFixed(1) + '%</td>'
       + '<td style="color:var(--red)">'
         + r.worst.toFixed(1) + '%</td>'
-      + '<td style="color:var(--red)">'
-        + r.maxDD.toFixed(1) + '%</td>'
-      + '<td style="color:var(--muted)">'
+      + '<td style="color:var(--muted); text-align:right">'
         + r.maxStreak + 'm</td>'
       + '</tr>';
   });
@@ -4706,20 +4722,26 @@ function renderStressTest() {
     eqRets.push(r);
   }
 
-  // Find top-3 non-overlapping worst 20-day windows
-  var WINDOW = 20;
-  var windowRets = [];
-  for (var i = 0; i <= eqRets.length - WINDOW; i++) {
-    var cum = 1.0;
-    for (var j = i; j < i + WINDOW; j++) cum *= (1 + eqRets[j]);
-    windowRets.push({ start: i, end: i + WINDOW, ret: cum - 1 });
-  }
-  windowRets.sort(function(a,b){ return a.ret - b.ret; });
+  // Find top-5 non-overlapping worst windows across multiple window sizes
+  // Use 60-day (~3 month) windows to capture meaningful crises
+  var WINDOWS = [60, 40, 20];
+  var allWindows = [];
+  WINDOWS.forEach(function(W) {
+    for (var i = 0; i <= eqRets.length - W; i++) {
+      var cum = 1.0;
+      for (var j = i; j < i + W; j++) cum *= (1 + eqRets[j]);
+      // Normalise to annualised to compare across window sizes
+      allWindows.push({ start: i, end: i + W, ret: cum - 1, window: W });
+    }
+  });
+  allWindows.sort(function(a,b){ return a.ret - b.ret; });
 
   var scenarios = [];
-  for (var wi = 0; wi < windowRets.length && scenarios.length < 3; wi++) {
-    var w = windowRets[wi];
-    var overlaps = scenarios.some(function(s){ return w.start < s.end && w.end > s.start; });
+  for (var wi = 0; wi < allWindows.length && scenarios.length < 5; wi++) {
+    var w = allWindows[wi];
+    var overlaps = scenarios.some(function(s){
+      return w.start < s.end + 10 && w.end > s.start - 10;
+    });
     if (!overlaps) scenarios.push(w);
   }
 
@@ -4735,20 +4757,27 @@ function renderStressTest() {
       + (sc.ret*100).toFixed(1)+'%</div>'
       + '<div class="stress-bars">';
 
-    // Sort funds by worst drawdown in scenario
+    // Only include funds that existed during the scenario window
+    // A fund "exists" if it has at least half the window as real non-zero data
     var fundRows = cnpjs.map(function(cnpj) {
       var rets = historyData.funds[cnpj].returns;
+      // Check how many real data points exist in window
+      var realCount = 0;
+      for (var i = sc.start; i < sc.end && i < rets.length; i++) {
+        if (rets[i] !== 0 || i === sc.start) realCount++;
+      }
+      if (realCount < sc.window * 0.5) return null;  // fund didn't exist yet
       var cum  = 1.0;
       for (var i = sc.start; i < sc.end && i < rets.length; i++) cum *= (1+rets[i]);
       var dd = (cum-1)*100;
-      // Recovery after window
       var recCum = 1.0, recDays = null;
       for (var i = sc.end; i < rets.length; i++) {
         recCum *= (1+rets[i]);
         if (recCum >= (1/cum)) { recDays = i-sc.end; break; }
       }
-      return { nome: shortName(cnpj), fullNome: historyData.funds[cnpj].nome, dd: dd, recDays: recDays };
-    });
+      var meta = FUND_META[cnpj] || {};
+      return { nome: shortName(cnpj), fullNome: meta.nome || historyData.funds[cnpj].nome, dd: dd, recDays: recDays };
+    }).filter(function(r){ return r !== null; });
     fundRows.sort(function(a,b){ return a.dd - b.dd; });
 
     fundRows.forEach(function(row) {
@@ -4756,10 +4785,11 @@ function renderStressTest() {
       var vCol   = row.dd < 0 ? 'var(--red)' : 'var(--green)';
       var recTxt = row.recDays !== null ? 'rec. '+row.recDays+'d' : 'não rec.';
       html += '<div class="stress-bar-row">'
-        + '<span class="stress-bar-name" title="'+(row.fullNome||row.nome)+'">'+row.nome+'</span>'
-        + '<div class="stress-bar-track"><div class="stress-bar-fill" style="width:'+barPct+'%"></div></div>'
-        + '<span class="stress-bar-val" style="color:'+vCol+'">'+row.dd.toFixed(1)+'%</span>'
-        + '<span class="stress-bar-val" style="font-size:0.58rem;color:var(--muted)">'+recTxt+'</span>'
+        + '<span class="stress-bar-name" data-tip="'+(row.fullNome||row.nome)+'">'+row.nome+'</span>'
+        + '<div class="stress-bar-track"><div class="stress-bar-fill" style="width:'+barPct+'%;background:'+(row.dd<0?'var(--red)':'var(--green)')+'"></div></div>'
+        + '<span class="stress-bar-val" style="color:'+vCol+'">'
+          + (row.dd >= 0 ? '+' : '') + row.dd.toFixed(1)+'%</span>'
+        + '<span class="stress-bar-rec">'+recTxt+'</span>'
         + '</div>';
     });
 
@@ -4769,7 +4799,7 @@ function renderStressTest() {
   var note = '<div style="margin-top:0.8rem;font-family:\'Courier New\',monospace;font-size:0.58rem;color:var(--muted)">'
     + 'Cenários identificados automaticamente no período disponível: '
     + dates[0].slice(0,7) + ' → ' + dates[dates.length-1].slice(0,7)
-    + ' (3 anos — limitado pela janela do history.json)</div>';
+    + ' (' + (historyData.nYears ? historyData.nYears.toFixed(1) + ' anos' : 'período disponível') + ' — history.json)</div>';
   if (!html) html = '<span style="color:var(--muted);font-size:0.8rem">Dados insuficientes para identificar cenários.</span>';
   container.innerHTML = html + note;
 }
@@ -5046,7 +5076,7 @@ function _mcRunCore() {
   const years = p.anos;
 
   // Run simulation
-  const all = mcSimulate(p.P, p.M, p.retorno, p.volatilidade, years, N, p.growth);
+  const all = mcSimulateFT(p.P, p.M, p.retorno, p.volatilidade, years, N, p.growth);
   const det = mcDetPath(p.P, p.M, p.retorno, years, p.growth);
 
   // Final year percentiles
@@ -6406,28 +6436,62 @@ function renderAdvMetricsTable() {
   const cnpjs = Object.keys(historyData.funds);
   const rows  = cnpjs.map(cnpj => ({ cnpj, m: getAdvMetrics(cnpj) })).filter(r => r.m);
 
-  // Find bests for highlighting
+  // Sort state — persists across re-renders
+  if (!renderAdvMetricsTable._sortKey) {
+    renderAdvMetricsTable._sortKey = 'sortino';
+    renderAdvMetricsTable._sortDir = -1;  // -1 = desc
+  }
+
+  function sortRows(key) {
+    if (renderAdvMetricsTable._sortKey === key) {
+      renderAdvMetricsTable._sortDir *= -1;
+    } else {
+      renderAdvMetricsTable._sortKey = key;
+      renderAdvMetricsTable._sortDir = -1;
+    }
+    renderAdvMetricsTable();
+  }
+  // expose for onclick
+  window._advMetricSort = sortRows;
+
+  const sk  = renderAdvMetricsTable._sortKey;
+  const sd  = renderAdvMetricsTable._sortDir;
+
+  const getVal = (r, key) => {
+    const m = r.m;
+    switch (key) {
+      case 'sortino':    return m.sortino    ?? -999;
+      case 'calmar':     return m.calmar     ?? -999;
+      case 'ir':         return m.ir         ?? -999;
+      case 'beta':       return m.beta       ?? 0;
+      case 'propensity': return m.propensity ?? 0;
+      case 'raLatest':   return m.raLatest   ?? -999;
+      case 'raMin':      return m.raMin      ?? -999;
+      default:           return 0;
+    }
+  };
+  rows.sort((a,b) => sd * (getVal(b, sk) - getVal(a, sk)));
+
+  // Bests for column highlighting
   const bestSortino  = Math.max(...rows.map(r => r.m.sortino ?? -99));
   const bestCalmar   = Math.max(...rows.map(r => r.m.calmar  ?? -99));
   const bestIR       = Math.max(...rows.map(r => r.m.ir      ?? -99));
   const bestProp     = Math.max(...rows.map(r => r.m.propensity));
 
-  function fmtVal(v, decimals=2) {
-    if (v == null || !isFinite(v)) return '<span class="val-neu">N/D</span>';
-    return v.toFixed(decimals);
-  }
   function cls(v, best, neutral=0) {
     if (v == null) return 'val-neu';
     if (Math.abs(v - best) < 0.001) return 'val-pos best-in-col';
     if (v >= neutral) return 'val-pos';
     return 'val-neg';
   }
-  function tip(text) {
-    return `<span class="tip-icon" title="${text}">?</span>`;
-  }
 
-  // Sort by Sortino desc
-  rows.sort((a,b) => (b.m.sortino ?? -99) - (a.m.sortino ?? -99));
+  // Sortable TH helper
+  function th(key, label, tipText, extraStyle='') {
+    const active = sk === key;
+    const arrow  = active ? (sd === -1 ? ' ↓' : ' ↑') : ' ↕';
+    const style  = `cursor:pointer;user-select:none;${active ? 'color:var(--text)' : ''}${extraStyle ? ';'+extraStyle : ''}`;
+    return `<th data-tip="${tipText}" style="${style}" onclick="_advMetricSort('${key}')">${label}${arrow}</th>`;
+  }
 
   let html = `
   <div style="font-family:'Courier New',monospace;font-size:0.6rem;color:var(--muted);line-height:1.7;margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-radius:6px;border-left:2px solid var(--accent)">
@@ -6436,26 +6500,26 @@ function renderAdvMetricsTable() {
     <strong>Calmar</strong> mede o retorno por unidade de queda máxima ·
     <strong>IR</strong> mede a consistência do alpha gerado ·
     <strong>Beat</strong> é a frequência com que o fundo superou o IBOV num horizonte de 3 meses.
-    <em>Células em negrito verde = melhor do universo naquela métrica.</em>
+    <em>Clique nos cabeçalhos para ordenar. Células em negrito verde = melhor do universo naquela métrica.</em>
   </div>
   <div style="overflow-x:auto">
   <table class="adv-metrics-table">
   <thead><tr>
-    <th style="text-align:left">Fundo</th>
-    <th title="Sortino ratio: (retorno anualizado − CDI) ÷ desvio padrão dos retornos abaixo do CDI.&#10;Superior ao Sharpe para fundos com assimetria positiva, pois não penaliza volatilidade para cima.&#10;Acima de 1,0 é excelente; acima de 0,7 é razoável para equity brasileira.">Sortino ${tip('Sharpe ajustado — penaliza só retornos abaixo do CDI, não a volatilidade para cima')}</th>
-    <th title="Calmar ratio: CAGR ÷ módulo do máximo drawdown histórico.&#10;Responde: quanto de retorno o fundo entregou para cada 1% de queda máxima?&#10;Acima de 1,0 significa que o CAGR é maior que o pior drawdown (em módulo).&#10;O Charles River com Calmar 0,62 gerou R$0,62 de CAGR para cada R$1 de queda máxima.">Calmar ${tip('CAGR ÷ queda máxima — quanto o fundo rendeu por unidade de "dor máxima"')}</th>
-    <th title="Information Ratio: alpha anualizado vs. IBOV ÷ tracking error (desvio padrão do excesso de retorno).&#10;Mede se o gestor gera alpha de forma eficiente — não só se gerou, mas se gerou com consistência.&#10;IR > 0,5 é considerado bom; IR > 0,75 é excelente na literatura acadêmica (Grinold & Kahn, Active Portfolio Management).&#10;IR negativo significa que o gestor destruiu valor vs. simplesmente comprar o IBOV.">IR ${tip('Information Ratio: alpha ÷ tracking error — eficiência do alpha gerado vs. IBOV')}</th>
-    <th title="Beta vs. universo de fundos: sensibilidade do fundo às variações do mercado de ações (proxy: portfólio equal-weight dos 14 fundos).&#10;Beta 1,0 = se move igual ao mercado. Beta 0,5 = se move metade. Beta 1,5 = amplifica 50%.&#10;Long Only tipicamente β ≈ 0,9–1,2; Long Biased β ≈ 0,5–0,8; Multimercado pode ter β < 0,5.&#10;Útil para comparar: um fundo com CAGR 18% e β 0,6 gerou mais alpha ajustado ao risco do que um com CAGR 20% e β 1,2.">Beta ${tip('Sensibilidade ao mercado — Long Biased/Multimercado naturalmente menor que Long Only')}</th>
-    <th title="Frequência com que o fundo superou o IBOV em janelas de 3 meses (63 pregões), recalculadas mensalmente.&#10;Interpretação: um fundo que bate o IBOV em 70% dos trimestres tem um processo de geração de alpha mais robusto do que um que bate em 45%.&#10;A Manulife/John Hancock usa essa métrica como 'propensity to outperform' — mais informativa que o CAGR único, pois captura a consistência.&#10;Abaixo de 50% significa que o fundo perde para o índice na maioria dos trimestres.">Beat IBOV ${tip('% de janelas de 3M em que o fundo superou o IBOV — "propensity to outperform"')}</th>
-    <th title="Alpha rolante mais recente: excesso de retorno anualizado vs. IBOV na janela de 12M encerrada na última data disponível.&#10;Compare com o alpha médio histórico para detectar mudanças de tendência.&#10;Um alpha recente muito diferente do histórico pode indicar mudança de processo do gestor, ciclo desfavorável para o estilo do fundo, ou reversão à média.">Alpha 12M ${tip('Alpha anualizado vs. IBOV na janela de 12M mais recente')}</th>
-    <th title="Intervalo [mínimo, máximo] do alpha rolante de 12M ao longo de todo o histórico disponível.&#10;Um intervalo estreito indica consistência; um intervalo amplo indica que o retorno relativo varia muito conforme o ciclo de mercado.&#10;Fundos com alpha mínimo muito negativo têm maior risco de captura de drawdown específico do estilo.">Range Alpha ${tip('Intervalo histórico do alpha rolante 12M [min, max]')}</th>
+    <th style="text-align:left;cursor:default">Fundo</th>
+    ${th('sortino',    'Sortino',    'Sortino ratio: (retorno − CDI) ÷ semi-desvio descendente.\nSuperior ao Sharpe para fundos com assimetria positiva: não penaliza volatilidade para cima.\nAcima de 1,0 é excelente; acima de 0,7 é razoável para equity brasileira.\nReferência: Estrada (2008), J. Portfolio Management.')}
+    ${th('calmar',     'Calmar',     'Calmar ratio: CAGR ÷ |máximo drawdown histórico|.\nResponde: quanto de retorno o fundo entregou para cada 1% de queda máxima?\nAcima de 1,0 significa que o CAGR supera o pior drawdown em módulo.\nReferência: Young (1991).')}
+    ${th('ir',         'IR',         'Information Ratio: alpha anualizado vs. IBOV ÷ tracking error.\nMede se o gestor gera alpha de forma eficiente — não só se gerou, mas se gerou com consistência.\nIR > 0,5 é considerado bom; IR > 0,75 é excelente (Grinold & Kahn, Active Portfolio Management).\nIR negativo = gestor destruiu valor vs. simplesmente comprar o IBOV.')}
+    ${th('beta',       'Beta',       'Beta vs. portfólio equal-weight dos fundos disponíveis (proxy de mercado do universo).\nBeta 1,0 = se move igual ao mercado. Beta 0,5 = metade. Beta 1,5 = amplifica 50%.\nLong Only tipicamente β ≈ 0,9–1,2 · Long Biased β ≈ 0,5–0,8 · Multimercado pode ter β < 0,5.\nFundo com CAGR 18% e β 0,6 gerou mais alpha ajustado ao risco que CAGR 20% com β 1,2.')}
+    ${th('propensity', 'Beat IBOV',  'Frequência com que o fundo superou o IBOV em janelas de 3 meses (63 pregões), recalculadas mensalmente.\nUm fundo que bate o IBOV em 70% dos trimestres tem processo de geração de alpha mais robusto que 45%.\nAbaixo de 50%: fundo perde para o índice na maioria dos trimestres.\nReferência: Manulife/John Hancock — "propensity to outperform".')}
+    ${th('raLatest',   'Alpha 12M',  'Alpha rolante mais recente: excesso de retorno anualizado vs. IBOV na janela de 12M encerrada na última data.\nCompare com o alpha médio histórico para detectar mudanças de tendência.\nAlpha recente muito diferente do histórico pode indicar mudança no processo do gestor ou ciclo desfavorável.')}
+    ${th('raMin',      'Range Alpha','Intervalo [mínimo, máximo] do alpha rolante de 12M ao longo de todo o histórico disponível.\nIntervalo estreito = consistência. Intervalo amplo = dependência do ciclo de mercado.\nFundos com alpha mínimo muito negativo têm maior risco de captura de drawdown específico do estilo.', 'text-align:right')}
   </tr></thead>
   <tbody>`;
 
   rows.forEach(({ cnpj, m }) => {
-    const nome = (FUND_META[cnpj] || {}).nome || cnpj;
+    const nome  = (FUND_META[cnpj] || {}).nome || cnpj;
     const color = getFundColor ? getFundColor(cnpj) : '#888';
-    const dotHtml = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};margin-right:6px;flex-shrink:0;vertical-align:middle"></span>`;
+    const dot   = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${color};margin-right:6px;vertical-align:middle;flex-shrink:0"></span>`;
 
     const srVal  = m.sortino != null ? m.sortino.toFixed(2) : 'N/D';
     const caVal  = m.calmar  != null ? m.calmar.toFixed(2)  : 'N/D';
@@ -6463,34 +6527,40 @@ function renderAdvMetricsTable() {
     const betaV  = m.beta.toFixed(2);
     const propV  = m.propensity.toFixed(0) + '%';
     const raLat  = m.raLatest != null ? (m.raLatest >= 0 ? '+' : '') + m.raLatest.toFixed(1) + '%' : 'N/D';
-    const raRng  = `[${m.raMin >= 0 ? '+' : ''}${m.raMin.toFixed(0)}, ${m.raMax >= 0 ? '+' : ''}${m.raMax.toFixed(0)}]%`;
+    const raMin  = m.raMin  != null ? (m.raMin  >= 0 ? '+' : '') + m.raMin.toFixed(0)  : '?';
+    const raMax  = m.raMax  != null ? (m.raMax  >= 0 ? '+' : '') + m.raMax.toFixed(0)  : '?';
+    const raRng  = `[${raMin}, ${raMax}]%`;
 
-    const srCls  = m.sortino  != null ? cls(m.sortino, bestSortino, 0.5)  : 'val-neu';
-    const caCls  = m.calmar   != null ? cls(m.calmar,  bestCalmar,  1.0)  : 'val-neu';
-    const irCls  = m.ir       != null ? cls(m.ir,      bestIR,      0.0)  : 'val-neu';
-    const propCls = cls(m.propensity, bestProp, 50);
-    const raLatCls = m.raLatest != null ? (m.raLatest >= 0 ? 'val-pos' : 'val-neg') : 'val-neu';
+    const srCls   = m.sortino  != null ? cls(m.sortino,  bestSortino, 0.5) : 'val-neu';
+    const caCls   = m.calmar   != null ? cls(m.calmar,   bestCalmar,  1.0) : 'val-neu';
+    const irCls   = m.ir       != null ? cls(m.ir,       bestIR,      0.0) : 'val-neu';
+    const prCls   = cls(m.propensity, bestProp, 50);
+    const raLatCls= m.raLatest != null ? (m.raLatest >= 0 ? 'val-pos' : 'val-neg') : 'val-neu';
+
+    // Highlight active sort column
+    const hl = (key) => sk === key ? 'background:color-mix(in srgb,var(--accent) 4%,transparent);' : '';
 
     html += `<tr>
-      <td>${dotHtml}${nome}</td>
-      <td class="${srCls}">${srVal}</td>
-      <td class="${caCls}">${caVal}</td>
-      <td class="${irCls}">${irVal}</td>
-      <td class="val-neu">${betaV}</td>
-      <td class="${propCls}">${propV}</td>
-      <td class="${raLatCls}">${raLat}</td>
-      <td class="val-neu" style="font-size:0.6rem">${raRng}</td>
+      <td>${dot}${nome}</td>
+      <td class="${srCls}"  style="${hl('sortino')}">${srVal}</td>
+      <td class="${caCls}"  style="${hl('calmar')}">${caVal}</td>
+      <td class="${irCls}"  style="${hl('ir')}">${irVal}</td>
+      <td class="val-neu"   style="${hl('beta')}">${betaV}</td>
+      <td class="${prCls}"  style="${hl('propensity')}">${propV}</td>
+      <td class="${raLatCls}" style="${hl('raLatest')}">${raLat}</td>
+      <td class="val-neu"   style="${hl('raMin')};font-size:0.6rem">${raRng}</td>
     </tr>`;
   });
 
   html += `</tbody></table></div>
   <div style="margin-top:0.6rem;font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted)">
-    Beta calculado vs. portfólio equal-weight dos 14 fundos (proxy de mercado do universo). IBOV proxy: CAGR 36M convertido em retorno diário constante.
+    Beta calculado vs. portfólio equal-weight dos ${cnpjs.length} fundos (proxy de mercado do universo). IBOV proxy: CAGR 36M convertido em retorno diário constante.
     Período: ${historyData.commonDates[0].slice(0,7)} → ${historyData.commonDates[historyData.commonDates.length-1].slice(0,7)}.
   </div>`;
 
   el.innerHTML = html;
 }
+
 
 // ── Render: Rolling Alpha por fundo ───────────────────────────────────────
 
