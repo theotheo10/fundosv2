@@ -2910,46 +2910,49 @@ function renderPortfolioStress(selected, wNorm) {
   // Render
   const hasBetas = Object.keys(fundBetas).length > 0;
 
-  const thStyle = `text-align:right;padding:0 0 6px 16px;font-family:'Courier New',monospace;font-size:0.56rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)`;
-  const thStyleL = `text-align:left;padding:0 16px 6px 0;font-family:'Courier New',monospace;font-size:0.56rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)`;
+  // Format: retorno acumulado no período da crise
+  const fmtRet = v => {
+    const big = Math.abs(v) > 0.20;
+    const col = v < -0.25 ? 'var(--red)' : v < 0 ? 'color-mix(in srgb,var(--red) 70%,var(--text))' : 'var(--green)';
+    return `<span style="font-family:'Courier New',monospace;font-size:0.82rem;color:${col};font-weight:${big?'600':'400'}">${v>=0?'+':''}${(v*100).toFixed(1)}%</span>`;
+  };
 
   let html = `<div style="margin-top:1.6rem;border-top:0.5px solid var(--border);padding-top:1.2rem">
-    <div style="display:flex;align-items:baseline;gap:0.6rem;margin-bottom:1rem">
-      <span style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Stress test histórico</span>
-      ${!hasBetas ? `<span style="font-family:'Courier New',monospace;font-size:0.53rem;color:var(--amber)">betas OLS disponíveis após próximo update — usando perfil declarado</span>` : ''}
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:0.3rem">
+      <span style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Stress test — cenários históricos</span>
+      ${!hasBetas ? `<span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--amber)">estimativas por perfil declarado</span>` : ''}
+    </div>
+    <div style="font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">
+      Retorno acumulado estimado do portfólio se a crise ocorresse hoje, ao longo do período indicado.
     </div>
     <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-      <colgroup><col style="width:auto"><col style="width:120px"><col style="width:130px"></colgroup>
+      <colgroup><col style="width:auto"><col style="width:110px"><col style="width:120px"></colgroup>
       <thead><tr style="border-bottom:1px solid var(--border)">
-        <th style="${thStyleL}">Cenário</th>
-        <th style="${thStyle}" data-tip="Queda estimada do portfólio assumindo exposição líquida típica de cada gestor.">Expo. normal</th>
-        <th style="${thStyle}" data-tip="Queda estimada com fundos Long Biased e Multimercado reduzindo exposição em crise severa — mais próximo do comportamento real.">Expo. em crise</th>
+        <th style="text-align:left;padding:0 0 6px;font-family:'Courier New',monospace;font-size:0.55rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Crise histórica</th>
+        <th style="text-align:right;padding:0 0 6px 12px;font-family:'Courier New',monospace;font-size:0.55rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)" data-tip="Retorno acumulado do portfólio no período, com exposição líquida típica de cada gestor.">Expo. normal</th>
+        <th style="text-align:right;padding:0 0 6px 12px;font-family:'Courier New',monospace;font-size:0.55rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)" data-tip="Retorno acumulado com fundos Long Biased e Multimercado reduzindo exposição líquida — mais próximo do comportamento real em crise severa.">Expo. reduzida</th>
       </tr></thead>
       <tbody>`;
 
   STRESS_SCENARIOS.forEach(sc => {
     const r_normal = portfolioStressReturn(sc, false);
     const r_crisis = portfolioStressReturn(sc, true);
-    const fmt = v => {
-      const big = Math.abs(v) > 0.20;
-      const col = v < -0.20 ? 'var(--red)' : v < 0 ? 'color-mix(in srgb,var(--red) 65%,var(--text))' : 'var(--green)';
-      return `<span style="font-family:'Courier New',monospace;color:${col};font-weight:${big?'600':'normal'}">${v>=0?'+':''}${(v*100).toFixed(1)}%</span>`;
-    };
-    const dur = sc.days >= 365 ? Math.round(sc.days/30) + 'm' : sc.days + 'd';
+    const dur = sc.days >= 365 ? Math.round(sc.days/30) + ' meses' : sc.days + ' pregões';
     html += `<tr style="border-bottom:0.5px solid var(--border)">
-        <td style="padding:8px 16px 8px 0;vertical-align:middle">
-          <div style="font-family:Georgia,serif;font-size:0.8rem;color:var(--text)">${sc.name}</div>
-          <div style="font-family:'Courier New',monospace;font-size:0.54rem;color:var(--muted);margin-top:1px">${sc.label} · ${dur}</div>
+        <td style="padding:10px 12px 10px 0;vertical-align:middle">
+          <div style="font-family:Georgia,serif;font-size:0.82rem;color:var(--text);margin-bottom:2px">${sc.name}</div>
+          <div style="font-family:'Courier New',monospace;font-size:0.54rem;color:var(--muted)">${sc.label} · ${dur}</div>
         </td>
-        <td style="text-align:right;padding:8px 0 8px 16px;vertical-align:middle;white-space:nowrap">${fmt(r_normal)}</td>
-        <td style="text-align:right;padding:8px 0 8px 16px;vertical-align:middle;white-space:nowrap">${fmt(r_crisis)}</td>
+        <td style="text-align:right;padding:10px 0 10px 12px;vertical-align:middle">${fmtRet(r_normal)}</td>
+        <td style="text-align:right;padding:10px 0 10px 12px;vertical-align:middle">${fmtRet(r_crisis)}</td>
       </tr>`;
   });
 
   html += `</tbody></table>
-    <div style="margin-top:0.7rem;font-family:'Courier New',monospace;font-size:0.55rem;color:var(--muted);line-height:1.7">
-      Modelo: R_fundo = α + β_ibov × R_ibov + β_S&P × R_S&P(BRL).${hasBetas ? ' Betas via regressão OLS sobre ' + (Object.values(fundBetas)[0]?.n_obs||'—') + ' pregões.' : ' Betas estimados por perfil de exposição declarada.'}
-      Exposição em crise por perfil declarado do gestor. <strong>Estimativa conservadora — subestima correlações em crise sistêmica.</strong>
+    <div style="margin-top:0.8rem;font-family:'Courier New',monospace;font-size:0.54rem;color:var(--muted);line-height:1.7">
+      Modelo: R_fundo = α + β_ibov × R_ibov + β_S&P × R_S&P(BRL).${hasBetas ? ' Betas OLS: ' + (Object.values(fundBetas)[0]?.n_obs||'—') + ' pregões.' : ''}
+      Expo. reduzida = Long Biased e Multimercado com menor alocação líquida em crise.
+      <strong>Estimativa conservadora — subestima correlações em crise sistêmica.</strong>
     </div>
   </div>`;
 
@@ -2984,23 +2987,47 @@ function updatePortfolio() {
 
   // Retornos ponderados — usando apenas datas com dados reais em todos os fundos
   // Cada fundo começa na sua própria inception (zeros antes são descartados)
-  const n = historyData.funds[selected[0]].returns.length;
+  // Filter to only funds present in history.json (some may not have been fetched yet)
+  const selectedValid = selected.filter(c => historyData.funds[c] && historyData.funds[c].returns?.length > 0);
+  if (selectedValid.length === 0) {
+    document.getElementById('portMetrics').innerHTML = '<div class="port-empty">Nenhum dos fundos selecionados tem histórico disponível. Rode o workflow de atualização de dados.</div>';
+    return;
+  }
+  const n = historyData.funds[selectedValid[0]].returns.length;
 
   // Find the latest inception among selected funds (first real return index)
   let firstRealIdx = 0;
-  for (const cnpj of selected) {
+  for (const cnpj of selectedValid) {
     const rets = historyData.funds[cnpj].returns;
     for (let i = 0; i < rets.length; i++) {
-      if (rets[i] !== 0) { firstRealIdx = Math.max(firstRealIdx, Math.max(0, i-1)); break; }
+      if (isReal(rets[i])) { firstRealIdx = Math.max(firstRealIdx, Math.max(0, i-1)); break; }
     }
   }
 
+  // portReturns: só acumula a partir de firstRealIdx (todos os fundos com dados)
+  // Apenas fundos presentes no history.json. Fundos ausentes são ignorados
+  // (history.json pode estar desatualizado se um fundo foi adicionado recentemente).
+  // Renormaliza os pesos sobre os fundos válidos.
+  const totalValidW = selectedValid.reduce((s, c) => s + (wNorm[c] || 0), 0);
+  const wNormValid  = totalValidW > 0
+    ? Object.fromEntries(selectedValid.map(c => [c, (wNorm[c] || 0) / totalValidW]))
+    : Object.fromEntries(selectedValid.map(c => [c, 1 / selectedValid.length]));
+
   const portReturns = new Float64Array(n);
-  for (const cnpj of selected) {
-    const rets = historyData.funds[cnpj].returns;
-    const w    = wNorm[cnpj];
-    for (let i = 0; i < n; i++) portReturns[i] += rets[i] * w;
+  for (let i = firstRealIdx; i < n; i++) {
+    let r = 0;
+    for (const cnpj of selectedValid) {
+      const ret = historyData.funds[cnpj].returns[i];
+      r += wNormValid[cnpj] * (isReal(ret) ? ret : 0);
+    }
+    portReturns[i] = r;
   }
+
+  // Warning if some selected funds aren't in history.json
+  const missingFunds = selected.filter(c => !historyData.funds[c]);
+  const missingWarning = missingFunds.length > 0
+    ? `<div style="margin-bottom:0.6rem;padding:0.4rem 0.7rem;background:var(--amber-light);border:0.5px solid var(--amber);border-radius:5px;font-family:'Courier New',monospace;font-size:0.6rem;color:var(--amber)">⚠ ${missingFunds.map(c=>(FUND_META[c]||{}).nome||c).join(', ')} sem histórico disponível — excluídos do cálculo. Rode o workflow de atualização.</div>`
+    : '';
 
   // CAGR real da série
   const dates = historyData.commonDates;
@@ -3008,11 +3035,19 @@ function updatePortfolio() {
 
   function cagrFromSlice(startIdx, endIdx) {
     if (endIdx <= startIdx) return null;
+    // Clamp to valid range
+    const safeStart = Math.max(0, Math.min(startIdx, dates.length - 1));
+    const safeEnd   = Math.max(0, Math.min(endIdx,   dates.length - 1));
+    if (safeEnd <= safeStart) return null;
     let cum = 1.0;
-    for (let i = startIdx; i < endIdx; i++) cum *= (1 + portReturns[i]);
-    const d0 = dates[startIdx], d1 = dates[Math.min(endIdx, dates.length - 1)];
+    for (let i = startIdx; i < endIdx; i++) {
+      if (i < portReturns.length) cum *= (1 + portReturns[i]);
+    }
+    const d0 = dates[safeStart];
+    const d1 = dates[safeEnd];
+    if (!d0 || !d1) return null;
     const years = (new Date(d1) - new Date(d0)) / (365.25 * 86400000);
-    return years > 0 ? (Math.pow(cum, 1 / years) - 1) * 100 : null;
+    return years > 0.05 ? (Math.pow(cum, 1 / years) - 1) * 100 : null;
   }
 
   const d12   = subtractMonthsStr(anchor, 12);
@@ -3020,8 +3055,8 @@ function updatePortfolio() {
   const idx12 = dates.reduce((best, d, i) => d <= d12 ? i : best, -1);
   const idx36 = dates.reduce((best, d, i) => d <= d36 ? i : best, -1);
 
-  const cagr12w = idx12 >= 0 ? cagrFromSlice(Math.max(idx12, firstRealIdx), portReturns.length) : null;
-  const cagr36w = idx36 >= 0 ? cagrFromSlice(Math.max(idx36, firstRealIdx), portReturns.length) : null;
+  const cagr12w = (idx12 >= 0) ? cagrFromSlice(Math.max(idx12, firstRealIdx), portReturns.length) : null;
+  const cagr36w = (idx36 >= 0) ? cagrFromSlice(Math.max(idx36, firstRealIdx), portReturns.length) : null;
 
   // Volatilidade anualizada — apenas sobre período com dados reais
   const portRetsReal = portReturns.slice(firstRealIdx);
@@ -3063,12 +3098,12 @@ function updatePortfolio() {
   // Build synthesis sentence
   const synthParts = [];
   if (portTarget?.expReturn != null) synthParts.push(`retorno estimado de <strong>+${portTarget.expReturn.toFixed(1)}% ao ano</strong>`);
-  if (portVol36) synthParts.push(`volatilidade histórica de <strong>${portVol36.toFixed(1)}% ao ano</strong>`);
+  if (vol != null && isFinite(vol)) synthParts.push(`volatilidade histórica de <strong>${vol.toFixed(1)}% ao ano</strong>`);
   if (portTarget?.sharpe != null) synthParts.push(`Sharpe de <strong>${portTarget.sharpe.toFixed(2)}</strong>`);
   const synthVerd = synthParts.length > 0
     ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(' · ')}.</div>`
     : '';
-  document.getElementById('portMetrics').innerHTML = `${synthVerd}
+  document.getElementById('portMetrics').innerHTML = `${missingWarning}${synthVerd}
     <div class="port-metrics-grid">
       <div class="port-metric"><div class="port-metric-label" data-tip="CAGR ponderado do portfólio nos últimos 12 meses.">CAGR 12M</div>${fmtM(cagr12w)}</div>
       <div class="port-metric"><div class="port-metric-label" data-tip="CAGR ponderado do portfólio nos últimos 36 meses — janela mais estável para avaliar performance estrutural.">CAGR 36M</div>${fmtM(cagr36w)}</div>
@@ -4116,7 +4151,16 @@ function runOptimizer() {
       }
 
       if (!best) {
-        status.textContent = 'Não foi possível otimizar.';
+        // Diagnose why optimization failed
+        let reason = '';
+        if (optMaxW * k < 1.0 - 1e-6) {
+          reason = `Impossível: ${k} fundos × máx ${(optMaxW*100).toFixed(0)}% = ${(optMaxW*k*100).toFixed(0)}% < 100%. Aumente o peso máximo ou o número de fundos.`;
+        } else if (optMinW * k > 1.0 + 1e-6) {
+          reason = `Impossível: ${k} fundos × mín ${(optMinW*100).toFixed(0)}% = ${(optMinW*k*100).toFixed(0)}% > 100%. Reduza o peso mínimo.`;
+        } else {
+          reason = 'Não foi possível encontrar portfólio válido com as restrições atuais.';
+        }
+        status.textContent = reason;
         btn.disabled = false;
         return;
       }
@@ -5181,8 +5225,9 @@ function mcGetParams() {
         const w    = wNorm[cnpj];
         for (let i = _mcVolStart; i < n; i++) portRets[i] += rets[i] * w;
       }
-      const mean = portRets.reduce((a,b) => a+b, 0) / n;
-      const vari = portRets.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
+      const nRealMC = n - _mcVolStart;
+      const mean = portRets.slice(_mcVolStart).reduce((a,b) => a+b, 0) / nRealMC;
+      const vari = portRets.slice(_mcVolStart).reduce((a,r) => a + (r-mean)**2, 0) / (nRealMC-1);
       volatilidade = Math.sqrt(vari * 252) * 100;
       volFromAuto = true;
     }
@@ -6092,14 +6137,14 @@ function openCorrScatter(ca, cb) {
   const nB = (FUND_META[cb]||{}).nome || cb;
   const corr = (historyData.correlation?.[ca]?.[cb] ?? 0);
   title.textContent = `${shortName(ca)} × ${shortName(cb)}`;
-  const realN = retsA.filter((r,i) => r !== 0 && retsB[i] !== 0).length;
-  stats.innerHTML = `Pearson ρ = <strong style="color:${Math.abs(corr)>0.7?'var(--red)':Math.abs(corr)<0.35?'var(--green)':'var(--text)'}">${corr.toFixed(3)}</strong> · retornos diários · ${realN} pregões em comum`;
 
   modal.style.display = 'flex';
 
   // Build scatter data from daily returns
   const retsA = historyData.funds[ca]?.returns || [];
   const retsB = historyData.funds[cb]?.returns || [];
+  const realN = retsA.filter((r,i) => isReal(r) && isReal(retsB[i])).length;
+  stats.innerHTML = `Pearson ρ = <strong style="color:${Math.abs(corr)>0.7?'var(--red)':Math.abs(corr)<0.35?'var(--green)':'var(--text)'}">${corr.toFixed(3)}</strong> · retornos diários · ${realN} pregões em comum`;
   const n = Math.min(retsA.length, retsB.length);
 
   // Only use days where BOTH funds have real non-zero returns (exclude pre-inception zeros)
@@ -6558,20 +6603,27 @@ initChartToggles = function() {
 // ── Helpers de cálculo ─────────────────────────────────────────────────────
 
 
-// Returns only the real returns for a fund (skipping zeros before inception)
+// Pre-inception sentinel: null (new) or 0 (legacy history.json)
+function isReal(r) { return r !== null && r !== undefined && r !== 0; }
+
+// Returns only the real returns for a fund (skipping pre-inception nulls/zeros)
 function getRealReturns(cnpj) {
-  const allRets = historyData.funds[cnpj].returns;
+  const allRets = historyData.funds[cnpj]?.returns || [];
   for (let i = 0; i < allRets.length; i++) {
-    if (allRets[i] !== 0) return allRets.slice(Math.max(0, i - 1));
+    if (isReal(allRets[i])) {
+      const slice = allRets.slice(Math.max(0, i - 1));
+      // Replace any remaining nulls/zeros mid-series with 0 (gaps, not pre-inception)
+      return slice.map(r => (r === null || r === undefined) ? 0 : r);
+    }
   }
-  return allRets;
+  return allRets.map(r => (r === null || r === undefined) ? 0 : r);
 }
 
 // Returns the index offset where the fund's real history begins
 function getFirstRealIndex(cnpj) {
   const allRets = historyData.funds[cnpj]?.returns || [];
   for (let i = 0; i < allRets.length; i++) {
-    if (allRets[i] !== 0) return Math.max(0, i - 1);
+    if (isReal(allRets[i])) return Math.max(0, i - 1);
   }
   return 0;
 }
@@ -6583,7 +6635,8 @@ function getCommonStartIndex(cnpjs) {
 
 // Safe return: 0 if before fund's inception
 function safeReturn(cnpj, t) {
-  return t >= getFirstRealIndex(cnpj) ? (historyData.funds[cnpj]?.returns[t] || 0) : 0;
+  const r = historyData.funds[cnpj]?.returns[t];
+  return (t >= getFirstRealIndex(cnpj) && r !== null && r !== undefined) ? r : 0;
 }
 
 function computeAdvancedMetrics(cnpj) {
@@ -6594,7 +6647,7 @@ function computeAdvancedMetrics(cnpj) {
   const allRets = fd.returns;
   let firstReal = 0;
   for (let i = 0; i < allRets.length; i++) {
-    if (allRets[i] !== 0) { firstReal = Math.max(0, i - 1); break; }
+    if (isReal(allRets[i])) { firstReal = Math.max(0, i - 1); break; }
   }
   const rets  = allRets.slice(firstReal);
   const dates = historyData.commonDates.slice(firstReal + 1); // +1 because returns are diffs
@@ -6639,7 +6692,7 @@ function computeAdvancedMetrics(cnpj) {
     });
     eqRets.push(r / allCnpjs.length);
   }
-  const meanMkt = eqRets.reduce((s,r) => s+r, 0) / n;
+  const meanMkt = eqRets.reduce((s,r) => s+r, 0) / eqRets.length;
   const meanF   = rets.reduce((s,r) => s+r, 0) / n;
   const cov = rets.reduce((s,r,i) => s + (r-meanF)*(eqRets[i]-meanMkt), 0) / (n-1);
   const varM = eqRets.reduce((s,r) => s + (r-meanMkt)**2, 0) / (n-1);
@@ -6686,10 +6739,10 @@ function computeAdvancedMetrics(cnpj) {
     cagr, sortino, calmar, beta, ir, teAnn,
     propensity, alphaAnn,
     rollingAlpha, rollingDates,
-    raMin: Math.min(...rollingAlpha),
-    raMax: Math.max(...rollingAlpha),
-    raLatest: rollingAlpha[rollingAlpha.length - 1],
-    raMean: rollingAlpha.reduce((s,x) => s+x, 0) / rollingAlpha.length,
+    raMin: rollingAlpha.length ? Math.min(...rollingAlpha) : null,
+    raMax: rollingAlpha.length ? Math.max(...rollingAlpha) : null,
+    raLatest: rollingAlpha.length ? rollingAlpha[rollingAlpha.length - 1] : null,
+    raMean: rollingAlpha.length ? rollingAlpha.reduce((s,x) => s+x, 0) / rollingAlpha.length : null,
     mddPct: mdd * 100,
     ddDev, cdiCagr36, ibovCagr36,
   };
@@ -6698,7 +6751,7 @@ function computeAdvancedMetrics(cnpj) {
 // Cache
 const _metricsCache = {};
 function getAdvMetrics(cnpj) {
-  if (!_metricsCache[cnpj]) _metricsCache[cnpj] = computeAdvancedMetrics(cnpj);
+  if (_metricsCache[cnpj] === undefined) _metricsCache[cnpj] = computeAdvancedMetrics(cnpj);
   return _metricsCache[cnpj];
 }
 
@@ -7395,7 +7448,16 @@ runOptimizer = function() {
       }
 
       if (!best) {
-        status.textContent = 'Não foi possível otimizar.';
+        // Diagnose why optimization failed
+        let reason = '';
+        if (optMaxW * k < 1.0 - 1e-6) {
+          reason = `Impossível: ${k} fundos × máx ${(optMaxW*100).toFixed(0)}% = ${(optMaxW*k*100).toFixed(0)}% < 100%. Aumente o peso máximo ou o número de fundos.`;
+        } else if (optMinW * k > 1.0 + 1e-6) {
+          reason = `Impossível: ${k} fundos × mín ${(optMinW*100).toFixed(0)}% = ${(optMinW*k*100).toFixed(0)}% > 100%. Reduza o peso mínimo.`;
+        } else {
+          reason = 'Não foi possível encontrar portfólio válido com as restrições atuais.';
+        }
+        status.textContent = reason;
         btn.disabled = false;
         return;
       }
@@ -7527,28 +7589,30 @@ function compCalcMetrics(portfolio) {
   const ibovAnn = ibov.cagr36 || 20;
   const cdiDaily = Math.pow(1 + cdiAnn/100, 1/252) - 1;
 
-  // Portfolio daily returns
+  // Portfolio daily returns — start from when ALL funds exist
+  const commonStart = getCommonStartIndex(cnpjs);
   const portRets = [];
-  for (let t = 0; t < n; t++) {
+  for (let t = commonStart; t < n; t++) {
     let r = 0;
-    cnpjs.forEach((c, i) => { r += weights[i] * (t >= getFirstRealIndex(c) ? (historyData.funds[c].returns[t] || 0) : 0); });
+    cnpjs.forEach((c, i) => { r += weights[i] * (historyData.funds[c].returns[t] || 0); });
     portRets.push(r);
   }
+  const nReal = portRets.length;
 
-  // CAGR
+  // CAGR over real period only
   let cum = 1; for (const r of portRets) cum *= (1+r);
-  const cagr = (Math.pow(cum, 252/n) - 1) * 100;
+  const cagr = (Math.pow(cum, 252/nReal) - 1) * 100;
 
   // Vol
-  const meanR = portRets.reduce((s,r)=>s+r,0)/n;
-  const varR  = portRets.reduce((s,r)=>s+(r-meanR)**2,0)/(n-1);
+  const meanR = portRets.reduce((s,r)=>s+r,0)/nReal;
+  const varR  = portRets.reduce((s,r)=>s+(r-meanR)**2,0)/(nReal-1);
   const vol   = Math.sqrt(varR * 252) * 100;
 
   // Sharpe
   const sharpe = vol > 0 ? (cagr - cdiAnn) / vol : null;
 
   // Sortino
-  const semiSq = portRets.reduce((s,r) => s + Math.min(r-cdiDaily,0)**2, 0) / n;
+  const semiSq = portRets.reduce((s,r) => s + Math.min(r-cdiDaily,0)**2, 0) / nReal;
   const semiVol = Math.sqrt(semiSq * 252) * 100;
   const sortino = semiVol > 0 ? (cagr - cdiAnn) / semiVol : null;
 
@@ -7575,7 +7639,7 @@ function compCalcMetrics(portfolio) {
     eqRets.push(r);
   }
   const meanMkt = eqRets.reduce((s,r)=>s+r,0)/n;
-  const cov_pm = portRets.reduce((s,r,t)=>s+(r-meanR)*(eqRets[t]-meanMkt),0)/(n-1);
+  const cov_pm = portRets.reduce((s,r,t)=>s+(r-meanR)*(eqRets[t]-meanMkt),0)/(nReal-1);
   const varMkt = eqRets.reduce((s,r)=>s+(r-meanMkt)**2,0)/(n-1);
   const beta = varMkt > 0 ? cov_pm / varMkt : 1;
 
