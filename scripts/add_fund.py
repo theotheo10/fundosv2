@@ -189,7 +189,7 @@ def safe_returns(qs: dict[str, float], dates: list[str]) -> list[float]:
     for i in range(1, len(dates)):
         q0 = qs.get(dates[i-1], 0.0)
         q1 = qs.get(dates[i],   0.0)
-        rets.append((q1 / q0) - 1 if q0 > 0 and q1 > 0 else 0.0)
+        rets.append((q1 / q0) - 1 if q0 and q0 > 0 and q1 and q1 > 0 else None)
     return rets
 
 
@@ -204,10 +204,10 @@ def pearson_safe(ca: str, cb: str,
         return 0.0
     ra = [(qs_a[common[i]] / qs_a[common[i-1]]) - 1
           for i in range(1, len(common))
-          if qs_a.get(common[i-1], 0) > 0 and qs_a.get(common[i], 0) > 0]
+          if qs_a.get(common[i-1]) and qs_a.get(common[i])]
     rb = [(qs_b[common[i]] / qs_b[common[i-1]]) - 1
           for i in range(1, len(common))
-          if qs_b.get(common[i-1], 0) > 0 and qs_b.get(common[i], 0) > 0]
+          if qs_b.get(common[i-1]) and qs_b.get(common[i])]
     n = min(len(ra), len(rb))
     if n < 30:
         return 0.0
