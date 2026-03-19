@@ -2987,11 +2987,17 @@ function updatePortfolio() {
 
   // Retornos ponderados — usando apenas datas com dados reais em todos os fundos
   // Cada fundo começa na sua própria inception (zeros antes são descartados)
-  const n = historyData.funds[selected[0]].returns.length;
+  // Filter to only funds present in history.json (some may not have been fetched yet)
+  const selectedValid = selected.filter(c => historyData.funds[c] && historyData.funds[c].returns?.length > 0);
+  if (selectedValid.length === 0) {
+    document.getElementById('portMetrics').innerHTML = '<div class="port-empty">Nenhum dos fundos selecionados tem histórico disponível. Rode o workflow de atualização de dados.</div>';
+    return;
+  }
+  const n = historyData.funds[selectedValid[0]].returns.length;
 
   // Find the latest inception among selected funds (first real return index)
   let firstRealIdx = 0;
-  for (const cnpj of selected) {
+  for (const cnpj of selectedValid) {
     const rets = historyData.funds[cnpj].returns;
     for (let i = 0; i < rets.length; i++) {
       if (isReal(rets[i])) { firstRealIdx = Math.max(firstRealIdx, Math.max(0, i-1)); break; }
@@ -2999,16 +3005,29 @@ function updatePortfolio() {
   }
 
   // portReturns: só acumula a partir de firstRealIdx (todos os fundos com dados)
-  // Antes disso o portfólio não existe — não pesos parciais.
+  // Apenas fundos presentes no history.json. Fundos ausentes são ignorados
+  // (history.json pode estar desatualizado se um fundo foi adicionado recentemente).
+  // Renormaliza os pesos sobre os fundos válidos.
+  const totalValidW = selectedValid.reduce((s, c) => s + (wNorm[c] || 0), 0);
+  const wNormValid  = totalValidW > 0
+    ? Object.fromEntries(selectedValid.map(c => [c, (wNorm[c] || 0) / totalValidW]))
+    : Object.fromEntries(selectedValid.map(c => [c, 1 / selectedValid.length]));
+
   const portReturns = new Float64Array(n);
   for (let i = firstRealIdx; i < n; i++) {
     let r = 0;
-    for (const cnpj of selected) {
+    for (const cnpj of selectedValid) {
       const ret = historyData.funds[cnpj].returns[i];
-      r += wNorm[cnpj] * (isReal(ret) ? ret : 0);
+      r += wNormValid[cnpj] * (isReal(ret) ? ret : 0);
     }
     portReturns[i] = r;
   }
+
+  // Warning if some selected funds aren't in history.json
+  const missingFunds = selected.filter(c => !historyData.funds[c]);
+  const missingWarning = missingFunds.length > 0
+    ? `<div style="margin-bottom:0.6rem;padding:0.4rem 0.7rem;background:var(--amber-light);border:0.5px solid var(--amber);border-radius:5px;font-family:'Courier New',monospace;font-size:0.6rem;color:var(--amber)">⚠ ${missingFunds.map(c=>(FUND_META[c]||{}).nome||c).join(', ')} sem histórico disponível — excluídos do cálculo. Rode o workflow de atualização.</div>`
+    : '';
 
   // CAGR real da série
   const dates = historyData.commonDates;
@@ -3084,7 +3103,7 @@ function updatePortfolio() {
   const synthVerd = synthParts.length > 0
     ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(' · ')}.</div>`
     : '';
-  document.getElementById('portMetrics').innerHTML = `${synthVerd}
+  document.getElementById('portMetrics').innerHTML = `${missingWarning}${synthVerd}
     <div class="port-metrics-grid">
       <div class="port-metric"><div class="port-metric-label" data-tip="CAGR ponderado do portfólio nos últimos 12 meses.">CAGR 12M</div>${fmtM(cagr12w)}</div>
       <div class="port-metric"><div class="port-metric-label" data-tip="CAGR ponderado do portfólio nos últimos 36 meses — janela mais estável para avaliar performance estrutural.">CAGR 36M</div>${fmtM(cagr36w)}</div>
