@@ -3025,8 +3025,8 @@ function updatePortfolio() {
   const idx12 = dates.reduce((best, d, i) => d <= d12 ? i : best, -1);
   const idx36 = dates.reduce((best, d, i) => d <= d36 ? i : best, -1);
 
-  const cagr12w = (idx12 >= 0 && idx12 >= firstRealIdx) ? cagrFromSlice(idx12, portReturns.length) : null;
-  const cagr36w = (idx36 >= 0 && idx36 >= firstRealIdx) ? cagrFromSlice(idx36, portReturns.length) : null;
+  const cagr12w = (idx12 >= 0) ? cagrFromSlice(Math.max(idx12, firstRealIdx), portReturns.length) : null;
+  const cagr36w = (idx36 >= 0) ? cagrFromSlice(Math.max(idx36, firstRealIdx), portReturns.length) : null;
 
   // Volatilidade anualizada — apenas sobre período com dados reais
   const portRetsReal = portReturns.slice(firstRealIdx);
@@ -5195,8 +5195,9 @@ function mcGetParams() {
         const w    = wNorm[cnpj];
         for (let i = _mcVolStart; i < n; i++) portRets[i] += rets[i] * w;
       }
-      const mean = portRets.reduce((a,b) => a+b, 0) / n;
-      const vari = portRets.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
+      const nRealMC = n - _mcVolStart;
+      const mean = portRets.slice(_mcVolStart).reduce((a,b) => a+b, 0) / nRealMC;
+      const vari = portRets.slice(_mcVolStart).reduce((a,r) => a + (r-mean)**2, 0) / (nRealMC-1);
       volatilidade = Math.sqrt(vari * 252) * 100;
       volFromAuto = true;
     }
@@ -6661,7 +6662,7 @@ function computeAdvancedMetrics(cnpj) {
     });
     eqRets.push(r / allCnpjs.length);
   }
-  const meanMkt = eqRets.reduce((s,r) => s+r, 0) / n;
+  const meanMkt = eqRets.reduce((s,r) => s+r, 0) / eqRets.length;
   const meanF   = rets.reduce((s,r) => s+r, 0) / n;
   const cov = rets.reduce((s,r,i) => s + (r-meanF)*(eqRets[i]-meanMkt), 0) / (n-1);
   const varM = eqRets.reduce((s,r) => s + (r-meanMkt)**2, 0) / (n-1);
@@ -7558,28 +7559,30 @@ function compCalcMetrics(portfolio) {
   const ibovAnn = ibov.cagr36 || 20;
   const cdiDaily = Math.pow(1 + cdiAnn/100, 1/252) - 1;
 
-  // Portfolio daily returns
+  // Portfolio daily returns — start from when ALL funds exist
+  const commonStart = getCommonStartIndex(cnpjs);
   const portRets = [];
-  for (let t = 0; t < n; t++) {
+  for (let t = commonStart; t < n; t++) {
     let r = 0;
-    cnpjs.forEach((c, i) => { r += weights[i] * (t >= getFirstRealIndex(c) ? (historyData.funds[c].returns[t] || 0) : 0); });
+    cnpjs.forEach((c, i) => { r += weights[i] * (historyData.funds[c].returns[t] || 0); });
     portRets.push(r);
   }
+  const nReal = portRets.length;
 
-  // CAGR
+  // CAGR over real period only
   let cum = 1; for (const r of portRets) cum *= (1+r);
-  const cagr = (Math.pow(cum, 252/n) - 1) * 100;
+  const cagr = (Math.pow(cum, 252/nReal) - 1) * 100;
 
   // Vol
-  const meanR = portRets.reduce((s,r)=>s+r,0)/n;
-  const varR  = portRets.reduce((s,r)=>s+(r-meanR)**2,0)/(n-1);
+  const meanR = portRets.reduce((s,r)=>s+r,0)/nReal;
+  const varR  = portRets.reduce((s,r)=>s+(r-meanR)**2,0)/(nReal-1);
   const vol   = Math.sqrt(varR * 252) * 100;
 
   // Sharpe
   const sharpe = vol > 0 ? (cagr - cdiAnn) / vol : null;
 
   // Sortino
-  const semiSq = portRets.reduce((s,r) => s + Math.min(r-cdiDaily,0)**2, 0) / n;
+  const semiSq = portRets.reduce((s,r) => s + Math.min(r-cdiDaily,0)**2, 0) / nReal;
   const semiVol = Math.sqrt(semiSq * 252) * 100;
   const sortino = semiVol > 0 ? (cagr - cdiAnn) / semiVol : null;
 
@@ -7606,7 +7609,7 @@ function compCalcMetrics(portfolio) {
     eqRets.push(r);
   }
   const meanMkt = eqRets.reduce((s,r)=>s+r,0)/n;
-  const cov_pm = portRets.reduce((s,r,t)=>s+(r-meanR)*(eqRets[t]-meanMkt),0)/(n-1);
+  const cov_pm = portRets.reduce((s,r,t)=>s+(r-meanR)*(eqRets[t]-meanMkt),0)/(nReal-1);
   const varMkt = eqRets.reduce((s,r)=>s+(r-meanMkt)**2,0)/(n-1);
   const beta = varMkt > 0 ? cov_pm / varMkt : 1;
 
