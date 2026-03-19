@@ -74,7 +74,8 @@
   }
 
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; min-width: 760px; }
+  table { border-collapse: collapse; }
+  .table-wrap table { width: 100%; min-width: 760px; }
 
   thead th {
     font-family: 'Courier New', monospace; font-size: 0.68rem;
@@ -358,7 +359,7 @@
   }
   .port-alloc-row {
     display: grid;
-    grid-template-columns: 120px 1fr 36px 82px 62px 56px 56px;
+    grid-template-columns: 120px 1fr 36px 82px 70px 72px 64px;
     align-items: center; gap: 0.6rem;
     margin-bottom: 0.5rem;
   }
@@ -390,7 +391,7 @@
   }
   .port-alloc-total {
     display: grid;
-    grid-template-columns: 120px 1fr 36px 82px 62px 56px 56px;
+    grid-template-columns: 120px 1fr 36px 82px 70px 72px 64px;
     align-items: center; gap: 0.6rem;
     margin-top: 0.55rem;
     padding-top: 0.55rem;
@@ -410,7 +411,7 @@
   .port-alloc-total-val.muted { color: var(--muted); font-weight: normal; }
   .port-alloc-header {
     display: grid;
-    grid-template-columns: 120px 1fr 36px 82px 62px 56px 56px;
+    grid-template-columns: 120px 1fr 36px 82px 70px 72px 64px;
     gap: 0.6rem; margin-bottom: 0.45rem;
   }
   .port-alloc-header span {
@@ -499,12 +500,12 @@
   .ir-table thead th {
     font-family: 'Courier New', monospace; font-size: 0.56rem;
     text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
-    padding: 0.5rem 0.7rem; text-align: right; border-bottom: 1px solid var(--border);
+    padding: 0.5rem 0.8rem; text-align: right; border-bottom: 1px solid var(--border);
     background: var(--bg); white-space: nowrap;
   }
   .ir-table thead th:first-child { text-align: left; }
   .ir-table tbody td {
-    padding: 0.55rem 0.7rem; text-align: right;
+    padding: 0.55rem 0.8rem; text-align: right;
     border-bottom: 1px solid var(--border);
     font-family: 'Courier New', monospace; font-size: 0.75rem;
   }
@@ -945,18 +946,7 @@
   }
 
   /* ── Heatmap correlação interativo ── */
-  .corr-heatmap { overflow-x:auto; }
-  .corr-heatmap table { border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.62rem; }
-  .corr-heatmap th {
-    padding:5px 7px; color:var(--muted); font-weight:normal;
-    border-bottom:1px solid var(--border); white-space:nowrap; text-align:center;
-  }
-  .corr-heatmap th:first-child { text-align:left; }
-  .corr-heatmap td {
-    padding:4px 7px; text-align:center; cursor:pointer;
-    transition:outline 0.1s; white-space:nowrap;
-  }
-  .corr-heatmap td:hover { outline:2px solid var(--accent); outline-offset:-2px; }
+  .corr-heatmap { overflow-x:hidden; width:100%; }
   .corr-scatter-modal {
     position:fixed; inset:0; background:rgba(0,0,0,0.45);
     display:flex; align-items:center; justify-content:center;
@@ -1669,7 +1659,7 @@
       </div>
       <div class="port-corr-panel">
         <div class="port-section-label" style="margin-bottom:0.3rem" data-tip="Quanto os fundos se movem juntos. Correlação alta (próxima de 1) significa que os fundos caem juntos — diversificação fraca. Correlação baixa ou negativa = proteção real. Clique em qualquer célula para ver o gráfico de retornos diários.">Correlação</div>
-        <div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5">Vermelho = caem juntos · Verde = independentes · Clique para detalhe</div>
+        <div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-bottom:0.6rem;line-height:1.5">Vermelho = correlação alta (caem juntos) · Verde = baixa/negativa (diversificação) · Clique para detalhe</div>
         <div id="portCorr" class="port-empty">Selecione ao menos 2 fundos</div>
         <div id="concAlert"></div>
       </div>
@@ -2045,6 +2035,7 @@ function toggleTheme() {
   document.documentElement.setAttribute('data-theme', dark ? '' : 'dark');
   document.getElementById('themeBtn').textContent = dark ? '☽ escuro' : '☀ claro';
   localStorage.setItem('theme', dark ? 'light' : 'dark');
+  savePrefs();
 }
 (function() {
   if (localStorage.getItem('theme') === 'dark') {
@@ -2232,7 +2223,7 @@ function calcPortfolioTargetReturn(selected, wNorm, historyData) {
     for (const cnpj of selected) {
       const fd = historyData.funds[cnpj];
       if (!fd) continue;
-      const rets = fd.returns;
+      const rets = getRealReturns(cnpj);
       const n    = rets.length;
       const mean = rets.reduce((a, b) => a + b, 0) / n;
       const var_ = rets.reduce((a, r) => a + (r - mean) ** 2, 0) / (n - 1);
@@ -2429,11 +2420,11 @@ const FUND_EXPOSURE = {
 // brl_depreciation: BRL depreciation vs USD (positive = BRL weakens)
 // duration_days: approximate duration
 const STRESS_SCENARIOS = [
-  { name:"Covid (mar/2020)",       ibov_ret:-0.449, sp500_usd:-0.340, brl_dep:+0.300, days:30,  label:"pior mês histórico recente" },
-  { name:"Crise Brasil (jun/2022)",ibov_ret:-0.280, sp500_usd:-0.240, brl_dep:+0.080, days:90,  label:"crise inflação/juros" },
-  { name:"Dilma/Petrolão (2015)",  ibov_ret:-0.410, sp500_usd:-0.120, brl_dep:+0.500, days:365, label:"crise doméstica severa" },
   { name:"Crise financeira (2008)",ibov_ret:-0.600, sp500_usd:-0.565, brl_dep:+0.350, days:365, label:"crise sistêmica global" },
   { name:"Taper tantrum (2013)",   ibov_ret:-0.280, sp500_usd:+0.000, brl_dep:+0.150, days:180, label:"risco emergentes" },
+  { name:"Dilma/Petrolão (2015)",  ibov_ret:-0.410, sp500_usd:-0.120, brl_dep:+0.500, days:365, label:"crise doméstica severa" },
+  { name:"Covid (mar/2020)",       ibov_ret:-0.449, sp500_usd:-0.340, brl_dep:+0.300, days:30,  label:"pior mês histórico recente" },
+  { name:"Crise Brasil (jun/2022)",ibov_ret:-0.280, sp500_usd:-0.240, brl_dep:+0.080, days:90,  label:"crise inflação/juros" },
 ];
 
 function render() {
@@ -2522,6 +2513,9 @@ function render() {
   }
 
   document.getElementById('fundBody').innerHTML = html;
+  // Debounced save — avoid hammering localStorage on every keystroke
+  clearTimeout(render._saveTimer);
+  render._saveTimer = setTimeout(savePrefs, 800);
 }
 
 function buildIbovRow() {
@@ -2629,6 +2623,8 @@ async function load() {
     updateHeaders();
     render();
     initMCSelect();
+    // Restore portfolio weights after fund selector is built
+    restorePortfolio(loadPrefs());
 
   } catch(e) {
     document.getElementById('statusDot').className = 'status-dot error';
@@ -2673,6 +2669,7 @@ function switchTab(name) {
       });
     });
   }
+  savePrefs();
 }
 
 // ── Portfolio ──────────────────────────────────────────────────────────────────
@@ -2912,53 +2909,53 @@ function renderPortfolioStress(selected, wNorm) {
 
   // Render
   const hasBetas = Object.keys(fundBetas).length > 0;
-  let html = `<div style="margin-top:1.2rem;padding:0.8rem 1rem;background:var(--bg);border-radius:8px;border:0.5px solid var(--border)">
-    <div style="font-family:'Courier New',monospace;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:0.7rem">
-      Stress test histórico — impacto estimado no portfólio
-    </div>`;
 
-  if (!hasBetas) {
-    html += `<div style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">
-      Aguardando próxima execução do workflow para calcular betas por regressão OLS.
-      Usando estimativas por perfil de exposição declarada.
-    </div>`;
-  }
+  const thStyle = `text-align:right;padding:0 0 6px 16px;font-family:'Courier New',monospace;font-size:0.56rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)`;
+  const thStyleL = `text-align:left;padding:0 16px 6px 0;font-family:'Courier New',monospace;font-size:0.56rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)`;
 
-  html += `<table style="width:100%;border-collapse:collapse;font-family:'Courier New',monospace;font-size:0.65rem">
-    <thead><tr style="border-bottom:1px solid var(--border)">
-      <th style="text-align:left;padding:3px 8px 3px 0;color:var(--muted);font-weight:normal">Cenário</th>
-      <th style="text-align:right;padding:3px 8px;color:var(--muted);font-weight:normal" data-tip="Retorno estimado do portfólio assumindo exposição normal">Retorno est.</th>
-      <th style="text-align:right;padding:3px 8px;color:var(--muted);font-weight:normal" data-tip="Estimativa com redução de exposição líquida em crise (fundos Long Biased reduzem posição)">Com redução expo.</th>
-      <th style="text-align:right;padding:3px 0;color:var(--muted);font-weight:normal">Duração</th>
-    </tr></thead><tbody>`;
+  let html = `<div style="margin-top:1.6rem;border-top:0.5px solid var(--border);padding-top:1.2rem">
+    <div style="display:flex;align-items:baseline;gap:0.6rem;margin-bottom:1rem">
+      <span style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Stress test histórico</span>
+      ${!hasBetas ? `<span style="font-family:'Courier New',monospace;font-size:0.53rem;color:var(--amber)">betas OLS disponíveis após próximo update — usando perfil declarado</span>` : ''}
+    </div>
+    <table style="width:100%;border-collapse:collapse;table-layout:fixed">
+      <colgroup><col style="width:auto"><col style="width:120px"><col style="width:130px"></colgroup>
+      <thead><tr style="border-bottom:1px solid var(--border)">
+        <th style="${thStyleL}">Cenário</th>
+        <th style="${thStyle}" data-tip="Queda estimada do portfólio assumindo exposição líquida típica de cada gestor.">Expo. normal</th>
+        <th style="${thStyle}" data-tip="Queda estimada com fundos Long Biased e Multimercado reduzindo exposição em crise severa — mais próximo do comportamento real.">Expo. em crise</th>
+      </tr></thead>
+      <tbody>`;
 
   STRESS_SCENARIOS.forEach(sc => {
     const r_normal = portfolioStressReturn(sc, false);
     const r_crisis = portfolioStressReturn(sc, true);
-    const fmt = v => `<span style="color:${v < 0 ? 'var(--red)' : 'var(--green)'};font-weight:${Math.abs(v) > 0.15 ? 'bold' : 'normal'}">${v >= 0 ? '+' : ''}${(v*100).toFixed(1)}%</span>`;
-    const dur = sc.days >= 365 ? Math.round(sc.days/30) + ' meses' : sc.days + ' pregões';
+    const fmt = v => {
+      const big = Math.abs(v) > 0.20;
+      const col = v < -0.20 ? 'var(--red)' : v < 0 ? 'color-mix(in srgb,var(--red) 65%,var(--text))' : 'var(--green)';
+      return `<span style="font-family:'Courier New',monospace;color:${col};font-weight:${big?'600':'normal'}">${v>=0?'+':''}${(v*100).toFixed(1)}%</span>`;
+    };
+    const dur = sc.days >= 365 ? Math.round(sc.days/30) + 'm' : sc.days + 'd';
     html += `<tr style="border-bottom:0.5px solid var(--border)">
-      <td style="padding:5px 8px 5px 0">
-        <div style="color:var(--text)">${sc.name}</div>
-        <div style="color:var(--muted);font-size:0.58rem">${sc.label}</div>
-      </td>
-      <td style="text-align:right;padding:5px 8px">${fmt(r_normal)}</td>
-      <td style="text-align:right;padding:5px 8px">${fmt(r_crisis)}</td>
-      <td style="text-align:right;padding:5px 0;color:var(--muted)">${dur}</td>
-    </tr>`;
+        <td style="padding:8px 16px 8px 0;vertical-align:middle">
+          <div style="font-family:Georgia,serif;font-size:0.8rem;color:var(--text)">${sc.name}</div>
+          <div style="font-family:'Courier New',monospace;font-size:0.54rem;color:var(--muted);margin-top:1px">${sc.label} · ${dur}</div>
+        </td>
+        <td style="text-align:right;padding:8px 0 8px 16px;vertical-align:middle;white-space:nowrap">${fmt(r_normal)}</td>
+        <td style="text-align:right;padding:8px 0 8px 16px;vertical-align:middle;white-space:nowrap">${fmt(r_crisis)}</td>
+      </tr>`;
   });
 
   html += `</tbody></table>
-    <div style="margin-top:0.5rem;font-size:0.57rem;color:var(--muted);line-height:1.6">
-      Metodologia: regressão OLS (R_fundo = α + β_ibov × R_ibov + β_SP500 × R_SP500_BRL) sobre retornos diários históricos.
-      Exposição líquida em crise estimada por perfil declarado de cada gestor.
-      ${hasBetas ? 'Betas calculados sobre ' + Object.values(fundBetas)[0]?.n_obs + ' pregões.' : ''}
-      <strong>Estimativa conservadora — subestima correlações em crise sistêmica.</strong>
+    <div style="margin-top:0.7rem;font-family:'Courier New',monospace;font-size:0.55rem;color:var(--muted);line-height:1.7">
+      Modelo: R_fundo = α + β_ibov × R_ibov + β_S&P × R_S&P(BRL).${hasBetas ? ' Betas via regressão OLS sobre ' + (Object.values(fundBetas)[0]?.n_obs||'—') + ' pregões.' : ' Betas estimados por perfil de exposição declarada.'}
+      Exposição em crise por perfil declarado do gestor. <strong>Estimativa conservadora — subestima correlações em crise sistêmica.</strong>
     </div>
   </div>`;
 
   el.innerHTML = html;
 }
+
 
 function updatePortfolio() {
   const weights  = getWeights();
@@ -2985,8 +2982,19 @@ function updatePortfolio() {
   const patrimonio = parsePatrimonio();
   const wNorm      = Object.fromEntries(selected.map(c => [c, weights[c] / total]));
 
-  // Retornos ponderados
+  // Retornos ponderados — usando apenas datas com dados reais em todos os fundos
+  // Cada fundo começa na sua própria inception (zeros antes são descartados)
   const n = historyData.funds[selected[0]].returns.length;
+
+  // Find the latest inception among selected funds (first real return index)
+  let firstRealIdx = 0;
+  for (const cnpj of selected) {
+    const rets = historyData.funds[cnpj].returns;
+    for (let i = 0; i < rets.length; i++) {
+      if (rets[i] !== 0) { firstRealIdx = Math.max(firstRealIdx, Math.max(0, i-1)); break; }
+    }
+  }
+
   const portReturns = new Float64Array(n);
   for (const cnpj of selected) {
     const rets = historyData.funds[cnpj].returns;
@@ -3012,17 +3020,19 @@ function updatePortfolio() {
   const idx12 = dates.reduce((best, d, i) => d <= d12 ? i : best, -1);
   const idx36 = dates.reduce((best, d, i) => d <= d36 ? i : best, -1);
 
-  const cagr12w = idx12 >= 0 ? cagrFromSlice(idx12, portReturns.length) : null;
-  const cagr36w = idx36 >= 0 ? cagrFromSlice(idx36, portReturns.length) : null;
+  const cagr12w = idx12 >= 0 ? cagrFromSlice(Math.max(idx12, firstRealIdx), portReturns.length) : null;
+  const cagr36w = idx36 >= 0 ? cagrFromSlice(Math.max(idx36, firstRealIdx), portReturns.length) : null;
 
-  // Volatilidade anualizada
-  const mean     = portReturns.reduce((a,b) => a+b, 0) / n;
-  const variance = portReturns.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
+  // Volatilidade anualizada — apenas sobre período com dados reais
+  const portRetsReal = portReturns.slice(firstRealIdx);
+  const nReal   = portRetsReal.length;
+  const mean     = portRetsReal.reduce((a,b) => a+b, 0) / nReal;
+  const variance = portRetsReal.reduce((a,r) => a + (r-mean)**2, 0) / (nReal-1);
   const vol      = Math.sqrt(variance * 252) * 100;
 
   // Drawdown máximo e atual
   let cum = 1, peak = 1, maxDD = 0;
-  for (const r of portReturns) {
+  for (const r of portRetsReal) {
     cum *= (1 + r);
     if (cum > peak) peak = cum;
     const dd = (cum - peak) / peak;
@@ -3053,29 +3063,11 @@ function updatePortfolio() {
   // Build synthesis sentence
   const synthParts = [];
   if (portTarget?.expReturn != null) synthParts.push(`retorno estimado de <strong>+${portTarget.expReturn.toFixed(1)}% ao ano</strong>`);
-  if (portVol36) synthParts.push(`oscilação histórica de <strong>${portVol36.toFixed(0)}% ao ano</strong>`);
-  const stressLoss = (function() {
-    // Estimate max drawdown for the portfolio from history (worst 20-day window)
-    if (!historyData) return null;
-    const wNorm2 = Object.fromEntries(selected.map(c => [c, weights[c]/total]));
-    const n = historyData.funds[selected[0]]?.returns?.length || 0;
-    if (n < 20) return null;
-    let worst = 0;
-    for (let i = 0; i <= n - 20; i++) {
-      let cum = 1.0;
-      for (let j = i; j < i+20; j++) {
-        let portRet = 0;
-        for (const c of selected) portRet += (wNorm2[c]||0) * (historyData.funds[c]?.returns[j]||0);
-        cum *= (1 + portRet);
-      }
-      if ((cum-1) < worst) worst = cum-1;
-    }
-    return worst < -0.02 ? worst * 100 : null;
-  })();
+  if (portVol36) synthParts.push(`volatilidade histórica de <strong>${portVol36.toFixed(1)}% ao ano</strong>`);
+  if (portTarget?.sharpe != null) synthParts.push(`Sharpe de <strong>${portTarget.sharpe.toFixed(2)}</strong>`);
   const synthVerd = synthParts.length > 0
-    ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(', ')}${stressLoss ? `, e histórqueda máxima de <strong style="color:var(--red)">${stressLoss.toFixed(0)}% em 20 pregões</strong> (histórico desde 2021)` : ''}.</div>`
+    ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(' · ')}.</div>`
     : '';
-
   document.getElementById('portMetrics').innerHTML = `${synthVerd}
     <div class="port-metrics-grid">
       <div class="port-metric"><div class="port-metric-label" data-tip="CAGR ponderado do portfólio nos últimos 12 meses.">CAGR 12M</div>${fmtM(cagr12w)}</div>
@@ -3107,7 +3099,7 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
   for (const cnpj of selected) {
     const fd = historyData.funds[cnpj];
     if (!fd) continue;
-    const rets = fd.returns;
+    const rets = getRealReturns(cnpj);  // trim pre-inception zeros
     const n    = rets.length;
     const mean = rets.reduce((a, b) => a + b, 0) / n;
     const var_ = rets.reduce((a, r) => a + (r - mean) ** 2, 0) / (n - 1);
@@ -3193,7 +3185,7 @@ ${tipLines}${dispNote}${rawNote}</div>
       const v_sharpe = fundSharpeMap[cnpj] ?? null;
 
       return `<div class="port-alloc-row">
-        <span class="port-alloc-name" title="${nome}">${nome}</span>
+        <span class="port-alloc-name" data-tip="${nome}">${nome}</span>
         <div class="port-alloc-bar-wrap"><div class="port-alloc-bar" style="width:${pct}%;background:${color}"></div></div>
         <span class="port-alloc-pct">${pct}%</span>
         <span class="port-alloc-brl">${patrimonio > 0 ? 'R$\u00a0' + brl.toLocaleString('pt-BR',{maximumFractionDigits:0}) : ''}</span>
@@ -3243,6 +3235,7 @@ ${tipLines}${dispNote}${rawNote}</div>
   renderCCTimeline();
   checkConcentrationAlerts();
   renderPortfolioStress(selected, wNorm);
+  savePrefs();
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -3484,13 +3477,13 @@ function renderIR() {
   let html = `<div class="ir-table-wrap"><table class="ir-table">
     <thead><tr>
       <th>Fundo</th>
-      <th title="Retorno alvo estimado com base no histórico do fundo (bruto de IR)">Retorno alvo*</th>
+      <th data-tip="Retorno esperado anualizado com base no histórico. Bruto de IR.">Retorno alvo*</th>
       <th>Aporte</th>
-      <th title="Valor bruto projetado no resgate, antes de qualquer tributação">Valor bruto</th>
-      <th title="Total de imposto de renda pago — inclui come-cotas (fundos TR) e IR no resgate">IR total pago</th>
-      <th title="Alíquota real considerando o custo de oportunidade do capital antecipado via come-cotas. RV = sempre 15%. TR = mais, porque o come-cotas retira capital que deixou de crescer.">Custo real do IR</th>
-      <th title="O que fica no seu bolso após todos os impostos">O que fica com você</th>
-      <th title="Taxa de crescimento anual já descontado o imposto de renda">Retorno a.a. líquido</th>
+      <th data-tip="Valor projetado no resgate antes de qualquer tributação.">Valor bruto</th>
+      <th data-tip="Total de IR pago — inclui come-cotas semestrais (TR) e IR no resgate.">IR total pago</th>
+      <th data-tip="Alíquota efetiva real. RV = 15%. TR = mais, pois o come-cotas retira capital que deixou de crescer.">Custo real do IR</th>
+      <th data-tip="Valor líquido após todos os impostos.">O que fica com você</th>
+      <th data-tip="CAGR líquido: taxa de crescimento anual após todos os impostos.">Retorno a.a. líquido</th>
     </tr></thead><tbody>`;
 
   for (const row of rows) {
@@ -3816,14 +3809,16 @@ function invertMatrix(M) {
 // Retorna matriz k×k de covariâncias anualizadas (×252) em (%²)
 function covMatrix(cnpjs, historyData) {
   const k    = cnpjs.length;
+  const commonStart = getCommonStartIndex(cnpjs);
   const rets = cnpjs.map(c => historyData.funds[c].returns);
   const n    = rets[0].length;
-  const means = rets.map(r => r.reduce((a, b) => a + b, 0) / n);
+  const means = rets.map((r, ri) => { const fIdx = getFirstRealIndex(cnpjs[ri]); const sl = r.slice(fIdx); return sl.reduce((a,b)=>a+b,0)/sl.length; });
   const cov   = Array.from({length: k}, () => new Array(k).fill(0));
   for (let i = 0; i < k; i++)
     for (let j = i; j < k; j++) {
       let s = 0;
-      for (let t = 0; t < n; t++)
+      const tPairStart = Math.max(getFirstRealIndex(cnpjs[i]), getFirstRealIndex(cnpjs[j]));
+  for (let t = tPairStart; t < n; t++)
         s += (rets[i][t] - means[i]) * (rets[j][t] - means[j]);
       cov[i][j] = cov[j][i] = (s / (n - 1)) * 252 * 10000; // (%²) anualizado
     }
@@ -4711,7 +4706,7 @@ function renderConsistency() {
   const nM = monthKeys.length;
 
   const rows = cnpjs.map(function(cnpj) {
-    const rets = historyData.funds[cnpj].returns;
+    const rets = getRealReturns(cnpj);
     var pos = 0, worst = 0, best = 0;
 
     // Monthly returns
@@ -5179,11 +5174,12 @@ function mcGetParams() {
       const wNorm = Object.fromEntries(selected.map(c => [c, weights[c] / total]));
       // Build weighted daily returns
       const n = historyData.funds[selected[0]].returns.length;
+  const _mcVolStart = getCommonStartIndex(selected);
       const portRets = new Float64Array(n);
       for (const cnpj of selected) {
         const rets = historyData.funds[cnpj].returns;
         const w    = wNorm[cnpj];
-        for (let i = 0; i < n; i++) portRets[i] += rets[i] * w;
+        for (let i = _mcVolStart; i < n; i++) portRets[i] += rets[i] * w;
       }
       const mean = portRets.reduce((a,b) => a+b, 0) / n;
       const vari = portRets.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
@@ -6019,29 +6015,71 @@ let corrScatterChart = null;
 function buildCorrHeatmap(selected) {
   if (!historyData || !historyData.correlation || selected.length < 2) return null;
   const corr  = historyData.correlation;
-  const names = selected.map(function(c) { return shortName(c); });
+  const n     = selected.length;
 
-  let html = '<div class="corr-heatmap"><table>';
-  html += '<tr><th></th>' + names.map(function(n){ return `<th>${n}</th>`; }).join('') + '</tr>';
+  // Helper: color cell by correlation value
+  function cellStyle(v) {
+    // High positive correlation = red (risk), low/negative = green (diversification)
+    const abs = Math.abs(v);
+    const bg  = v >= 0
+      ? `rgba(184,50,50,${(v*0.65).toFixed(2)})`
+      : `rgba(26,122,82,${(Math.abs(v)*0.65).toFixed(2)})`;
+    const col = abs > 0.65 ? '#fff' : 'var(--text)';
+    return `background:${bg};color:${col}`;
+  }
 
-  selected.forEach(function(ca, i) {
-    html += `<tr><th style="text-align:left;padding-right:8px">${names[i]}</th>`;
-    selected.forEach(function(cb, j) {
-      if (i === j) {
-        html += '<td style="color:var(--muted)">—</td>';
-        return;
+  // Short name (max 7 chars for column headers)
+  function abbr(cnpj) {
+    const s = shortName(cnpj);
+    return s.length > 8 ? s.slice(0, 7) + '…' : s;
+  }
+
+  // ── Triangular lower-left heatmap ────────────────────────────────────
+  // Rows = fund i (from 2nd), Cols = fund j (from 1st to i-1)
+  // Diagonal = fund name label spanning
+
+  const tdBase = `padding:5px 6px;text-align:center;font-family:'Courier New',monospace;font-size:0.6rem;cursor:pointer;transition:outline 0.1s`;
+  const thBase = `padding:5px 6px;font-family:'Courier New',monospace;font-size:0.58rem;font-weight:normal;color:var(--muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70px`;
+
+  // Column headers (fund 0 to n-2, since last fund has no column)
+  let html = `<div style="overflow-x:hidden;width:100%">
+  <table style="border-collapse:collapse;width:100%;table-layout:fixed">
+  <colgroup>
+    <col style="width:72px">`;
+  for (let j = 0; j < n - 1; j++) html += `<col>`;
+  html += `</colgroup>
+  <thead><tr>
+    <th style="${thBase};text-align:left"></th>`;
+  for (let j = 0; j < n - 1; j++) {
+    html += `<th style="${thBase}" data-tip="${shortName(selected[j])}">${abbr(selected[j])}</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+
+  // Rows: i from 1 to n-1
+  for (let i = 1; i < n; i++) {
+    html += `<tr>`;
+    // Row label
+    html += `<td style="padding:5px 8px 5px 0;font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px" data-tip="${shortName(selected[i])}">${abbr(selected[i])}</td>`;
+    // Cells: j from 0 to i-1 (lower triangle)
+    for (let j = 0; j < n - 1; j++) {
+      if (j < i) {
+        const v = corr[selected[i]]?.[selected[j]] ?? 0;
+        html += `<td style="${tdBase};${cellStyle(v)}" onclick="openCorrScatter('${selected[i]}','${selected[j]}')" data-tip="${shortName(selected[i])} × ${shortName(selected[j])}: ${v.toFixed(2)}">${v.toFixed(2)}</td>`;
+      } else if (j === i) {
+        // Diagonal — fund name
+        html += `<td style="${tdBase};color:var(--muted);border-bottom:0.5px solid var(--border)">—</td>`;
+      } else {
+        // Upper triangle — empty
+        html += `<td style="${tdBase}"></td>`;
       }
-      const v   = corr[ca]?.[cb] ?? 0;
-      const abs = Math.abs(v);
-      const bg  = `rgba(${Math.round(abs*180)},${Math.round((1-abs)*80+80)},80,0.22)`;
-      const col = abs > 0.7 ? 'var(--red)' : abs < 0.35 ? 'var(--green)' : 'var(--text)';
-      html += `<td style="background:${bg};color:${col}" onclick="openCorrScatter('${ca}','${cb}')">${v.toFixed(2)}</td>`;
-    });
-    html += '</tr>';
-  });
-  html += '</table></div>';
+    }
+    html += `</tr>`;
+  }
+
+  html += `</tbody></table></div>`;
   return html;
 }
+
 
 function openCorrScatter(ca, cb) {
   if (!historyData) return;
@@ -6054,7 +6092,8 @@ function openCorrScatter(ca, cb) {
   const nB = (FUND_META[cb]||{}).nome || cb;
   const corr = (historyData.correlation?.[ca]?.[cb] ?? 0);
   title.textContent = `${shortName(ca)} × ${shortName(cb)}`;
-  stats.innerHTML = `Pearson ρ = <strong style="color:${Math.abs(corr)>0.7?'var(--red)':Math.abs(corr)<0.35?'var(--green)':'var(--text)'}">${corr.toFixed(3)}</strong> · retornos diários · ${historyData.commonDates.length} pregões`;
+  const realN = retsA.filter((r,i) => r !== 0 && retsB[i] !== 0).length;
+  stats.innerHTML = `Pearson ρ = <strong style="color:${Math.abs(corr)>0.7?'var(--red)':Math.abs(corr)<0.35?'var(--green)':'var(--text)'}">${corr.toFixed(3)}</strong> · retornos diários · ${realN} pregões em comum`;
 
   modal.style.display = 'flex';
 
@@ -6063,10 +6102,17 @@ function openCorrScatter(ca, cb) {
   const retsB = historyData.funds[cb]?.returns || [];
   const n = Math.min(retsA.length, retsB.length);
 
-  // Sample at most 300 points to keep chart fast
-  const step = Math.max(1, Math.floor(n / 300));
-  const pts  = [];
-  for (let i = 0; i < n; i += step) pts.push({ x: retsA[i] * 100, y: retsB[i] * 100 });
+  // Only use days where BOTH funds have real non-zero returns (exclude pre-inception zeros)
+  const realPts = [];
+  for (let i = 0; i < n; i++) {
+    if (retsA[i] !== 0 && retsB[i] !== 0) {
+      realPts.push({ x: retsA[i] * 100, y: retsB[i] * 100 });
+    }
+  }
+
+  // Sample at most 400 points to keep chart fast
+  const step = Math.max(1, Math.floor(realPts.length / 400));
+  const pts  = realPts.filter((_, i) => i % step === 0);
 
   // Regression line
   const meanX = pts.reduce((s,p)=>s+p.x,0)/pts.length;
@@ -6521,6 +6567,25 @@ function getRealReturns(cnpj) {
   return allRets;
 }
 
+// Returns the index offset where the fund's real history begins
+function getFirstRealIndex(cnpj) {
+  const allRets = historyData.funds[cnpj]?.returns || [];
+  for (let i = 0; i < allRets.length; i++) {
+    if (allRets[i] !== 0) return Math.max(0, i - 1);
+  }
+  return 0;
+}
+
+// For a set of funds, returns the latest firstRealIndex (common start)
+function getCommonStartIndex(cnpjs) {
+  return Math.max(...cnpjs.map(c => getFirstRealIndex(c)));
+}
+
+// Safe return: 0 if before fund's inception
+function safeReturn(cnpj, t) {
+  return t >= getFirstRealIndex(cnpj) ? (historyData.funds[cnpj]?.returns[t] || 0) : 0;
+}
+
 function computeAdvancedMetrics(cnpj) {
   if (!historyData || !historyData.funds[cnpj]) return null;
   const fd = historyData.funds[cnpj];
@@ -6938,9 +7003,10 @@ function renderEfficientFrontier() {
     const t = calcTargetReturn(fData);
     if (!t) return;
     const fd = historyData.funds[cnpj];
-    const n2 = fd.returns.length;
-    const mean2 = fd.returns.reduce((a,b)=>a+b,0)/n2;
-    const var2  = fd.returns.reduce((a,r)=>a+(r-mean2)**2,0)/(n2-1);
+    const realRets2 = getRealReturns(cnpj);
+    const n2 = realRets2.length;
+    const mean2 = realRets2.reduce((a,b)=>a+b,0)/n2;
+    const var2  = realRets2.reduce((a,r)=>a+(r-mean2)**2,0)/(n2-1);
     const vol2  = Math.sqrt(var2*252)*100;
     fundPoints.push({
       x: parseFloat(vol2.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
@@ -7104,6 +7170,7 @@ function initNewAnalysis() {
 // portanto S é positiva semi-definida e inversível.
 function semiCovMatrix(cnpjs, historyData, cdiAnnual) {
   const k = cnpjs.length;
+  const _commonStart = getCommonStartIndex(cnpjs);
   const rets = cnpjs.map(c => historyData.funds[c].returns);
   const n = rets[0].length;
   const cdiDaily = Math.pow(1 + cdiAnnual / 100, 1 / 252) - 1;
@@ -7180,7 +7247,7 @@ function evalPortfolioAdvanced(w, cnpjs, mus, cdiTarget, ibovProxy, cov, history
   let sumSemiSq = 0;
   for (let t = 0; t < n; t++) {
     let r_p = 0;
-    cnpjs.forEach((c, i) => { r_p += w[i] * historyData.funds[c].returns[t]; });
+    cnpjs.forEach((c, i) => { r_p += w[i] * (t >= getFirstRealIndex(c) ? historyData.funds[c].returns[t] : 0); });
     const excess = r_p - cdiDaily;
     if (excess < 0) sumSemiSq += excess * excess;
   }
@@ -7191,7 +7258,7 @@ function evalPortfolioAdvanced(w, cnpjs, mus, cdiTarget, ibovProxy, cov, history
   let cum = 1, peak = 1, maxDD = 0;
   for (let t = 0; t < n; t++) {
     let r_p = 0;
-    cnpjs.forEach((c, i) => { r_p += w[i] * historyData.funds[c].returns[t]; });
+    cnpjs.forEach((c, i) => { r_p += w[i] * (t >= getFirstRealIndex(c) ? historyData.funds[c].returns[t] : 0); });
     cum *= (1 + r_p);
     if (cum > peak) peak = cum;
     const dd = (cum - peak) / peak;
@@ -7464,7 +7531,7 @@ function compCalcMetrics(portfolio) {
   const portRets = [];
   for (let t = 0; t < n; t++) {
     let r = 0;
-    cnpjs.forEach((c, i) => { r += weights[i] * (historyData.funds[c].returns[t] || 0); });
+    cnpjs.forEach((c, i) => { r += weights[i] * (t >= getFirstRealIndex(c) ? (historyData.funds[c].returns[t] || 0) : 0); });
     portRets.push(r);
   }
 
@@ -7504,7 +7571,7 @@ function compCalcMetrics(portfolio) {
   const allCnpjs = Object.keys(historyData.funds);
   const eqRets = [];
   for (let t = 0; t < n; t++) {
-    let r = 0; allCnpjs.forEach(c => { r += historyData.funds[c].returns[t] / allCnpjs.length; });
+    let r = 0; allCnpjs.forEach(c => { r += (t >= getFirstRealIndex(c) ? historyData.funds[c].returns[t] : 0) / allCnpjs.length; });
     eqRets.push(r);
   }
   const meanMkt = eqRets.reduce((s,r)=>s+r,0)/n;
@@ -7836,6 +7903,10 @@ runOptimizer = function() {
 // Replaces every native browser tooltip with a styled custom one.
 // ════════════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
+  // Restore non-data prefs immediately (theme, tab, filters)
+  const _savedPrefs = loadPrefs();
+  if (_savedPrefs) restorePrefs(_savedPrefs);
+
   const tip = document.getElementById('g-tip');
   if (!tip) return;
 
@@ -7883,6 +7954,154 @@ document.addEventListener('DOMContentLoaded', function() {
   document.addEventListener('scroll', hide, true);
   document.addEventListener('click', hide);
 });
+
+
+// ════════════════════════════════════════════════════════════════════════════
+// PERSISTÊNCIA DE PREFERÊNCIAS — localStorage
+// Salva e restaura escolhas do usuário entre sessões.
+// Dados calculados (CAGRs, betas, etc.) sempre vêm do data.json — nunca salvos.
+// ════════════════════════════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'fundosv2_prefs_v1';
+
+function savePrefs() {
+  try {
+    // Portfolio weights
+    const weights = {};
+    document.querySelectorAll('#fundSelector input[type=checkbox]').forEach((chk, i) => {
+      if (chk.checked && chk.dataset.cnpj) {
+        const sl = document.getElementById('sl-' + i);
+        const v  = parseInt(sl?.value || 0);
+        if (v > 0) weights[chk.dataset.cnpj] = v;
+      }
+    });
+
+    // Monte Carlo settings
+    const mcPrefs = {};
+    ['mcYears','mcAporte','mcGrowth','mcInfl','mcP0'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) mcPrefs[id] = el.value;
+    });
+    const fatTails = document.getElementById('mcFatTails');
+    if (fatTails) mcPrefs.mcFatTails = fatTails.checked;
+    const mcN = document.querySelector('.mc-n-btn.active');
+    if (mcN) mcPrefs.mcN = mcN.dataset.n;
+
+    // Patrimônio
+    const patEl = document.getElementById('patrimonioInput');
+
+    const prefs = {
+      weights,
+      patrimonio:   patEl?.value || '',
+      tab:          document.querySelector('.tab-btn.active')?.dataset.tab || 'ranking',
+      theme:        document.documentElement.getAttribute('data-theme') || 'light',
+      sortKey:      currentSort  || 'cagr36',
+      sortDir:      sortDir      || -1,
+      filterEst:    document.getElementById('filterEstrategia')?.value || '',
+      filterMer:    document.getElementById('filterMercado')?.value    || '',
+      filterTrib:   document.getElementById('filterTrib')?.value       || '',
+      mc:           mcPrefs,
+      savedAt:      Date.now(),
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+  } catch(e) {
+    // localStorage can be unavailable in private mode — fail silently
+  }
+}
+
+function loadPrefs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const prefs = JSON.parse(raw);
+    // Ignore prefs older than 90 days
+    if (prefs.savedAt && Date.now() - prefs.savedAt > 90 * 86400 * 1000) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return prefs;
+  } catch(e) {
+    return null;
+  }
+}
+
+function restorePrefs(prefs) {
+  if (!prefs) return;
+
+  // Theme
+  if (prefs.theme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const btn = document.getElementById('themeToggle');
+    if (btn) btn.textContent = '☀';
+  }
+
+  // Tab
+  if (prefs.tab) switchTab(prefs.tab);
+
+  // Ranking sort
+  if (prefs.sortKey) currentSort = prefs.sortKey;
+  if (prefs.sortDir !== undefined) sortDir = prefs.sortDir;
+
+  // Filters
+  if (prefs.filterEst  !== undefined) { const el = document.getElementById('filterEstrategia'); if (el) el.value = prefs.filterEst; }
+  if (prefs.filterMer  !== undefined) { const el = document.getElementById('filterMercado');    if (el) el.value = prefs.filterMer; }
+  if (prefs.filterTrib !== undefined) { const el = document.getElementById('filterTrib');       if (el) el.value = prefs.filterTrib; }
+
+  // Patrimônio
+  if (prefs.patrimonio) {
+    const el = document.getElementById('patrimonioInput');
+    if (el) el.value = prefs.patrimonio;
+  }
+
+  // Monte Carlo
+  if (prefs.mc) {
+    ['mcYears','mcAporte','mcGrowth','mcInfl','mcP0'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && prefs.mc[id] !== undefined) el.value = prefs.mc[id];
+    });
+    if (prefs.mc.mcFatTails !== undefined) {
+      const el = document.getElementById('mcFatTails');
+      if (el) el.checked = prefs.mc.mcFatTails;
+    }
+    if (prefs.mc.mcN) {
+      document.querySelectorAll('.mc-n-btn').forEach(btn => {
+        const active = btn.dataset.n === String(prefs.mc.mcN);
+        btn.classList.toggle('active', active);
+        if (active) MCPortState.N = parseInt(prefs.mc.mcN);
+      });
+    }
+  }
+}
+
+function restorePortfolio(prefs) {
+  // Called after historyData is loaded — needs fund selector to exist
+  if (!prefs?.weights || !historyData) return;
+  const weights = prefs.weights;
+  const validCnpjs = new Set(Object.keys(historyData.funds));
+
+  document.querySelectorAll('#fundSelector input[type=checkbox]').forEach((chk, i) => {
+    const cnpj = chk.dataset.cnpj;
+    if (!cnpj || !validCnpjs.has(cnpj)) return;  // fund removed from site
+    const w = weights[cnpj];
+    if (!w || w <= 0) return;
+
+    const sl  = document.getElementById('sl-'  + i);
+    const wi  = document.getElementById('wi-'  + i);
+    const row = document.getElementById('frow-'+ i);
+    if (!sl || !wi || !row) return;
+
+    chk.checked   = true;
+    sl.disabled   = false;
+    wi.disabled   = false;
+    sl.value      = w;
+    wi.value      = w + '%';
+    row.classList.remove('inactive');
+    row.classList.add('active');
+  });
+
+  updatePortfolio();
+}
 
 updateHeaders();
 load();
