@@ -3020,7 +3020,9 @@ function updatePortfolio() {
     for (let i = startIdx; i < endIdx; i++) cum *= (1 + portReturns[i]);
     const d0 = dates[startIdx], d1 = dates[Math.min(endIdx, dates.length - 1)];
     const years = (new Date(d1) - new Date(d0)) / (365.25 * 86400000);
-    return years > 0 ? (Math.pow(cum, 1 / years) - 1) * 100 : null;
+    const result = years > 0 ? (Math.pow(cum, 1 / years) - 1) * 100 : null;
+    console.log('[CAGR DEBUG] startIdx:', startIdx, 'endIdx:', endIdx, 'n:', n, 'firstRealIdx:', firstRealIdx, 'd0:', d0, 'd1:', d1, 'years:', years.toFixed(3), 'cum:', cum.toFixed(4), 'result:', result?.toFixed(1));
+    return result;
   }
 
   const d12   = subtractMonthsStr(anchor, 12);
