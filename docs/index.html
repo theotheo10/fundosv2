@@ -701,9 +701,9 @@
   #scatterCanvas { width:100%; height:100%; display:block; }
   /* heatmap */
   .heatmap-wrap { overflow-x:auto; }
-  .heatmap-table { border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.6rem; width:100%; }
-  .heatmap-table th { padding:3px 6px; color:var(--muted); font-weight:normal; white-space:nowrap; }
-  .heatmap-table td { padding:2px 4px; text-align:center; white-space:nowrap; border-radius:2px; font-size:0.58rem; min-width:32px; }
+  .heatmap-table { border-collapse:collapse; font-family:'Courier New',monospace; font-size:0.6rem; width:100%; table-layout:fixed; }
+  .heatmap-table th { padding:4px 6px; color:var(--muted); font-weight:normal; white-space:nowrap; text-align:center; }
+  .heatmap-table td { padding:3px 4px; text-align:center; white-space:nowrap; border-radius:2px; font-size:0.7rem; }
   .heatmap-table .fund-label { text-align:left; color:var(--text); padding-right:8px; white-space:nowrap; max-width:120px; overflow:hidden; text-overflow:ellipsis; }
   /* underwater / drawdown */
   #underwaterCanvas { width:100%; height:100%; display:block; }
@@ -4719,15 +4719,23 @@ function renderHeatmap() {
   var lastDate = monthKeys[monthKeys.length - 1] || '';
   var currentYear = lastDate.slice(0,4);
 
-  var html = '<table class="heatmap-table" style="min-width:0;width:100%"><thead><tr>'
-    + '<th style="text-align:left;min-width:90px">Fundo</th>';
+  // colgroup: fund name col + year cols + 3 stat cols
+  var colW_name  = '90px';
+  var colW_year  = '72px';
+  var colW_stat  = '58px';
+  var colgroup = '<colgroup><col style="width:' + colW_name + '">';
+  years.forEach(function() { colgroup += '<col style="width:' + colW_year + '">'; });
+  colgroup += '<col style="width:' + colW_stat + '"><col style="width:' + colW_stat + '"><col style="width:' + colW_stat + '"></colgroup>';
+
+  var html = '<table class="heatmap-table">' + colgroup + '<thead><tr>'
+    + '<th style="text-align:left">Fundo</th>';
   years.forEach(function(y) {
-    var label = (y === currentYear) ? y + ' <span style="font-size:0.5rem;opacity:0.6">YTD</span>' : y;
-    html += '<th style="min-width:52px">' + label + '</th>';
+    var label = (y === currentYear) ? y + ' <span style="font-size:0.5rem;opacity:0.6">YTD</span>' : y;
+    html += '<th>' + label + '</th>';
   });
-  html += '<th style="min-width:44px" data-tip="Melhor mês individual no período">Mel.</th>';
-  html += '<th style="min-width:44px" data-tip="Pior mês individual no período">Pior</th>';
-  html += '<th style="min-width:44px" data-tip="% de meses com retorno positivo">+%</th>';
+  html += '<th data-tip="Melhor mês individual no período">Mel.</th>';
+  html += '<th data-tip="Pior mês individual no período">Pior</th>';
+  html += '<th data-tip="% de meses com retorno positivo">+%</th>';
   html += '</tr></thead><tbody>';
 
   // Sort funds by total return over available period
@@ -4744,24 +4752,24 @@ function renderHeatmap() {
   sortedCnpjs.forEach(function(cnpj) {
     var nome = (FUND_META[cnpj] && FUND_META[cnpj].short) || historyData.funds[cnpj].nome.split(' ')[0];
     var st = stats(cnpj);
-    html += '<tr><td class="fund-label" data-tip="' + ((FUND_META[cnpj]||{}).nome || historyData.funds[cnpj].nome) + '" style="font-size:0.68rem">' + nome + '</td>';
+    html += '<tr><td class="fund-label" data-tip="' + ((FUND_META[cnpj]||{}).nome || historyData.funds[cnpj].nome) + '">' + nome + '</td>';
     years.forEach(function(y) {
       var v = annualRet(cnpj, y);
       var bg = heatColor(v);
       var tc = textColor(v);
       var txt = v != null ? (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : '—';
-      html += '<td style="background:' + bg + ';color:' + tc + ';font-size:0.7rem" data-tip="' + nome + ' · ' + y + '">' + txt + '</td>';
+      html += '<td style="background:' + bg + ';color:' + tc + '" data-tip="' + nome + ' · ' + y + '">' + txt + '</td>';
     });
     // Best month
     var bTxt = st.best != null ? (st.best >= 0 ? '+' : '') + st.best.toFixed(1) + '%' : '—';
-    html += '<td style="color:var(--green);font-size:0.68rem">' + bTxt + '</td>';
+    html += '<td style="color:var(--green)">' + bTxt + '</td>';
     // Worst month
     var wTxt = st.worst != null ? st.worst.toFixed(1) + '%' : '—';
-    html += '<td style="color:var(--red);font-size:0.68rem">' + wTxt + '</td>';
+    html += '<td style="color:var(--red)">' + wTxt + '</td>';
     // % positive months
     var pTxt = st.pctPos != null ? st.pctPos.toFixed(0) + '%' : '—';
     var pColor = st.pctPos > 60 ? 'var(--green)' : st.pctPos > 40 ? 'var(--amber)' : 'var(--red)';
-    html += '<td style="color:' + pColor + ';font-size:0.68rem">' + pTxt + '</td>';
+    html += '<td style="color:' + pColor + '">' + pTxt + '</td>';
     html += '</tr>';
   });
 
