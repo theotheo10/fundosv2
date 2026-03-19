@@ -2917,41 +2917,79 @@ function renderPortfolioStress(selected, wNorm) {
     return `<span style="font-family:'Courier New',monospace;font-size:0.82rem;color:${col};font-weight:${big?'600':'400'}">${v>=0?'+':''}${(v*100).toFixed(1)}%</span>`;
   };
 
-  let html = `<div style="margin-top:1.6rem;border-top:0.5px solid var(--border);padding-top:1.2rem">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:0.3rem">
-      <span style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Stress test — cenários históricos</span>
-      ${!hasBetas ? `<span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--amber)">estimativas por perfil declarado</span>` : ''}
-    </div>
-    <div style="font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted);margin-bottom:1rem;line-height:1.5">
-      Retorno acumulado estimado do portfólio se a crise ocorresse hoje, ao longo do período indicado.
-    </div>
-    <table style="width:100%;border-collapse:collapse;table-layout:fixed">
-      <colgroup><col style="width:auto"><col style="width:110px"><col style="width:120px"></colgroup>
-      <thead><tr style="border-bottom:1px solid var(--border)">
-        <th style="text-align:left;padding:0 0 6px;font-family:'Courier New',monospace;font-size:0.55rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)">Crise histórica</th>
-        <th style="text-align:right;padding:0 0 6px 12px;font-family:'Courier New',monospace;font-size:0.55rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)" data-tip="Retorno acumulado do portfólio no período, com exposição líquida típica de cada gestor.">Expo. normal</th>
-        <th style="text-align:right;padding:0 0 6px 12px;font-family:'Courier New',monospace;font-size:0.55rem;font-weight:normal;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted)" data-tip="Retorno acumulado com fundos Long Biased e Multimercado reduzindo exposição líquida — mais próximo do comportamento real em crise severa.">Expo. reduzida</th>
-      </tr></thead>
-      <tbody>`;
+  // Bar width: map return to bar width (max |return| → 100%)
+  const maxAbs = Math.max(...STRESS_SCENARIOS.map(sc => {
+    return Math.max(
+      Math.abs(portfolioStressReturn(sc, false)),
+      Math.abs(portfolioStressReturn(sc, true))
+    );
+  }), 0.01);
 
-  STRESS_SCENARIOS.forEach(sc => {
+  let html = `<div style="margin-top:1.8rem;border-top:0.5px solid var(--border);padding-top:1.4rem">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem">
+      <span style="font-family:'Courier New',monospace;font-size:0.58rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Stress test — cenários históricos</span>
+      ${!hasBetas ? `<span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--amber);padding:1px 6px;border:0.5px solid var(--amber);border-radius:3px">estimativas por perfil declarado</span>` : ''}
+    </div>
+    <div style="font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted);margin-bottom:1.2rem;line-height:1.5">
+      Perda estimada do portfólio se a crise ocorresse hoje.
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:0">`;
+
+  STRESS_SCENARIOS.forEach((sc, idx) => {
     const r_normal = portfolioStressReturn(sc, false);
     const r_crisis = portfolioStressReturn(sc, true);
     const dur = sc.days >= 365 ? Math.round(sc.days/30) + ' meses' : sc.days + ' pregões';
-    html += `<tr style="border-bottom:0.5px solid var(--border)">
-        <td style="padding:10px 12px 10px 0;vertical-align:middle">
-          <div style="font-family:Georgia,serif;font-size:0.82rem;color:var(--text);margin-bottom:2px">${sc.name}</div>
-          <div style="font-family:'Courier New',monospace;font-size:0.54rem;color:var(--muted)">${sc.label} · ${dur}</div>
-        </td>
-        <td style="text-align:right;padding:10px 0 10px 12px;vertical-align:middle">${fmtRet(r_normal)}</td>
-        <td style="text-align:right;padding:10px 0 10px 12px;vertical-align:middle">${fmtRet(r_crisis)}</td>
-      </tr>`;
+
+    // Bar widths — proportional to severity
+    const barN = Math.min(Math.abs(r_normal) / maxAbs * 100, 100).toFixed(1);
+    const barC = Math.min(Math.abs(r_crisis) / maxAbs * 100, 100).toFixed(1);
+
+    // Color by severity
+    const colN = r_normal < -0.30 ? 'var(--red)' : r_normal < -0.15 ? 'color-mix(in srgb,var(--red) 75%,var(--amber))' : r_normal < 0 ? 'var(--amber)' : 'var(--green)';
+    const colC = r_crisis < -0.30 ? 'var(--red)' : r_crisis < -0.15 ? 'color-mix(in srgb,var(--red) 75%,var(--amber))' : r_crisis < 0 ? 'var(--amber)' : 'var(--green)';
+
+    const fmtV = (v, col) => `<span style="font-family:'Courier New',monospace;font-size:0.8rem;font-weight:600;color:${col};min-width:52px;display:inline-block;text-align:right">${v>=0?'+':''}${(v*100).toFixed(1)}%</span>`;
+
+    const isLast = idx === STRESS_SCENARIOS.length - 1;
+
+    html += `<div style="padding:12px 0;${isLast?'':'border-bottom:0.5px solid var(--border)'}">
+
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <span style="font-family:Georgia,serif;font-size:0.85rem;color:var(--text)">${sc.name}</span>
+          <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);margin-left:8px">${sc.label} · ${dur}</span>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:5px">
+
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:'Courier New',monospace;font-size:0.5rem;color:var(--muted);width:70px;flex-shrink:0;text-align:right">expo. normal</span>
+          <div style="flex:1;height:5px;background:color-mix(in srgb,var(--border) 60%,transparent);border-radius:2px;overflow:hidden">
+            <div style="height:100%;width:${barN}%;background:${colN};border-radius:2px;transition:width 0.4s ease"></div>
+          </div>
+          ${fmtV(r_normal, colN)}
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:'Courier New',monospace;font-size:0.5rem;color:var(--muted);width:70px;flex-shrink:0;text-align:right">expo. reduzida</span>
+          <div style="flex:1;height:5px;background:color-mix(in srgb,var(--border) 60%,transparent);border-radius:2px;overflow:hidden">
+            <div style="height:100%;width:${barC}%;background:${colC};opacity:0.6;border-radius:2px;transition:width 0.4s ease"></div>
+          </div>
+          ${fmtV(r_crisis, colC)}
+        </div>
+
+      </div>
+    </div>`;
   });
 
-  html += `</tbody></table>
-    <div style="margin-top:0.8rem;font-family:'Courier New',monospace;font-size:0.54rem;color:var(--muted);line-height:1.7">
-      Modelo: R_fundo = α + β_ibov × R_ibov + β_S&P × R_S&P(BRL).${hasBetas ? ' Betas OLS: ' + (Object.values(fundBetas)[0]?.n_obs||'—') + ' pregões.' : ''}
-      Expo. reduzida = Long Biased e Multimercado com menor alocação líquida em crise.
+  html += `</div>
+
+    <div style="margin-top:1rem;padding:0.6rem 0.8rem;background:var(--bg);border-radius:5px;font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);line-height:1.8">
+      Modelo: R_fundo = α + β_ibov × R_ibov + β_S&P × R_S&P(BRL)${hasBetas ? ' · Betas OLS: ' + (Object.values(fundBetas)[0]?.n_obs||'—') + ' pregões' : ''} ·
+      Expo. reduzida = Long Biased e Multimercado com menor alocação líquida em crise ·
       <strong>Estimativa conservadora — subestima correlações em crise sistêmica.</strong>
     </div>
   </div>`;
