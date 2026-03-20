@@ -505,24 +505,23 @@
   .ir-table-wrap { width: 100%; }
   .ir-table {
     width: 100%; border-collapse: collapse;
-    font-size: 0.7rem; table-layout: auto;
+    font-size: 0.72rem; table-layout: auto;
   }
   .ir-table thead th {
-    font-family: 'Courier New', monospace; font-size: 0.52rem;
-    text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
-    padding: 0.4rem 0.5rem; text-align: right; border-bottom: 1px solid var(--border);
+    font-family: 'Courier New', monospace; font-size: 0.54rem;
+    text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
+    padding: 0.45rem 0.6rem; text-align: right; border-bottom: 1px solid var(--border);
     background: var(--bg); white-space: nowrap;
   }
-  .ir-table thead th:first-child { text-align: left; padding-left: 0; }
+  .ir-table thead th:first-child { text-align: left; }
   .ir-table tbody td {
-    padding: 0.45rem 0.5rem; text-align: right;
+    padding: 0.5rem 0.6rem; text-align: right;
     border-bottom: 1px solid var(--border);
-    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
     white-space: nowrap;
   }
   .ir-table tbody td:first-child {
-    text-align: left; font-family: inherit; font-size: 0.75rem;
-    padding-left: 0; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    text-align: left; font-family: inherit; font-size: 0.78rem;
   }
   .ir-table tbody tr:last-child td { border-bottom: none; }
   .ir-table tbody tr.ir-total-row td {
@@ -715,11 +714,10 @@
     .ir-header { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
     .ir-header-title { font-size: 0.65rem; }
     .ir-slider-wrap { width: 100%; }
-    .ir-table-wrap { width: 100%; }
-    .ir-table { font-size: 0.58rem; }
-    .ir-table thead th { padding: 0.3rem 0.3rem; font-size: 0.48rem; }
-    .ir-table tbody td { padding: 0.35rem 0.3rem; font-size: 0.6rem; }
-    .ir-table tbody td:first-child { max-width: 90px; }
+    .ir-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .ir-table { font-size: 0.62rem; min-width: 540px; }
+    .ir-table thead th { padding: 0.3rem 0.4rem; font-size: 0.5rem; }
+    .ir-table tbody td { padding: 0.35rem 0.4rem; font-size: 0.62rem; }
     .ir-legend { flex-wrap: wrap; gap: 6px; }
     .ir-cc-timeline { padding: 0.6rem 0.8rem; }
 
