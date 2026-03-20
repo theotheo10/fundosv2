@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-19T22:01:09.459667+00:00",
+  "generatedAt": "2026-03-20T00:15:19.919586+00:00",
   "anchorDate": "2026-03-17",
   "ibov": {
     "cagr12": 37.92264033724011,
@@ -121,6 +121,20 @@
       "alpha_ann": 11.27,
       "r2": 0.4491,
       "n_obs": 786
+    },
+    "15.334.585/0001-53": {
+      "beta_ibov": 0.9897,
+      "beta_sp500": -0.0225,
+      "alpha_ann": 11.16,
+      "r2": 0.7204,
+      "n_obs": 1303
+    },
+    "47.511.351/0001-20": {
+      "beta_ibov": 0.4281,
+      "beta_sp500": 0.3496,
+      "alpha_ann": 7.73,
+      "r2": 0.4631,
+      "n_obs": 857
     }
   },
   "funds": [
@@ -426,8 +440,8 @@
       "latestQuota": 2.35684793,
       "isDelayed": false,
       "delayDays": 0,
-      "maxQuota": 2.4255204,
-      "maxQuotaDate": "2026-03-02",
+      "maxQuota": 2.46065801,
+      "maxQuotaDate": "2026-02-02",
       "inceptionDate": "2022-12-16",
       "anchorDate": "2026-03-17",
       "anchor12m": "2025-03-17",
@@ -437,6 +451,48 @@
       "cagr36": 30.012359498688458,
       "cagr60": null,
       "cagrInception": 30.187590628161452,
+      "error": false
+    },
+    {
+      "name": "SPX Patriot FIF CIC Ações RL",
+      "cnpj": "15.334.585/0001-53",
+      "cnpjFmt": "15.334.585/0001-53",
+      "latestDate": "2026-03-17",
+      "latestQuota": 6.4244508,
+      "isDelayed": false,
+      "delayDays": 0,
+      "maxQuota": 7.0705703,
+      "maxQuotaDate": "2026-02-24",
+      "inceptionDate": "2013-01-02",
+      "anchorDate": "2026-03-17",
+      "anchor12m": "2025-03-17",
+      "anchor36m": "2023-03-17",
+      "anchor60m": "2021-03-17",
+      "cagr12": 48.656118860270055,
+      "cagr36": 26.934800357069342,
+      "cagr60": 13.884696220558922,
+      "cagrInception": 13.678695761710058,
+      "error": false
+    },
+    {
+      "name": "TB FIF Cotas FIA",
+      "cnpj": "47.511.351/0001-20",
+      "cnpjFmt": "47.511.351/0001-20",
+      "latestDate": "2026-03-17",
+      "latestQuota": 196.57245,
+      "isDelayed": false,
+      "delayDays": 0,
+      "maxQuota": 213.2054358,
+      "maxQuotaDate": "2026-01-06",
+      "inceptionDate": "2022-08-31",
+      "anchorDate": "2026-03-17",
+      "anchor12m": "2025-03-17",
+      "anchor36m": "2023-03-17",
+      "anchor60m": "2021-03-17",
+      "cagr12": 20.934357576224414,
+      "cagr36": 25.13173031908984,
+      "cagr60": null,
+      "cagrInception": 21.018276771468415,
       "error": false
     }
   ]
