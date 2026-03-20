@@ -38,6 +38,7 @@ FUNDS = [
     {"name": "Opportunity Global Equity Real Institucional FIC FIF Ações IE RL",        "cnpj": "46351969000108", "cnpjFmt": "46.351.969/0001-08"},
     {"name": "SPX Patriot FIF CIC Ações RL", "cnpj": "15334585000153", "cnpjFmt": "15.334.585/0001-53"},
     {"name": "TB FIF Cotas FIA", "cnpj": "47511351000120", "cnpjFmt": "47.511.351/0001-20"},
+    {"name": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO", "cnpj": "52116227000109", "cnpjFmt": "52.116.227/0001-09"},
 ]
 
 FIRST_MONTHLY_YEAR = 2021   # CVM: arquivos mensais a partir daqui
