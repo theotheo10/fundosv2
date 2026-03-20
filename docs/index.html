@@ -2454,34 +2454,48 @@ function cagrInception(f) {
 }
 
 // ── Retorno Alvo ──────────────────────────────────────────────────────────────
-// Metodologia: média ponderada dos CAGRs onde peso = duração do período (anos).
-// Racional: var(CAGR_T) ∝ 1/T  →  estimador de mínima variância usa pesos ∝ T.
 // calcTargetReturn — estimativa do retorno estrutural de um fundo
 //
 // Metodologia:
-//   1. Pesos √T em vez de T:  dobrar o período não dobra a informação —
-//      o erro amostral de um CAGR decresce com √T, então √T é o peso
-//      estatisticamente correto. O 60M (√5≈2.24) ainda domina, mas o
-//      12M (√1=1) não é tão marginalizado quanto nos pesos lineares.
+//   1. Pesos √T: erro amostral do CAGR decresce com √T; 60M domina, 12M
+//      contribui mas não determina.
 //
-//   2. Penalização por dispersão ciclical: se os CAGRs de diferentes
-//      períodos divergem muito (σ > ~5pp), o fundo está provavelmente
-//      num pico ou vale de ciclo. Aplicamos um desconto proporcional
-//      à dispersão, limitado a 15% do retorno estimado.
+//   2. Penalização por dispersão ciclical: σ entre CAGRs de diferentes
+//      períodos indica fundo em pico/vale de ciclo. Desconto limitado a
+//      15% do valor bruto.
 //
-//   3. Pull de reversão à média (25%): puxa o retorno ajustado em
-//      direção ao 60M (ou inception como fallback). Suaviza distorções
-//      de um 12M excepcionalmente bom ou ruim.
+//   3. Pull de reversão à média (25% → 60M / inception).
 //
-// Resultado: estimativa mais conservadora e robusta a pontos de ciclo,
-// mantendo transparência total via campo 'samples' no tooltip.
-function calcTargetReturn(f) {
+//   4. trackConfidence convexo — (age/5)²:
+//      Mais agressivo nos primeiros anos, onde 12M e 36M se sobrepõem
+//      quase completamente (amostras pseudoindependentes).
+//      Converge a 1 nos 5 anos igualmente ao linear.
+//
+//   5. Âncora de skill diferenciada por mandato:
+//      - Ações / Long Only / Long Biased: âncora = IBOV_inception + alphaAnn
+//      - Multimercado: âncora = CDI_inception + alphaVsCdi
+//      Em ambos os casos floor mínimo = CDI corrente.
+//
+//   6. Alpha relativo ao grupo contemporâneo (signal adicional):
+//      Corrige viés de ciclo — separa o alpha do fundo do retorno do
+//      mercado que existia independentemente dele no mesmo período.
+//      Peso proporcional a (1 − c), zero quando o fundo é maduro.
+//
+// Parâmetros:
+//   f              — objeto de fundo de data.json
+//   globalFunds    — array completo de fundos (para cálculo do grupo)
+//   globalCdiTarget — CDI corrente anualizado (número, ex: 14.75)
+function calcTargetReturn(f, globalFunds, globalCdiTarget) {
+  const meta = FUND_META[f.cnpjFmt] || {};
+  const tipo = (meta.tipo || '').toLowerCase();
+  const isMulti = tipo.includes('multimercado');
+
+  // ── 1. Amostras ponderadas por √T ─────────────────────────────────────────
   const samples = [];
   if (f.cagr12 != null) samples.push([1.0, f.cagr12]);
   if (f.cagr36 != null) samples.push([3.0, f.cagr36]);
   if (f.cagr60 != null) samples.push([5.0, f.cagr60]);
 
-  const meta = FUND_META[f.cnpjFmt] || {};
   if (meta.inception && f.latestDate) {
     const inceptionYears = (new Date(f.latestDate) - new Date(meta.inception + 'T00:00:00'))
                            / (365.25 * 86400000);
@@ -2493,49 +2507,127 @@ function calcTargetReturn(f) {
 
   if (samples.length === 0) return null;
 
-  // Pesos √T
   const sqrtWeights = samples.map(([T]) => Math.sqrt(T));
   const totalW      = sqrtWeights.reduce((a, b) => a + b, 0);
   const rawAvg      = samples.reduce((s, [, v], i) => s + sqrtWeights[i] * v, 0) / totalW;
 
-  // Dispersão ponderada dos CAGRs (desvio padrão entre períodos)
+  // ── 2. Penalidade de dispersão ciclical ───────────────────────────────────
   const variance = samples.reduce((s, [, v], i) =>
     s + sqrtWeights[i] * (v - rawAvg) ** 2, 0) / totalW;
   const sigma    = Math.sqrt(variance);
-
-  // Penalização: desconto quando os CAGRs de diferentes períodos divergem
-  // (indica fundo em pico/vale cíclico). Limitado a 15% do valor bruto.
   const penalty  = Math.min(sigma * 0.30, Math.abs(rawAvg) * 0.15);
   const adjusted = rawAvg >= 0 ? rawAvg - penalty : rawAvg + penalty;
 
-  // Pull de reversão à média: 25% em direção ao 60M (anchor de longo prazo)
-  const anchor60    = f.cagr60 ?? f.cagrInception ?? rawAvg;
-  const MEAN_REV    = 0.25;
-  const final       = adjusted * (1 - MEAN_REV) + anchor60 * MEAN_REV;
+  // ── 3. Pull de reversão à média (25% → 60M) ───────────────────────────────
+  const anchor60 = f.cagr60 ?? f.cagrInception ?? rawAvg;
+  const final    = adjusted * 0.75 + anchor60 * 0.25;
 
-  // Track-record confidence discount:
-  // Funds with short history have correlated CAGR samples (12M, 36M, inception
-  // all overlap heavily) — this overstates estimation confidence.
-  // Discount pulls the estimate toward a conservative floor (half the CDI proxy)
-  // proportionally to the lack of track record. Full confidence at 5+ years.
-  const inceptionYearsForDiscount = (meta.inception && f.latestDate)
+  // ── 4. trackConfidence convexo: c = (age/5)² ──────────────────────────────
+  const ageYears = (meta.inception && f.latestDate)
     ? (new Date(f.latestDate) - new Date(meta.inception + 'T00:00:00')) / (365.25 * 86400000)
     : 10;
-  const trackConfidence = Math.min(1, inceptionYearsForDiscount / 5);  // 0..1
-  const conservativeFloor = 8;  // approximate CDI proxy as floor
-  const discounted = final * trackConfidence + conservativeFloor * (1 - trackConfidence);
+  const c = Math.min(1, Math.pow(ageYears / 5, 2));
+
+  // ── 5. Âncora de skill por mandato ────────────────────────────────────────
+  const cdiFloor = globalCdiTarget ?? 14.75;  // floor absoluto = CDI corrente
+
+  let skillAnchor;
+  if (isMulti) {
+    const cdiInc     = f.cdiCagrInception ?? cdiFloor;
+    const alphaVsCdi = f.alphaVsCdi ?? 0;
+    skillAnchor = cdiInc + alphaVsCdi;
+  } else {
+    const ibovInc    = f.ibovCagrInception ?? 12.0;
+    // alphaVsIbov vem do data.json (cagrInception - ibovCagrInception no mesmo período).
+    // alphaAnn é o alpha diário vs IBOV anualizado do historyData — mais preciso mas
+    // nem sempre disponível no objeto f. Prefere alphaVsIbov; alphaAnn como fallback.
+    const alphaVsIbov = f.alphaVsIbov ?? f.alphaAnn ?? 0;
+    skillAnchor = ibovInc + alphaVsIbov;
+  }
+
+  // ── 6. Alpha relativo ao grupo contemporâneo ──────────────────────────────
+  let groupAdjustment = 0;
+  if (c < 1 && globalFunds && globalFunds.length > 0) {
+    const peers = globalFunds.filter(p => {
+      if (p.cnpjFmt === f.cnpjFmt) return false;
+      const pMeta = FUND_META[p.cnpjFmt] || {};
+      const pTipo = (pMeta.tipo || '').toLowerCase();
+      const pAge  = (pMeta.inception && p.latestDate)
+        ? (new Date(p.latestDate) - new Date(pMeta.inception + 'T00:00:00')) / (365.25 * 86400000)
+        : 0;
+      return pAge >= 5 && (isMulti ? pTipo.includes('multimercado') : !pTipo.includes('multimercado'));
+    });
+
+    if (peers.length > 0) {
+      const peerAlphas = peers.map(p => {
+        const pCi = cagrInception(p);
+        if (pCi == null) return null;
+        return isMulti
+          ? (p.alphaVsCdi  ?? pCi - (p.cdiCagrInception  ?? cdiFloor))
+          : (p.alphaVsIbov ?? p.alphaAnn ?? pCi - (p.ibovCagrInception ?? 12.0));
+      }).filter(v => v != null);
+
+      if (peerAlphas.length > 0) {
+        const groupAlpha = peerAlphas.reduce((a, b) => a + b, 0) / peerAlphas.length;
+        const fundAlpha  = isMulti
+          ? (f.alphaVsCdi  ?? 0)
+          : (f.alphaVsIbov ?? f.alphaAnn ?? 0);
+        groupAdjustment  = fundAlpha - groupAlpha;
+      }
+    }
+  }
+
+  // ── Blending final ────────────────────────────────────────────────────────
+  // c=1 (≥5 anos): sinal próprio puro.
+  // c→0 (novíssimo): âncora de skill (benchmarked, não CDI fixo).
+  const skillAnchorAdjusted = skillAnchor + groupAdjustment * (1 - c);
+  const blended  = final * c + skillAnchorAdjusted * (1 - c);
+
+  // Floor absoluto: CDI corrente.
+  const discounted = Math.max(blended, cdiFloor);
 
   return {
-    value:    discounted,
-    raw:      rawAvg,
-    sigma:    sigma,
-    penalty:  penalty,
-    trackYears: parseFloat(inceptionYearsForDiscount.toFixed(1)),
-    samples:  samples,   // tooltip: [[anos, cagr], ...]
+    value:       discounted,
+    raw:         rawAvg,
+    sigma:       sigma,
+    penalty:     penalty,
+    trackYears:  parseFloat(ageYears.toFixed(1)),
+    trackConf:   parseFloat(c.toFixed(2)),
+    skillAnchor: parseFloat(skillAnchorAdjusted.toFixed(2)),
+    groupAdj:    parseFloat(groupAdjustment.toFixed(2)),
+    isMulti:     isMulti,
+    samples:     samples,
   };
 }
 
-// Retorno alvo do portfólio: E[R_p] = Σ w_i · E[R_i]  (linear nos pesos)
+// Wrapper: injeta globalFunds e cdiTarget automaticamente em todos os call sites.
+// Todos os pontos do código que chamam calcTargetReturn(fData) continuam
+// funcionando sem alteração — o wrapper resolve os parâmetros novos.
+{
+  const _calcTargetReturnFull = calcTargetReturn;
+  calcTargetReturn = function(f, globalFunds, globalCdiTarget) {
+    // Se chamado com os três parâmetros explicitamente, usa direto.
+    if (globalFunds !== undefined) {
+      return _calcTargetReturnFull(f, globalFunds, globalCdiTarget);
+    }
+    // Call sites legados (apenas f): resolve globals do escopo de dados carregados.
+    const gFunds = typeof funds !== 'undefined' ? funds : [];
+    let gCdi = 14.75;
+    try {
+      if (typeof cdi !== 'undefined' && cdi) {
+        const cs = [
+          [1, cdi.cagr12],
+          [3, cdi.cagr36],
+          [5, cdi.cagr60],
+        ].filter(([, v]) => v != null);
+        if (cs.length) gCdi = cs.reduce((s, [T, v]) => s + T * v, 0) / cs.reduce((s, [T]) => s + T, 0);
+      }
+    } catch (_) {}
+    return _calcTargetReturnFull(f, gFunds, gCdi);
+  };
+}
+
+
 // As correlações não afetam o retorno esperado — apenas o risco.
 // Sharpe = (E[R_p] - CDI_alvo) / σ_p
 // CDI_alvo: média ponderada dos CAGRs do CDI pelos mesmos períodos (pesos 1, 3, 5)
