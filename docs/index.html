@@ -1871,20 +1871,12 @@
           <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Beta máx. vs. IBOV:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxBetaIbovSlider"
-            min="0" max="20" value="20" step="1"
-            oninput="onOptMaxBetaSlider('ibov')">
-          <span class="opt-maxw-val" id="optMaxBetaIbovVal">—</span>
-          <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5">(sem restrição)</span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Beta máx. vs. S&P:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxBetaSpSlider"
-            min="0" max="20" value="20" step="1"
-            oninput="onOptMaxBetaSlider('sp')">
-          <span class="opt-maxw-val" id="optMaxBetaSpVal">—</span>
-          <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5">(sem restrição)</span>
+          <span class="opt-constraint-label" data-tip="Rejeita qualquer portfólio cujo pior retorno simulado, nos 5 cenários históricos de crise (2008, 2013, 2015, 2020, 2022), seja inferior ao limite definido.&#10;Usa o mesmo modelo de fator do Mín. Stress: R = β_ibov × R_ibov + β_sp500 × R_sp500(BRL) × exposição em crise.&#10;Funciona com qualquer objetivo de otimização — filtra soluções que violam o piso de perda máxima.">Perda máx. em stress:</span>
+          <input type="range" class="opt-maxw-slider" id="optMaxStressLossSlider"
+            min="0" max="60" value="60" step="1"
+            oninput="onOptMaxStressLossSlider()">
+          <span class="opt-maxw-val" id="optMaxStressLossVal">—</span>
+          <span class="opt-constraint-label" id="optMaxStressLossNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-warn" id="optConstraintWarn">
           ⚠ restrições incompatíveis para este tamanho de carteira
@@ -4135,8 +4127,9 @@ let optN      = 3;
 let optObj    = 'sharpe';
 let optMaxW        = 1.0;   // 1.0 = no constraint (100%)
 let optMinW        = 0.01;  // 1% default minimum weight
-let optMaxBetaIbov = null;  // null = sem restrição
-let optMaxBetaSp   = null;  // null = sem restrição
+let optMaxBetaIbov      = null;  // null = sem restrição
+let optMaxBetaSp        = null;  // null = sem restrição
+let optMaxStressLoss    = null;  // null = sem restrição; valor em fração negativa (ex: -0.10 = -10%)
 
 function setOptN(n) {
   optN = n;
@@ -4176,34 +4169,25 @@ function onOptMaxBetaSlider(which) {
   const valId  = which === 'ibov' ? 'optMaxBetaIbovVal'    : 'optMaxBetaSpVal';
   const noteId = which === 'ibov' ? 'optMaxBetaIbovNote'   : 'optMaxBetaSpNote';
   const raw    = parseInt(document.getElementById(id).value);
-  const noLimit = raw === 20;
+  const noLimit = raw >= 20;
   if (which === 'ibov') optMaxBetaIbov = noLimit ? null : raw / 10;
   else                  optMaxBetaSp   = noLimit ? null : raw / 10;
-  document.getElementById(valId).textContent  = noLimit ? '—' : (raw / 10).toFixed(1);
-  document.getElementById(noteId).textContent = noLimit ? '(sem restrição)' : '';
+  document.getElementById(valId).textContent     = noLimit ? '—' : (raw / 10).toFixed(1);
+  document.getElementById(noteId).style.opacity  = noLimit ? '0.5' : '1';
+  document.getElementById(noteId).textContent    = noLimit ? '(sem restrição)' : '';
 }
 
-function calcPortfolioBeta(combo, weights, which) {
-  // Weighted average beta of the portfolio
-  let beta = 0;
-  combo.forEach((cnpj, i) => {
-    const b = fundBetas[cnpj];
-    if (!b) return;
-    beta += weights[i] * (which === 'ibov' ? (b.beta_ibov || 0) : (b.beta_sp500 || 0));
-  });
-  return beta;
-}
-
-function onOptMaxBetaSlider(which) {
-  const id     = which === 'ibov' ? 'optMaxBetaIbovSlider' : 'optMaxBetaSpSlider';
-  const valId  = which === 'ibov' ? 'optMaxBetaIbovVal'    : 'optMaxBetaSpVal';
-  const noteId = which === 'ibov' ? 'optMaxBetaIbovNote'   : 'optMaxBetaSpNote';
-  const raw    = parseInt(document.getElementById(id).value);
-  const noLimit = raw === 20;
-  if (which === 'ibov') optMaxBetaIbov = noLimit ? null : raw / 10;
-  else                  optMaxBetaSp   = noLimit ? null : raw / 10;
-  document.getElementById(valId).textContent  = noLimit ? '—' : (raw / 10).toFixed(1);
-  document.getElementById(noteId).textContent = noLimit ? '(sem restrição)' : '';
+function onOptMaxStressLossSlider() {
+  const slider  = document.getElementById('optMaxStressLossSlider');
+  const valEl   = document.getElementById('optMaxStressLossVal');
+  const noteEl  = document.getElementById('optMaxStressLossNote');
+  const raw     = parseInt(slider.value);  // 0–60: perda máxima permitida em %
+  const noLimit = raw >= 60;
+  // Armazenado como fração negativa: raw=10 → -0.10 (pior retorno permitido = -10%)
+  optMaxStressLoss = noLimit ? null : -(raw / 100);
+  valEl.textContent         = noLimit ? '—' : `-${raw}%`;
+  noteEl.style.opacity      = noLimit ? '0.5' : '1';
+  noteEl.textContent        = noLimit ? '(sem restrição)' : 'pior cenário';
 }
 
 function calcPortfolioBeta(combo, weights, which) {
@@ -4668,6 +4652,14 @@ function runOptimizer() {
         if (optMaxBetaSp !== null) {
           const bSp = calcPortfolioBeta(combo, w, 'sp');
           if (bSp > optMaxBetaSp + 1e-9) continue;
+        }
+
+        // Stress loss constraint: reject if worst scenario return < floor
+        // Uses the same factor model as the Mín. Stress objective.
+        // Applied to ALL objectives — acts as a hard floor on tail risk.
+        if (optMaxStressLoss !== null) {
+          const worstRet = worstStressReturn(combo, w);
+          if (worstRet < optMaxStressLoss - 1e-9) continue;
         }
 
         const isAdv = ['sortino','calmar','ir','stress'].includes(optObj);
