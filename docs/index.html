@@ -361,8 +361,6 @@
   .port-alloc-scroll {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-    /* fade right para indicar mais conteúdo */
-    background: linear-gradient(to right, transparent calc(100% - 32px), var(--surface) 100%);
   }
   .port-alloc-scroll::-webkit-scrollbar { height: 3px; }
   .port-alloc-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -725,9 +723,10 @@
     .mc-header { padding: 0.8rem 1rem; }
     .mc-body { padding: 0.8rem 1rem; }
     .mc-controls-grid { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-    .mc-ctrl label { font-size: 0.6rem; }
+    .mc-ctrl label { font-size: 0.58rem; line-height: 1.3; min-height: 2.2em; }
     .mc-ctrl input { font-size: 0.75rem; padding: 4px 6px; }
     .mc-stats { grid-template-columns: 1fr 1fr; gap: 0.4rem; }
+    .mc-stat-val { font-size: 1.4rem; }  /* larger for readability */
     .mc-stat { padding: 0.5rem 0.6rem; }
     .mc-stat-val { font-size: 1.2rem; }
     .mc-retire-controls { grid-template-columns: 1fr 1fr; }
@@ -742,7 +741,9 @@
     .comp-section { padding: 1rem; }
     .comp-header { flex-direction: column; gap: 0.7rem; align-items: flex-start; }
     .comp-layout { grid-template-columns: 1fr; }
-    .comp-col { border-right: none; border-bottom: 1px solid var(--border); }
+    .comp-col { border-right: none; border-bottom: 1px solid var(--border); min-width: 0; overflow: hidden; }
+    .comp-fund-row { flex-wrap: wrap; gap: 4px; }
+    .comp-fund-row select { min-width: 0; flex: 1; font-size: 0.65rem; }
     .comp-metric-grid { font-size: 0.62rem; gap: 4px 6px; }
     .comp-run-btn { width: 100%; }
 
@@ -753,6 +754,9 @@
     .chart-fund-toggles { gap: 4px; }
     .chart-fund-toggle { font-size: 0.55rem; padding: 2px 7px; }
     #chartCanvas { height: 260px !important; }
+    /* prevent whitespace below chart */
+    #tab-graficos { overflow: hidden; }
+    .chart-fund-toggles { max-height: 120px; overflow-y: auto; }
     #alphaBarCanvas { height: 320px !important; }
     #distCanvas { height: 180px !important; }
     #corrRollCanvas { height: 160px !important; }
@@ -762,13 +766,16 @@
     .analysis-card { padding: 1rem; }
     .analysis-card-title { font-size: 0.7rem; }
     #scatterCanvas { height: 260px !important; }
-    #efficientFrontierCanvas { height: 260px !important; }
+    #efficientFrontierCanvas { height: 260px !important; width: 100% !important; }
     #underwaterCanvas { height: 240px !important; min-height: 240px !important; }
     #rollingAlphaChart { height: 150px !important; }
+    #rollingAlphaWrap { display: block !important; min-height: 160px; }
+    #rollingAlphaWrap > div { height: 150px !important; }
     .heatmap-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     #advMetricsContainer { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .adv-metrics-table { min-width: 600px; font-size: 0.62rem; }
     .consistency-table { font-size: 0.62rem; }
+    .consistency-table td:first-child { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cons-bar-track { width: 60px; }
     #rollingAlphaStats > div { grid-template-columns: 1fr 1fr !important; }
   }
@@ -2131,7 +2138,7 @@
     <div class="analysis-card" style="grid-column:1/-1">
       <div class="analysis-card-title">Risco × Retorno</div>
       <div id="scatterLoading" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem">calculando…</div>
-      <div style="position:relative;height:320px;width:100%"><canvas id="scatterCanvas"></canvas></div>
+      <div style="position:relative;height:320px;width:100%;max-height:60vw"><canvas id="scatterCanvas"></canvas></div>
     </div>
 
     <!-- 2. Histórico de performance -->
@@ -2880,6 +2887,11 @@ function switchTab(name) {
     renderAlphaBarChart();
     renderDistChart();
     renderRollingCorrChart();
+    setTimeout(function() {
+      [normalizedChart, _alphaBarChart, _distChart, _corrRollChart].forEach(function(ch) {
+        if (ch) { ch.resize(); ch.update('none'); }
+      });
+    }, 200);
   } else if (name === 'analise' && historyData) {
     // Stagger heavy renders so browser can paint between each one
     renderScatter();
@@ -2889,7 +2901,10 @@ function switchTab(name) {
         renderConsistency();
         requestAnimationFrame(function() {
           renderStressTest();
-          setTimeout(initNewAnalysis, 150);
+          setTimeout(function() {
+            initNewAnalysis();
+            setTimeout(invalidateAnalysisCharts, 300);
+          }, 150);
         });
       });
     });
@@ -4742,9 +4757,14 @@ function renderNormalizedChart() {
           titleColor: '#aaa',
           bodyColor: '#e8e6e0',
           titleFont: { family: 'Courier New', size: 11 },
-          bodyFont:  { family: 'Courier New', size: 11 },
-          padding: 10,
+          bodyFont:  { family: 'Courier New', size: window.innerWidth < 700 ? 9 : 11 },
+          padding: window.innerWidth < 700 ? 6 : 10,
           itemSort: function(a, b) { return b.parsed.y - a.parsed.y; },
+          filter: function(item) {
+            // On mobile limit to top 8 items
+            if (window.innerWidth >= 700) return true;
+            return item.datasetIndex < 8;
+          },
           callbacks: {
             title: function(items) {
               if (!items.length) return '';
@@ -7941,6 +7961,17 @@ function initNewAnalysis() {
   renderAdvMetricsTable();
   initRollingAlphaSelect();
   renderEfficientFrontier();
+}
+
+// Mobile fix: Chart.js renders incorrectly inside display:none parents
+// Invalidate and resize all charts when analysis tab becomes visible
+function invalidateAnalysisCharts() {
+  setTimeout(function() {
+    if (_rollingChart) { _rollingChart.resize(); _rollingChart.update('none'); }
+    if (_effChart)     { _effChart.resize();     _effChart.update('none'); }
+    if (scatterChart)  { scatterChart.resize();  scatterChart.update('none'); }
+    if (uwChart)       { uwChart.resize();        uwChart.update('none'); }
+  }, 100);
 }
 
 
