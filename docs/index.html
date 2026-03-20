@@ -4372,6 +4372,7 @@ function runOptimizer() {
 
       let best = null;
       let nCombos = 0;
+      const stressCandidates = optObj === 'stress' ? [] : null;  // top-30 by sharpe for phase 2
 
       for (const combo of combinations(validCnpjs, k)) {
         nCombos++;
@@ -4440,7 +4441,6 @@ function runOptimizer() {
       }
 
       if (!best) {
-        // Diagnose why optimization failed
         let reason = '';
         if (optMaxW * k < 1.0 - 1e-6) {
           reason = `Impossível: ${k} fundos × máx ${(optMaxW*100).toFixed(0)}% = ${(optMaxW*k*100).toFixed(0)}% < 100%. Aumente o peso máximo ou o número de fundos.`;
@@ -4452,6 +4452,19 @@ function runOptimizer() {
         status.textContent = reason;
         btn.disabled = false;
         return;
+      }
+
+      // Phase 2 for stress: re-evaluate top-N candidates by worst stress scenario
+      // This avoids 43k × 5 stress calculations — only runs on top 30 by sharpe
+      if (optObj === 'stress' && stressCandidates && stressCandidates.length > 0) {
+        let bestStress = null;
+        for (const cand of stressCandidates) {
+          const ws = worstStressReturn(cand.cnpjs, cand.w);
+          if (!bestStress || ws > bestStress._worstStress) {
+            bestStress = { ...cand, _worstStress: ws };
+          }
+        }
+        if (bestStress) best = bestStress;
       }
 
       const objLabel = optObj === 'vol' ? `vol. ${best.vol.toFixed(1)}%` :
@@ -8216,19 +8229,20 @@ runOptimizer = function() {
         // Weight computation strategy by objective
         let w = null;
         if (optObj === 'sortino') {
-          // Analytical: w* = S⁻¹(μ−CDI) / norm
           w = maxSortinoWeights(combo, mus, cdiTarget, historyData);
-          if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);  // fallback
+          if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);
           if (!w) w = minVolWeights(cov);
         } else if (optObj === 'calmar') {
-          // Calmar has no closed-form weights; use Sharpe weights (minimizes DD heuristically)
-          // Then compare combos by Calmar of the resulting portfolio series
           w = maxSharpeWeights(combo, mus, cdiTarget, cov);
           if (!w) w = minVolWeights(cov);
         } else if (optObj === 'ir') {
-          // IR = (ret − IBOV) / TE ≡ Sharpe with rf=IBOV
           w = maxSharpeWeights(combo, mus, ibovProxy, cov);
           if (!w) w = minVolWeights(cov);
+        } else if (optObj === 'stress') {
+          // For stress: use min-variance weights (reduces exposure to volatile funds)
+          // Stress score computed after loop in phase 2
+          w = minVolWeights(cov);
+          if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);
         }
         if (!w) w = new Array(k).fill(1 / k);
 
@@ -8263,18 +8277,23 @@ runOptimizer = function() {
 
         if (!best) { best = p; continue; }
 
-        // For stress: compute worst scenario return for this portfolio
-        const _ws = optObj === 'stress' ? worstStressReturn(combo, w) : null;
+        // For stress: defer expensive calculation — collect top candidates by sharpe
+        const _ws = null;  // computed in phase 2 after main loop
 
         const better =
           optObj === 'sortino' ? p.sortino > best.sortino :
           optObj === 'calmar'  ? p.calmar  > best.calmar  :
-          optObj === 'stress'  ? _ws > (best._worstStress ?? -Infinity) :
+          optObj === 'stress'  ? p.sharpe  > (best?.sharpe ?? -Infinity) :
           /* ir */               p.ir      > best.ir;
 
         if (better) {
           best = p;
-          if (optObj === 'stress' && _ws !== null) best._worstStress = _ws;
+        }
+        // Collect top-30 candidates for stress phase 2
+        if (stressCandidates !== null) {
+          stressCandidates.push({ ...p, cnpjs: combo, w });
+          stressCandidates.sort((a, b) => b.sharpe - a.sharpe);
+          if (stressCandidates.length > 30) stressCandidates.pop();
         }
       }
 
