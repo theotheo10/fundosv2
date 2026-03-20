@@ -177,7 +177,7 @@
   .legend-src { font-size: 0.62rem; opacity: 0.6; }
 
   /* ── Tabs ── */
-  .tabs { display: flex; gap: 0; margin-bottom: 1.8rem; border-bottom: 1px solid var(--border); }
+  .tabs { display: flex; gap: 0; margin-bottom: 0.7rem; border-bottom: 1px solid var(--border); }
   .tab-btn {
     font-family: 'Courier New', monospace; font-size: 0.72rem;
     text-transform: uppercase; letter-spacing: 0.1em;
@@ -439,10 +439,10 @@
     background: var(--text); color: var(--bg);
     font-family: 'Courier New', monospace; font-size: 0.58rem;
     padding: 8px 11px; border-radius: 5px; white-space: pre-line;
-    width: 280px;
+    width: 320px;
     opacity: 0; pointer-events: none;
     transform: translateY(4px); transition: opacity 0.15s ease, transform 0.15s ease;
-    z-index: 9999; line-height: 1.8;
+    z-index: 9999; line-height: 1.7;
     box-shadow: 0 4px 16px rgba(0,0,0,0.25);
   }
 
@@ -502,25 +502,26 @@
     font-family: 'Courier New', monospace; font-size: 0.7rem;
     color: var(--muted); padding: 1.5rem; text-align: center;
   }
-  .ir-table-wrap { overflow-x: auto; }
+  .ir-table-wrap { width: 100%; }
   .ir-table {
     width: 100%; border-collapse: collapse;
-    font-size: 0.76rem; min-width: 680px;
+    font-size: 0.72rem; table-layout: auto;
   }
   .ir-table thead th {
-    font-family: 'Courier New', monospace; font-size: 0.56rem;
-    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
-    padding: 0.5rem 0.8rem; text-align: right; border-bottom: 1px solid var(--border);
+    font-family: 'Courier New', monospace; font-size: 0.54rem;
+    text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted);
+    padding: 0.45rem 0.6rem; text-align: right; border-bottom: 1px solid var(--border);
     background: var(--bg); white-space: nowrap;
   }
   .ir-table thead th:first-child { text-align: left; }
   .ir-table tbody td {
-    padding: 0.55rem 0.8rem; text-align: right;
+    padding: 0.5rem 0.6rem; text-align: right;
     border-bottom: 1px solid var(--border);
-    font-family: 'Courier New', monospace; font-size: 0.75rem;
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
+    white-space: nowrap;
   }
   .ir-table tbody td:first-child {
-    text-align: left; font-family: inherit; font-size: 0.77rem;
+    text-align: left; font-family: inherit; font-size: 0.78rem;
   }
   .ir-table tbody tr:last-child td { border-bottom: none; }
   .ir-table tbody tr.ir-total-row td {
@@ -714,7 +715,9 @@
     .ir-header-title { font-size: 0.65rem; }
     .ir-slider-wrap { width: 100%; }
     .ir-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .ir-table { font-size: 0.65rem; min-width: 580px; }
+    .ir-table { font-size: 0.62rem; min-width: 540px; }
+    .ir-table thead th { padding: 0.3rem 0.4rem; font-size: 0.5rem; }
+    .ir-table tbody td { padding: 0.35rem 0.4rem; font-size: 0.62rem; }
     .ir-legend { flex-wrap: wrap; gap: 6px; }
     .ir-cc-timeline { padding: 0.6rem 0.8rem; }
 
@@ -774,9 +777,9 @@
     .heatmap-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     #advMetricsContainer { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .adv-metrics-table { min-width: 600px; font-size: 0.62rem; }
-    .consistency-table { font-size: 0.62rem; }
-    .consistency-table td:first-child { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cons-bar-track { width: 60px; }
+    .consistency-table { font-size: 0.60rem; }
+    .consistency-table td:first-child { max-width: 110px; font-size: 0.72rem; }
+    .cons-bar-track { width: 44px; }
     #rollingAlphaStats > div { grid-template-columns: 1fr 1fr !important; }
   }
 
@@ -820,7 +823,7 @@
   }
   /* Filter panel */
   .filter-panel {
-    padding:0.65rem 0.9rem;
+    padding:0.5rem 0.9rem 0.4rem;
     background:var(--surface);
     border:0.5px solid var(--border);
     border-radius:6px;
@@ -828,7 +831,7 @@
     animation: fadeIn 0.12s ease;
   }
   @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
-  .filter-bar { display:flex; flex-direction:column; gap:6px; margin-bottom:0.6rem; }
+  .filter-bar { display:flex; flex-direction:column; gap:5px; margin-bottom:0.4rem; }
   .filter-row { display:flex; gap:5px; align-items:center; flex-wrap:nowrap; }
   .filter-divider { width:1px; height:14px; background:var(--border); margin:0 4px; flex-shrink:0; }
   .filter-chip {
@@ -842,7 +845,7 @@
   .filter-label { font-family:'Courier New',monospace; font-size:0.6rem; color:var(--muted); }
 
   /* ── Custom period selector ── */
-  .period-bar { display:flex; gap:10px; align-items:center; margin-bottom:1rem; flex-wrap:wrap; }
+  .period-bar { display:flex; gap:8px; align-items:center; margin-bottom:0; flex-wrap:wrap; }
   .period-bar label { font-family:'Courier New',monospace; font-size:0.65rem; color:var(--muted); }
   .period-bar input[type=date] {
     font-family:'Courier New',monospace; font-size:0.72rem; padding:3px 8px;
@@ -911,27 +914,30 @@
   /* underwater / drawdown */
   #underwaterCanvas { width:100%; height:100%; display:block; }
   /* consistency */
-  .consistency-table { width:100%; border-collapse:collapse; }
+  .consistency-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .consistency-table { width:100%; border-collapse:collapse; min-width:380px; }
   .consistency-table th {
     font-family:'Courier New',monospace; font-size:0.57rem;
     text-transform:uppercase; letter-spacing:0.09em; color:var(--muted);
-    padding:4px 10px 4px 0; text-align:right; border-bottom:1px solid var(--border);
+    padding:4px 8px 4px 0; text-align:right; border-bottom:1px solid var(--border);
+    white-space:nowrap;
   }
-  .consistency-table th:first-child { text-align:left; padding-left:0; width:40%; }
-  .consistency-table th.th-bar { width:30%; }
+  .consistency-table th:first-child { text-align:left; padding-left:0; }
+  .consistency-table th.th-bar { width:auto; }
   .consistency-table td {
-    padding:6px 10px 6px 0; border-bottom:0.5px solid var(--border);
-    font-family:'Courier New',monospace; font-size:0.7rem; text-align:right;
-    vertical-align:middle;
+    padding:5px 8px 5px 0; border-bottom:0.5px solid var(--border);
+    font-family:'Courier New',monospace; font-size:0.68rem; text-align:right;
+    vertical-align:middle; white-space:nowrap;
   }
   .consistency-table td:first-child {
     text-align:left; padding-left:0;
-    font-family:Georgia,serif; font-size:0.8rem; color:var(--text);
+    font-family:Georgia,serif; font-size:0.78rem; color:var(--text);
+    max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .cons-bar-cell { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
-  .cons-bar-track { width:80px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; }
+  .cons-bar-cell { display:flex; align-items:center; gap:6px; justify-content:flex-end; }
+  .cons-bar-track { width:60px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; }
   .cons-bar-fill  { height:100%; border-radius:2px; background:var(--green); }
-  .cons-pct { min-width:28px; text-align:right; }
+  .cons-pct { min-width:26px; text-align:right; }
   /* stress test */
   .stress-scenario { margin-bottom:0.8rem; padding:0.7rem 0.9rem; border:0.5px solid var(--border); border-radius:7px; }
   .stress-scenario-title { font-family:'Courier New',monospace; font-size:0.62rem; color:var(--muted); margin-bottom:0.4rem; }
@@ -1825,6 +1831,7 @@
             </div>
           </div>
           <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
+          <button class="opt-run" id="optCancelBtn" onclick="cancelOptimizer()" style="display:none;background:var(--border);color:var(--text);margin-left:6px">Cancelar</button>
         </div>
         <div class="opt-beta-row">
           <input type="checkbox" id="optBetaAdj" onchange="updateBetaAdjNote()">
@@ -1846,6 +1853,22 @@
             oninput="onOptMinWSlider()">
           <span class="opt-minw-val" id="optMinWVal">1.0%</span>
           <span class="opt-constraint-label" id="optMinWNote" style="opacity:0.5">(padrão)</span>
+        </div>
+        <div class="opt-constraint-row">
+          <span class="opt-constraint-label">Beta máx. vs. IBOV:</span>
+          <input type="range" class="opt-maxw-slider" id="optMaxBetaIbovSlider"
+            min="0" max="20" value="20" step="1"
+            oninput="onOptMaxBetaSlider('ibov')">
+          <span class="opt-maxw-val" id="optMaxBetaIbovVal">—</span>
+          <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5">(sem restrição)</span>
+        </div>
+        <div class="opt-constraint-row">
+          <span class="opt-constraint-label">Beta máx. vs. S&P:</span>
+          <input type="range" class="opt-maxw-slider" id="optMaxBetaSpSlider"
+            min="0" max="20" value="20" step="1"
+            oninput="onOptMaxBetaSlider('sp')">
+          <span class="opt-maxw-val" id="optMaxBetaSpVal">—</span>
+          <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-warn" id="optConstraintWarn">
           ⚠ restrições incompatíveis para este tamanho de carteira
@@ -2286,10 +2309,13 @@ const FUND_META = {
   "14.438.229/0001-17": { nome:"Charles River",      short:"Charles",  inception:"2011-11-07", initialQuota:1.0000, maxQuota:13.4070715,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"C6",       obs:"" },
   "17.397.315/0001-17": { nome:"SPX Falcon",         short:"Falcon",   inception:"2012-09-17", initialQuota:1.0000, maxQuota:7.3045380,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"Itaú",     obs:"" },
   "46.351.969/0001-08": { nome:"Opportunity Global", short:"Opportunity", inception:"2022-12-16", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
-  "15.334.585/0001-53": { nome:"SPX Patriot FIF CIC Ações RL", short:"Patriot", inception:"2013-01-02", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
-  "47.511.351/0001-20": { nome:"TB FIF Cotas FIA", short:"TB", inception:"2022-08-31", initialQuota:100.000000, maxQuota:213.205436, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
+  "15.334.585/0001-53": { nome:"SPX Patriot", short:"Patriot", inception:"2013-01-02", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
+  "47.511.351/0001-20": { nome:"TB", short:"TB", inception:"2022-08-31", initialQuota:100.000000, maxQuota:213.205436, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
   "52.116.227/0001-09": { nome:"Itaú Janeiro Multimercado", short:"Janeiro", inception:"2023-09-29", initialQuota:1.000000, maxQuota:1.000000, tipo:"Multimercado", trib:"TR", expo:"Majoritariamente Brasil", banco:"Itaú", obs:"" },
   "47.612.105/0001-65": { nome:"Ace Capital Multicenários", short:"Ace", inception:"2022-11-30", initialQuota:1.0, maxQuota:2.17970569, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG", obs:"" },
+  "29.726.133/0001-21": { nome:"Kapitalo K10", short:"K10", inception:"2019-01-02", initialQuota:1.014466, maxQuota:2.67793433718, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG", obs:"" },
+  "35.828.684/0001-07": { nome:"Genoa Radar", short:"Radar", inception:"2021-01-04", initialQuota:1.03212536, maxQuota:2.03416388, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG / Itaú", obs:"" },
+  "16.876.874/0001-47": { nome:"Witpar", short:"Witpar", inception:"2019-01-02", initialQuota:2.4711086, maxQuota:7.4575602696, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva" };
 
@@ -2684,6 +2710,9 @@ const FUND_EXPOSURE = {
   "47.511.351/0001-20": { net_normal:1.00, net_crisis:0.95, primary:"sp500"  }, // TB
   "52.116.227/0001-09": { net_normal:0.30, net_crisis:0.10, primary:"ibov"   }, // Itaú Janeiro
   "47.612.105/0001-65": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Ace Capital Multicenários
+  "29.726.133/0001-21": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Kapitalo K10
+  "35.828.684/0001-07": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Genoa Radar
+  "16.876.874/0001-47": { net_normal:1.0, net_crisis:0.95, primary:"ibov" }, // Witpar
 };
 
 // Historical stress scenarios
@@ -3000,7 +3029,13 @@ async function loadHistory() {
         renderHeatmap();
         requestAnimationFrame(function() {
           renderConsistency();
-          requestAnimationFrame(function() { renderStressTest(); });
+          requestAnimationFrame(function() {
+            renderStressTest();
+            setTimeout(function() {
+              initNewAnalysis();
+              setTimeout(invalidateAnalysisCharts, 300);
+            }, 150);
+          });
         });
       });
     }
@@ -3526,7 +3561,7 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
           .map(([T, val]) => {
             const label = T < 1.5 ? '12M' : T < 3.5 ? '36M' : T < 5.5 ? '60M' : `${T.toFixed(0)}A`;
             return `${label}: ${val >= 0 ? '+' : ''}${val.toFixed(1)}%`;
-          }).join('  ·  ');
+          }).join('\n');
         const dispNote = target.sigma > 2
           ? `\nDisp. entre períodos: ${target.sigma.toFixed(1)}pp → ajuste −${target.penalty.toFixed(1)}pp`
           : '';
@@ -3839,13 +3874,13 @@ function renderIR() {
   let html = `<div class="ir-table-wrap"><table class="ir-table">
     <thead><tr>
       <th>Fundo</th>
-      <th data-tip="Retorno esperado anualizado com base no histórico. Bruto de IR.">Retorno alvo*</th>
+      <th data-tip="Retorno esperado anualizado com base no histórico. Bruto de IR.">Ret. alvo*</th>
       <th>Aporte</th>
       <th data-tip="Valor projetado no resgate antes de qualquer tributação.">Valor bruto</th>
-      <th data-tip="Total de IR pago — inclui come-cotas semestrais (TR) e IR no resgate.">IR total pago</th>
-      <th data-tip="Alíquota efetiva real. RV = 15%. TR = mais, pois o come-cotas retira capital que deixou de crescer.">Custo real do IR</th>
-      <th data-tip="Valor líquido após todos os impostos.">O que fica com você</th>
-      <th data-tip="CAGR líquido: taxa de crescimento anual após todos os impostos.">Retorno a.a. líquido</th>
+      <th data-tip="Total de IR pago — inclui come-cotas semestrais (TR) e IR no resgate.">IR total</th>
+      <th data-tip="Alíquota efetiva real. RV = 15%. TR = mais, pois o come-cotas retira capital que deixou de crescer.">Custo IR</th>
+      <th data-tip="Valor líquido após todos os impostos.">Líquido</th>
+      <th data-tip="CAGR líquido: taxa de crescimento anual após todos os impostos.">CAGR líq.</th>
     </tr></thead><tbody>`;
 
   for (const row of rows) {
@@ -4082,8 +4117,10 @@ document.addEventListener('mouseout', e => {
 
 let optN      = 3;
 let optObj    = 'sharpe';
-let optMaxW   = 1.0;   // 1.0 = no constraint (100%)
-let optMinW   = 0.01;  // 1% default minimum weight
+let optMaxW        = 1.0;   // 1.0 = no constraint (100%)
+let optMinW        = 0.01;  // 1% default minimum weight
+let optMaxBetaIbov = null;  // null = sem restrição
+let optMaxBetaSp   = null;  // null = sem restrição
 
 function setOptN(n) {
   optN = n;
@@ -4116,6 +4153,29 @@ function onOptMinWSlider() {
   document.getElementById('optMinWVal').textContent = pct.toFixed(1) + '%';
   document.getElementById('optMinWNote').textContent = pct === 1.0 ? '(padrão)' : '';
   validateOptConstraints();
+}
+
+function onOptMaxBetaSlider(which) {
+  const id     = which === 'ibov' ? 'optMaxBetaIbovSlider' : 'optMaxBetaSpSlider';
+  const valId  = which === 'ibov' ? 'optMaxBetaIbovVal'    : 'optMaxBetaSpVal';
+  const noteId = which === 'ibov' ? 'optMaxBetaIbovNote'   : 'optMaxBetaSpNote';
+  const raw    = parseInt(document.getElementById(id).value);
+  const noLimit = raw === 20;
+  if (which === 'ibov') optMaxBetaIbov = noLimit ? null : raw / 10;
+  else                  optMaxBetaSp   = noLimit ? null : raw / 10;
+  document.getElementById(valId).textContent  = noLimit ? '—' : (raw / 10).toFixed(1);
+  document.getElementById(noteId).textContent = noLimit ? '(sem restrição)' : '';
+}
+
+function calcPortfolioBeta(combo, weights, which) {
+  // Weighted average beta of the portfolio
+  let beta = 0;
+  combo.forEach((cnpj, i) => {
+    const b = fundBetas[cnpj];
+    if (!b) return;
+    beta += weights[i] * (which === 'ibov' ? (b.beta_ibov || 0) : (b.beta_sp500 || 0));
+  });
+  return beta;
 }
 
 function validateOptConstraints() {
@@ -4373,152 +4433,222 @@ function applyOptimizedPortfolio(cnpjs, weights) {
 }
 
 // ── Entrada principal ─────────────────────────────────────────────────────────
+// ── Shared optimizer state (used by chunked runner) ──────────────────────
+let _optCancelled = false;
+
+function cancelOptimizer() {
+  _optCancelled = true;
+  document.getElementById('optCancelBtn').style.display = 'none';
+  document.getElementById('optRunBtn').disabled = false;
+  document.getElementById('optStatus').textContent = 'Cancelado.';
+}
+
+function _applyWeightConstraints(w, k) {
+  const feasible = (optMinW * k <= 1.0 + 1e-9)
+                && (optMaxW * k >= 1.0 - 1e-9)
+                && (optMinW  <= optMaxW + 1e-9);
+  if (!feasible) return null;
+  if (optMaxW >= 1.0 && optMinW <= 1e-9) return w;
+  for (let iter = 0; iter < 50; iter++) {
+    const slack = (1.0 - w.reduce((a,b) => a+b, 0)) / k;
+    w = w.map(x => x + slack);
+    const prev = [...w];
+    w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+    if (w.every((x, i) => Math.abs(x - prev[i]) < 1e-10)) break;
+  }
+  for (let iter = 0; iter < 50; iter++) {
+    const diff = 1.0 - w.reduce((a, b) => a + b, 0);
+    if (Math.abs(diff) < 1e-12) break;
+    const freeIdx = diff > 0
+      ? w.map((x, i) => x < optMaxW - 1e-12 ? i : -1).filter(i => i >= 0)
+      : w.map((x, i) => x > optMinW + 1e-12 ? i : -1).filter(i => i >= 0);
+    if (freeIdx.length === 0) break;
+    const per = diff / freeIdx.length;
+    freeIdx.forEach(i => { w[i] += per; });
+    w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+  }
+  return w;
+}
+
+function _computeWeights(combo, mus, cov, cdiTarget, ibovProxy) {
+  let w = null;
+  if (optObj === 'vol') {
+    w = minVolWeights(cov);
+  } else if (optObj === 'sharpe') {
+    w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+    if (!w) w = minVolWeights(cov);
+  } else if (optObj === 'return') {
+    w = maxReturnWeights(mus);
+  } else if (optObj === 'sortino') {
+    w = maxSortinoWeights(combo, mus, cdiTarget, historyData);
+    if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+    if (!w) w = minVolWeights(cov);
+  } else if (optObj === 'calmar' || optObj === 'stress') {
+    w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+    if (!w) w = minVolWeights(cov);
+  } else if (optObj === 'ir') {
+    w = maxSharpeWeights(combo, mus, ibovProxy, cov);
+    if (!w) w = minVolWeights(cov);
+  }
+  return w || new Array(combo.length).fill(1 / combo.length);
+}
+
+function _isBetter(p, best) {
+  if (!best) return true;
+  if (optObj === 'vol')     return p.vol    < best.vol;
+  if (optObj === 'sharpe')  return p.sharpe > best.sharpe;
+  if (optObj === 'return')  return p.ret    > best.ret;
+  if (optObj === 'sortino') return (p.sortino ?? -Infinity) > (best.sortino ?? -Infinity);
+  if (optObj === 'calmar')  return (p.calmar  ?? -Infinity) > (best.calmar  ?? -Infinity);
+  if (optObj === 'ir')      return (p.ir      ?? -Infinity) > (best.ir      ?? -Infinity);
+  if (optObj === 'stress')  return (p.calmar  ?? -Infinity) > (best.calmar  ?? -Infinity);
+  return false;
+}
+
+function _finishOptimizer(best, nCombos, stressCandidates, btn, status) {
+  if (!best) {
+    const k = optN;
+    let reason = '';
+    if (optMaxW * k < 1.0 - 1e-6)
+      reason = `Impossível: ${k} fundos × máx ${(optMaxW*100).toFixed(0)}% = ${(optMaxW*k*100).toFixed(0)}% < 100%.`;
+    else if (optMinW * k > 1.0 + 1e-6)
+      reason = `Impossível: ${k} fundos × mín ${(optMinW*100).toFixed(0)}% = ${(optMinW*k*100).toFixed(0)}% > 100%.`;
+    else
+      reason = 'Não foi possível encontrar portfólio válido com as restrições atuais.';
+    status.textContent = reason;
+    btn.disabled = false;
+    document.getElementById('optCancelBtn').style.display = 'none';
+    return;
+  }
+
+  // Phase 2 for stress
+  if (optObj === 'stress' && stressCandidates && stressCandidates.length > 0) {
+    let bestStress = null;
+    for (const cand of stressCandidates) {
+      const ws = worstStressReturn(cand.cnpjs, cand.w);
+      if (!bestStress || ws > bestStress._worstStress)
+        bestStress = { ...cand, _worstStress: ws };
+    }
+    if (bestStress) best = bestStress;
+  }
+
+  const metricLabel =
+    optObj === 'vol'     ? `vol. ${best.vol.toFixed(1)}%` :
+    optObj === 'sharpe'  ? `Sharpe ${best.sharpe.toFixed(2)}` :
+    optObj === 'return'  ? `retorno ${best.ret.toFixed(1)}%` :
+    optObj === 'sortino' ? `Sortino ${(best.sortino??0).toFixed(2)}` :
+    optObj === 'calmar'  ? `Calmar ${(best.calmar??0).toFixed(2)}` :
+    optObj === 'ir'      ? `IR ${(best.ir??0).toFixed(2)}` :
+    /* stress */           `Stress (Calmar ${(best.calmar??0).toFixed(2)})`;
+
+  status.textContent =
+    `${nCombos} combinações · ${metricLabel} · ` +
+    best.cnpjs.map((c, i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
+
+  applyOptimizedPortfolio(best.cnpjs, best.w);
+  btn.disabled = false;
+  document.getElementById('optCancelBtn').style.display = 'none';
+}
+
 function runOptimizer() {
   if (!historyData) return;
 
   const btn    = document.getElementById('optRunBtn');
   const status = document.getElementById('optStatus');
+  const cancelBtn = document.getElementById('optCancelBtn');
+
+  _optCancelled = false;
   btn.disabled = true;
+  cancelBtn.style.display = '';
   status.textContent = 'Calculando…';
 
-  // Defer para não bloquear o render
-  setTimeout(() => {
+  const allCnpjs   = Object.keys(historyData.funds);
+  const k          = optN;
+  const ibovProxy  = (ibov && ibov.cagr36) || 20;
+
+  // Build muMap
+  const muMap = {};
+  for (const cnpj of allCnpjs) {
+    const fData = funds.find(f => f.cnpjFmt === cnpj);
+    const t = fData ? calcTargetReturn(fData) : null;
+    muMap[cnpj] = t ? t.value : null;
+  }
+
+  // CDI target
+  let cdiTarget = 10;
+  if (cdi) {
+    const s = [];
+    if (cdi.cagr12 != null) s.push([1, cdi.cagr12]);
+    if (cdi.cagr36 != null) s.push([3, cdi.cagr36]);
+    if (cdi.cagr60 != null) s.push([5, cdi.cagr60]);
+    if (s.length) cdiTarget = s.reduce((a,[T,v]) => a+T*v, 0) / s.reduce((a,[T]) => a+T, 0);
+  }
+
+  const validCnpjs = allCnpjs.filter(c => muMap[c] != null);
+
+  // Pre-materialise all combos to allow chunking
+  const allCombos = [...combinations(validCnpjs, k)];
+  const total     = allCombos.length;
+  const CHUNK     = 150;
+
+  let best            = null;
+  let nCombos         = 0;
+  let idx             = 0;
+  const stressCandidates = optObj === 'stress' ? [] : null;
+
+  function processChunk() {
+    if (_optCancelled) return;
+    const end = Math.min(idx + CHUNK, total);
     try {
-      const allCnpjs = Object.keys(historyData.funds);
-      const k        = optN;
-
-      // Retornos alvo por fundo
-      const muMap = {};
-      for (const cnpj of allCnpjs) {
-        const fData = funds.find(f => f.cnpjFmt === cnpj);
-        const t     = fData ? calcTargetReturn(fData) : null;
-        muMap[cnpj] = t ? t.value : null;
-      }
-
-      // CDI alvo
-      let cdiTarget = 10;  // fallback
-      if (cdi) {
-        const s = [];
-        if (cdi.cagr12 != null) s.push([1, cdi.cagr12]);
-        if (cdi.cagr36 != null) s.push([3, cdi.cagr36]);
-        if (cdi.cagr60 != null) s.push([5, cdi.cagr60]);
-        if (s.length) cdiTarget = s.reduce((a,[T,v]) => a + T*v, 0) / s.reduce((a,[T]) => a+T, 0);
-      }
-
-      // Filtra fundos com dados completos
-      const validCnpjs = allCnpjs.filter(c => muMap[c] != null);
-
-      let best = null;
-      let nCombos = 0;
-      const stressCandidates = optObj === 'stress' ? [] : null;  // top-30 by sharpe for phase 2
-
-      for (const combo of combinations(validCnpjs, k)) {
+      for (; idx < end; idx++) {
+        const combo = allCombos[idx];
         nCombos++;
         const mus = combo.map(c => muMap[c]);
         const cov = covMatrix(combo, historyData);
+        let w = _computeWeights(combo, mus, cov, cdiTarget, ibovProxy);
+        w = _applyWeightConstraints(w, k);
+        if (!w) continue;
 
-        let w = null;
-        if (optObj === 'vol') {
-          w = minVolWeights(cov);
-        } else if (optObj === 'sharpe') {
-          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
-          if (!w) w = minVolWeights(cov);  // fallback
-        } else {
-          // Máx. retorno: pesos proporcionais ao excesso de retorno alvo.
-          // NÃO usa maxSharpeWeights aqui — o portfólio tangente maximiza
-          // Sharpe, não retorno. Usar Sharpe para selecionar pesos em modo
-          // "máx. retorno" concentra demais em ativos de alto Sharpe e
-          // produz resultados inconsistentes entre diferentes valores de k.
-          w = maxReturnWeights(mus);
+        // Beta constraints: reject portfolio if weighted beta exceeds user limit
+        if (optMaxBetaIbov !== null) {
+          const bIbov = calcPortfolioBeta(combo, w, 'ibov');
+          if (bIbov > optMaxBetaIbov + 1e-9) continue;
         }
-        if (!w) w = new Array(k).fill(1 / k);  // fallback uniforme
-
-        // Enforce min/max weight constraints
-        // Feasibility: minW*k ≤ 1, maxW*k ≥ 1, minW ≤ maxW
-        const feasible = (optMinW * k <= 1.0 + 1e-9)
-                      && (optMaxW * k >= 1.0 - 1e-9)
-                      && (optMinW  <= optMaxW + 1e-9);
-        if (!feasible) { continue; }  // skip infeasible combination
-
-        if (optMaxW < 1.0 || optMinW > 1e-9) {
-          // Alternating projections onto {sum=1} and box [minW, maxW]
-          // Bug-free version: never renorm after clip (that can violate maxW)
-          for (let iter = 0; iter < 50; iter++) {
-            // Project onto sum=1: add uniform slack
-            const slack = (1.0 - w.reduce((a,b) => a+b, 0)) / k;
-            w = w.map(x => x + slack);
-            // Project onto box
-            const prev = [...w];
-            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
-            if (w.every((x, i) => Math.abs(x - prev[i]) < 1e-10)) break;
-          }
-          // Final redistribution to guarantee sum=1 while respecting bounds
-          for (let iter = 0; iter < 50; iter++) {
-            const diff = 1.0 - w.reduce((a, b) => a + b, 0);
-            if (Math.abs(diff) < 1e-12) break;
-            const freeIdx = diff > 0
-              ? w.map((x, i) => x < optMaxW - 1e-12 ? i : -1).filter(i => i >= 0)
-              : w.map((x, i) => x > optMinW + 1e-12 ? i : -1).filter(i => i >= 0);
-            if (freeIdx.length === 0) break;
-            const per = diff / freeIdx.length;
-            freeIdx.forEach(i => { w[i] += per; });
-            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
-          }
+        if (optMaxBetaSp !== null) {
+          const bSp = calcPortfolioBeta(combo, w, 'sp');
+          if (bSp > optMaxBetaSp + 1e-9) continue;
         }
 
-        const p = evalPortfolio(w, combo, mus, cdiTarget, cov);
+        const isAdv = ['sortino','calmar','ir','stress'].includes(optObj);
+        const p = isAdv
+          ? evalPortfolioAdvanced(w, combo, mus, cdiTarget, ibovProxy, cov, historyData)
+          : evalPortfolio(w, combo, mus, cdiTarget, cov);
 
-        if (!best) { best = p; continue; }
+        if (_isBetter(p, best)) best = p;
 
-        const better =
-          optObj === 'vol'    ? p.vol    < best.vol    :
-          optObj === 'sharpe' ? p.sharpe > best.sharpe :
-          /* return */          p.ret    > best.ret;
-
-        if (better) best = p;
+        if (stressCandidates !== null) {
+          stressCandidates.push({ ...p, cnpjs: combo, w });
+          stressCandidates.sort((a, b) => (b.calmar ?? -Infinity) - (a.calmar ?? -Infinity));
+          if (stressCandidates.length > 30) stressCandidates.pop();
+        }
       }
-
-      if (!best) {
-        let reason = '';
-        if (optMaxW * k < 1.0 - 1e-6) {
-          reason = `Impossível: ${k} fundos × máx ${(optMaxW*100).toFixed(0)}% = ${(optMaxW*k*100).toFixed(0)}% < 100%. Aumente o peso máximo ou o número de fundos.`;
-        } else if (optMinW * k > 1.0 + 1e-6) {
-          reason = `Impossível: ${k} fundos × mín ${(optMinW*100).toFixed(0)}% = ${(optMinW*k*100).toFixed(0)}% > 100%. Reduza o peso mínimo.`;
-        } else {
-          reason = 'Não foi possível encontrar portfólio válido com as restrições atuais.';
-        }
-        status.textContent = reason;
-        btn.disabled = false;
-        return;
-      }
-
-      // Phase 2 for stress: re-evaluate top-N candidates by worst stress scenario
-      // This avoids 43k × 5 stress calculations — only runs on top 30 by sharpe
-      if (optObj === 'stress' && stressCandidates && stressCandidates.length > 0) {
-        let bestStress = null;
-        for (const cand of stressCandidates) {
-          const ws = worstStressReturn(cand.cnpjs, cand.w);
-          if (!bestStress || ws > bestStress._worstStress) {
-            bestStress = { ...cand, _worstStress: ws };
-          }
-        }
-        if (bestStress) best = bestStress;
-      }
-
-      const objLabel = optObj === 'vol' ? `vol. ${best.vol.toFixed(1)}%` :
-                       optObj === 'sharpe' ? `Sharpe ${best.sharpe.toFixed(2)}` :
-                       `retorno ${best.ret.toFixed(1)}%`;
-      status.textContent =
-        `${nCombos} combinações avaliadas · melhor: ${objLabel} · ` +
-        best.cnpjs.map((c,i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
-
-      applyOptimizedPortfolio(best.cnpjs, best.w);
-
     } catch(e) {
-      document.getElementById('optStatus').textContent = 'Erro: ' + e.message;
+      status.textContent = 'Erro: ' + e.message;
+      btn.disabled = false;
+      cancelBtn.style.display = 'none';
+      return;
     }
-    btn.disabled = false;
-  }, 20);
+
+    status.textContent = `Calculando… ${Math.round(idx / total * 100)}% (${nCombos}/${total})`;
+
+    if (idx < total) {
+      setTimeout(processChunk, 0);
+    } else {
+      _finishOptimizer(best, nCombos, stressCandidates, btn, status);
+    }
+  }
+
+  setTimeout(processChunk, 20);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -4529,8 +4659,16 @@ const activeFilters = { tipo: '', expo: '', trib: '' };
 
 function toggleFilterPanel() {
   const panel = document.getElementById('filterPanel');
-  const isOpen = panel.style.display !== 'none' && panel.style.display !== '';
-  panel.style.display = isOpen ? 'none' : '';
+  const isOpen = panel.dataset.open === '1';
+  if (isOpen) {
+    panel.style.display = 'none';
+    panel.dataset.open = '0';
+  } else {
+    panel.style.display = '';
+    // force block in case CSS default is none
+    if (getComputedStyle(panel).display === 'none') panel.style.display = 'block';
+    panel.dataset.open = '1';
+  }
   updateFilterBadge();
 }
 
@@ -4546,7 +4684,7 @@ function updateFilterBadge() {
   if (btn) btn.classList.toggle('has-active', active > 0);
   // Summary text when panel is closed
   const panel = document.getElementById('filterPanel');
-  if (summary && panel && panel.style.display === 'none') {
+  if (summary && panel && panel.dataset.open !== '1') {
     const parts = [];
     if (activeFilters.tipo) parts.push(activeFilters.tipo);
     if (activeFilters.expo) parts.push(activeFilters.expo);
@@ -5061,12 +5199,12 @@ function renderDistChart() {
     const s = months[ym].start, e = months[ym].end;
     // Skip pre-inception (all zeros in window)
     let hasReal = false;
-    for (let i = s; i < e && i < rets.length; i++) {
+    for (let i = s; i <= e && i < rets.length; i++) {
       if (isReal(rets[i])) { hasReal = true; break; }
     }
     if (!hasReal) return;
     let cum = 1.0;
-    for (let i = s; i < e && i < rets.length; i++) cum *= (1 + (rets[i] || 0));
+    for (let i = s; i <= e && i < rets.length; i++) cum *= (1 + (rets[i] || 0));
     monthRets.push(parseFloat(((cum - 1) * 100).toFixed(2)));
   });
 
@@ -5340,7 +5478,7 @@ function renderScatter() {
     const t = calcTargetReturn(fData);
     if (!t) return;
     points.push({ x: parseFloat(vol.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
-      label: fd.nome, color: CHART_COLORS[i % CHART_COLORS.length] });
+      label: (FUND_META[cnpj]||{}).nome || fd.nome, color: CHART_COLORS[i % CHART_COLORS.length] });
   });
 
   if (!points.length) return;
@@ -5416,10 +5554,10 @@ function renderHeatmap() {
   const fundMonthRets = {};
   cnpjs.forEach(function(cnpj) {
     const allRets = historyData.funds[cnpj].returns;
-    // Find first real (non-zero) return index to detect inception
+    // Find first real (non-null, non-zero) return index to detect inception
     var inceptionIdx = 0;
     for (var ri = 0; ri < allRets.length; ri++) {
-      if (allRets[ri] !== 0) { inceptionIdx = ri; break; }
+      if (allRets[ri] !== null && allRets[ri] !== undefined && allRets[ri] !== 0) { inceptionIdx = ri; break; }
     }
     fundMonthRets[cnpj] = {};
     monthKeys.forEach(function(ym) {
@@ -5427,7 +5565,7 @@ function renderHeatmap() {
       // If entire month is before inception, mark as null (fund didn't exist)
       if (e < inceptionIdx) { fundMonthRets[cnpj][ym] = null; return; }
       var cum = 1.0;
-      for (var i = s; i < e && i < allRets.length; i++) cum *= (1 + allRets[i]);
+      for (var i = s; i <= e && i < allRets.length; i++) cum *= (1 + allRets[i]);
       fundMonthRets[cnpj][ym] = (cum - 1) * 100;
     });
   });
@@ -5563,12 +5701,20 @@ function renderConsistency() {
 
     // Monthly returns
     var monthRets = [];
+    var activeMths = 0;
     monthKeys.forEach(function(ym) {
       var s = months[ym].start, e = months[ym].end;
+      // Skip months entirely before fund inception (all returns null/0)
+      var hasData = false;
+      for (var i = s; i <= e && i < rets.length; i++) {
+        if (rets[i] != null && rets[i] !== 0) { hasData = true; break; }
+      }
       var cum = 1;
-      for (var i = s; i < e && i < rets.length; i++) cum *= (1 + rets[i]);
+      for (var i = s; i <= e && i < rets.length; i++) cum *= (1 + (rets[i] || 0));
       var r = cum - 1;
-      monthRets.push(r);
+      monthRets.push(hasData ? r : null);
+      if (!hasData) return;
+      activeMths++;
       if (r > 0) pos++;
       if (r < worst) worst = r;
       if (r > best)  best  = r;
@@ -5586,6 +5732,7 @@ function renderConsistency() {
     // Winning streak: longest run of consecutive positive months
     var streak = 0, maxStreak = 0;
     monthRets.forEach(function(r) {
+      if (r == null) return;  // pre-inception, skip
       if (r > 0) { streak++; if (streak > maxStreak) maxStreak = streak; }
       else streak = 0;
     });
@@ -5593,8 +5740,8 @@ function renderConsistency() {
     const meta = FUND_META[cnpj] || {};
     return {
       cnpj:      cnpj,
-      nome:      meta.nome || historyData.funds[cnpj].nome,
-      pctPos:    pos / nM * 100,
+      nome:      meta.nome || meta.short || historyData.funds[cnpj].nome,
+      pctPos:    activeMths > 0 ? pos / activeMths * 100 : 0,
       best:      best * 100,
       worst:     worst * 100,
       maxDD:     maxDD * 100,
@@ -5645,7 +5792,7 @@ function renderConsistency() {
     + ' · Comparativo vs CDI e IBOV na tabela de retornos anuais acima'
     + '</div>';
 
-  container.innerHTML = html;
+  container.innerHTML = '<div class="consistency-wrap">' + html + '</div>';
 }
 
 
@@ -6979,7 +7126,7 @@ function openCorrScatter(ca, cb) {
   // Only use days where BOTH funds have real non-zero returns (exclude pre-inception zeros)
   const realPts = [];
   for (let i = 0; i < n; i++) {
-    if (retsA[i] !== 0 && retsB[i] !== 0) {
+    if (isReal(retsA[i]) && isReal(retsB[i])) {
       realPts.push({ x: retsA[i] * 100, y: retsB[i] * 100 });
     }
   }
@@ -7922,7 +8069,7 @@ function renderEfficientFrontier() {
     const vol2  = Math.sqrt(var2*252)*100;
     fundPoints.push({
       x: parseFloat(vol2.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
-      label: fd.nome, cnpj, color: CHART_COLORS[i % CHART_COLORS.length],
+      label: (FUND_META[cnpj]||{}).nome || fd.nome, cnpj, color: CHART_COLORS[i % CHART_COLORS.length],
       sortino: m.sortino, calmar: m.calmar, ir: m.ir, beta: m.beta,
     });
   });
@@ -8244,178 +8391,6 @@ function worstStressReturn(cnpjs, weights) {
   });
   return worst;
 }
-
-// ── Patch de setOptObj para incluir novos modos ────────────────────────────
-const _origSetOptObj = setOptObj;
-setOptObj = function(obj) {
-  optObj = obj;
-  // All 6 button IDs
-  ['optObjSharpe','optObjReturn','optObjVol',
-   'optObjSortino','optObjCalmar','optObjIR','optObjStress'].forEach(function(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.toggle('active', el.id === 'optObj' + obj.charAt(0).toUpperCase() + obj.slice(1));
-  });
-};
-
-// ── Patch de runOptimizer para incluir novos modos ─────────────────────────
-const _origRunOpt = runOptimizer;
-runOptimizer = function() {
-  // Only intercept for new modes; fall through to original for classic modes
-  if (!['sortino','calmar','ir','stress'].includes(optObj)) {
-    _origRunOpt();
-    return;
-  }
-
-  if (!historyData) return;
-  const btn    = document.getElementById('optRunBtn');
-  const status = document.getElementById('optStatus');
-  btn.disabled = true;
-  status.innerHTML = 'Calculando<span class="calc-dot">.</span><span class="calc-dot">.</span><span class="calc-dot">.</span>';
-
-  setTimeout(function() {
-    try {
-      const allCnpjs = Object.keys(historyData.funds);
-      const k        = optN;
-
-      // Retornos alvo
-      const muMap = {};
-      for (const cnpj of allCnpjs) {
-        const fData = funds.find(f => f.cnpjFmt === cnpj);
-        const t     = fData ? calcTargetReturn(fData) : null;
-        muMap[cnpj] = t ? t.value : null;
-      }
-
-      // CDI e IBOV alvo
-      let cdiTarget = 10;
-      if (cdi) {
-        const s = [];
-        if (cdi.cagr12 != null) s.push([1, cdi.cagr12]);
-        if (cdi.cagr36 != null) s.push([3, cdi.cagr36]);
-        if (cdi.cagr60 != null) s.push([5, cdi.cagr60]);
-        if (s.length) cdiTarget = s.reduce((a,[T,v]) => a+T*v,0) / s.reduce((a,[T])=>a+T,0);
-      }
-      const ibovProxy = ibov.cagr36 || 20;
-
-      const validCnpjs = allCnpjs.filter(c => muMap[c] != null);
-      let best = null;
-      let nCombos = 0;
-
-      for (const combo of combinations(validCnpjs, k)) {
-        nCombos++;
-        const mus = combo.map(c => muMap[c]);
-        const cov = covMatrix(combo, historyData);
-
-        // Weight computation strategy by objective
-        let w = null;
-        if (optObj === 'sortino') {
-          w = maxSortinoWeights(combo, mus, cdiTarget, historyData);
-          if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);
-          if (!w) w = minVolWeights(cov);
-        } else if (optObj === 'calmar') {
-          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
-          if (!w) w = minVolWeights(cov);
-        } else if (optObj === 'ir') {
-          w = maxSharpeWeights(combo, mus, ibovProxy, cov);
-          if (!w) w = minVolWeights(cov);
-        } else if (optObj === 'stress') {
-          // For stress: use min-variance weights (reduces exposure to volatile funds)
-          // Stress score computed after loop in phase 2
-          w = minVolWeights(cov);
-          if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);
-        }
-        if (!w) w = new Array(k).fill(1 / k);
-
-        // Apply weight constraints (same as original)
-        const feasible = (optMinW * k <= 1.0 + 1e-9)
-                      && (optMaxW * k >= 1.0 - 1e-9)
-                      && (optMinW  <= optMaxW + 1e-9);
-        if (!feasible) continue;
-
-        if (optMaxW < 1.0 || optMinW > 1e-9) {
-          for (let iter = 0; iter < 50; iter++) {
-            const slack = (1.0 - w.reduce((a,b) => a+b, 0)) / k;
-            w = w.map(x => x + slack);
-            const prev = [...w];
-            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
-            if (w.every((x, i) => Math.abs(x - prev[i]) < 1e-10)) break;
-          }
-          for (let iter = 0; iter < 50; iter++) {
-            const diff = 1.0 - w.reduce((a, b) => a + b, 0);
-            if (Math.abs(diff) < 1e-12) break;
-            const freeIdx = diff > 0
-              ? w.map((x, i) => x < optMaxW - 1e-12 ? i : -1).filter(i => i >= 0)
-              : w.map((x, i) => x > optMinW + 1e-12 ? i : -1).filter(i => i >= 0);
-            if (freeIdx.length === 0) break;
-            const per = diff / freeIdx.length;
-            freeIdx.forEach(i => { w[i] += per; });
-            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
-          }
-        }
-
-        const p = evalPortfolioAdvanced(w, combo, mus, cdiTarget, ibovProxy, cov, historyData);
-
-        if (!best) { best = p; continue; }
-
-        // For stress: defer expensive calculation — collect top candidates by sharpe
-        const _ws = null;  // computed in phase 2 after main loop
-
-        const better =
-          optObj === 'sortino' ? p.sortino > best.sortino :
-          optObj === 'calmar'  ? p.calmar  > best.calmar  :
-          optObj === 'stress'  ? (p.calmar ?? -Infinity) > (best?.calmar ?? -Infinity) :
-          /* ir */               p.ir      > best.ir;
-
-        if (better) {
-          best = p;
-        }
-        // Collect top-30 candidates for stress phase 2
-        if (stressCandidates !== null) {
-          stressCandidates.push({ ...p, cnpjs: combo, w });
-          stressCandidates.sort((a, b) => (b.calmar ?? -Infinity) - (a.calmar ?? -Infinity));
-          if (stressCandidates.length > 30) stressCandidates.pop();
-        }
-      }
-
-      if (!best) {
-        // Diagnose why optimization failed
-        let reason = '';
-        if (optMaxW * k < 1.0 - 1e-6) {
-          reason = `Impossível: ${k} fundos × máx ${(optMaxW*100).toFixed(0)}% = ${(optMaxW*k*100).toFixed(0)}% < 100%. Aumente o peso máximo ou o número de fundos.`;
-        } else if (optMinW * k > 1.0 + 1e-6) {
-          reason = `Impossível: ${k} fundos × mín ${(optMinW*100).toFixed(0)}% = ${(optMinW*k*100).toFixed(0)}% > 100%. Reduza o peso mínimo.`;
-        } else {
-          reason = 'Não foi possível encontrar portfólio válido com as restrições atuais.';
-        }
-        status.textContent = reason;
-        btn.disabled = false;
-        return;
-      }
-
-      // Build status with relevant metric
-      let metricStr, metricLabel;
-      if (optObj === 'sortino') {
-        metricStr  = best.sortino.toFixed(2);
-        metricLabel = `Sortino ${metricStr}`;
-      } else if (optObj === 'calmar') {
-        metricStr  = best.calmar.toFixed(2);
-        metricLabel = `Calmar ${metricStr}`;
-      } else {
-        metricStr  = best.ir.toFixed(2);
-        metricLabel = `IR ${metricStr}`;
-      }
-
-      status.textContent =
-        `${nCombos} combinações · ${metricLabel} · ` +
-        best.cnpjs.map((c, i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
-
-      applyOptimizedPortfolio(best.cnpjs, best.w);
-
-    } catch(e) {
-      document.getElementById('optStatus').textContent = 'Erro: ' + e.message;
-    }
-    btn.disabled = false;
-  }, 20);
-};
 
 
 
