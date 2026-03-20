@@ -39,6 +39,7 @@ FUNDS = [
     {"name": "SPX Patriot FIF CIC Ações RL", "cnpj": "15334585000153", "cnpjFmt": "15.334.585/0001-53"},
     {"name": "TB FIF Cotas FIA", "cnpj": "47511351000120", "cnpjFmt": "47.511.351/0001-20"},
     {"name": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO", "cnpj": "52116227000109", "cnpjFmt": "52.116.227/0001-09"},
+    {"name": "Ace Capital Multicenários FIC FIF Multimercado RL", "cnpj": "47612105000165", "cnpjFmt": "47.612.105/0001-65"},
 ]
 
 FIRST_MONTHLY_YEAR = 2021   # CVM: arquivos mensais a partir daqui
