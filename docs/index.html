@@ -802,7 +802,33 @@
   }
 
   /* ── Filter chips ── */
-  .filter-bar { display:flex; flex-direction:column; gap:6px; margin-bottom:1rem; }
+  /* Filter toggle button */
+  .filter-toggle-row { display:flex; align-items:center; justify-content:flex-end; margin-bottom:0.4rem; }
+  .filter-toggle-btn {
+    font-family:'Courier New',monospace; font-size:0.62rem;
+    padding:4px 10px; border-radius:4px;
+    border:0.5px solid var(--border); background:var(--surface);
+    color:var(--muted); cursor:pointer; transition:all 0.15s;
+    display:flex; align-items:center; gap:2px;
+  }
+  .filter-toggle-btn:hover { border-color:var(--accent); color:var(--text); }
+  .filter-toggle-btn.has-active { border-color:var(--accent); color:var(--accent); }
+  .filter-active-count {
+    font-family:'Courier New',monospace; font-size:0.55rem;
+    background:var(--accent); color:#fff;
+    border-radius:10px; padding:1px 5px; margin-left:3px;
+  }
+  /* Filter panel */
+  .filter-panel {
+    padding:0.65rem 0.9rem;
+    background:var(--surface);
+    border:0.5px solid var(--border);
+    border-radius:6px;
+    margin-bottom:0.5rem;
+    animation: fadeIn 0.12s ease;
+  }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+  .filter-bar { display:flex; flex-direction:column; gap:6px; margin-bottom:0.6rem; }
   .filter-row { display:flex; gap:5px; align-items:center; flex-wrap:nowrap; }
   .filter-divider { width:1px; height:14px; background:var(--border); margin:0 4px; flex-shrink:0; }
   .filter-chip {
@@ -1682,34 +1708,44 @@
 
 <div id="tab-ranking" class="tab-pane active">
 
-<div class="filter-bar">
-  <div class="filter-row">
-    <span class="filter-label" data-tip="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia</span>
-    <button class="filter-chip active" data-filter="tipo" data-val="" onclick="setFilter('tipo','',this)">Todos</button>
-    <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
-    <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
-    <button class="filter-chip" data-filter="tipo" data-val="Multimercado" onclick="setFilter('tipo','Multimercado',this)">Multimercado</button>
-    <span class="filter-divider"></span>
-    <span class="filter-label">Mercado</span>
-    <button class="filter-chip active" data-filter="expo" data-val="" onclick="setFilter('expo','',this)">Todos</button>
-    <button class="filter-chip" data-filter="expo" data-val="Brasil" onclick="setFilter('expo','Brasil',this)">Brasil</button>
-    <button class="filter-chip" data-filter="expo" data-val="Internacional" onclick="setFilter('expo','Internacional',this)">Internacional</button>
-  </div>
-  <div class="filter-row">
-    <span class="filter-label" data-tip="RV = sem come-cotas, IR só no resgate (melhor para longo prazo). TR = IR antecipado em maio e novembro (come-cotas).">Imposto</span>
-    <button class="filter-chip active" data-filter="trib" data-val="" onclick="setFilter('trib','',this)">Todos</button>
-    <button class="filter-chip" data-filter="trib" data-val="RV" onclick="setFilter('trib','RV',this)" data-tip="Renda Variável: paga IR apenas no resgate (15%). Sem come-cotas — todo o capital trabalha até você resgatar.">Sem come-cotas (RV)</button>
-    <button class="filter-chip" data-filter="trib" data-val="TR" onclick="setFilter('trib','TR',this)" data-tip="Tabela Regressiva: IR antecipado em maio e novembro. Mais ineficiente para horizontes longos.">Com come-cotas (TR)</button>
-  </div>
+<div class="filter-toggle-row">
+  <span id="filterActiveSummary" style="font-family:'Courier New',monospace;font-size:0.6rem;color:var(--muted)"></span>
+  <button class="filter-toggle-btn" id="filterToggleBtn" onclick="toggleFilterPanel()">
+    <svg width="13" height="12" viewBox="0 0 13 12" fill="none" style="vertical-align:-1px;margin-right:5px"><path d="M1 2h11M3 6h7M5 10h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    Filtros
+    <span id="filterActiveCount" class="filter-active-count" style="display:none">0</span>
+  </button>
 </div>
 
-<div class="period-bar" id="periodBarEl">
-  <span class="filter-label" data-tip="Compare os fundos em uma janela de datas que você escolher, em vez dos períodos padrão.">Comparar em período específico:</span>
-  <label>De: <input type="date" id="periodStart" onchange="onPeriodChange()"></label>
-  <label>Até: <input type="date" id="periodEnd" onchange="onPeriodChange()"></label>
-  <span id="periodBadge" style="display:none" class="period-badge"></span>
-  <button class="period-clear" onclick="clearPeriod()" style="display:none" id="periodClear">limpar</button>
-  <span id="periodNote" style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted)"></span>
+<div class="filter-panel" id="filterPanel" style="display:none">
+  <div class="filter-bar">
+    <div class="filter-row">
+      <span class="filter-label" data-tip="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia</span>
+      <button class="filter-chip active" data-filter="tipo" data-val="" onclick="setFilter('tipo','',this)">Todos</button>
+      <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
+      <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
+      <button class="filter-chip" data-filter="tipo" data-val="Multimercado" onclick="setFilter('tipo','Multimercado',this)">Multimercado</button>
+      <span class="filter-divider"></span>
+      <span class="filter-label">Mercado</span>
+      <button class="filter-chip active" data-filter="expo" data-val="" onclick="setFilter('expo','',this)">Todos</button>
+      <button class="filter-chip" data-filter="expo" data-val="Brasil" onclick="setFilter('expo','Brasil',this)">Brasil</button>
+      <button class="filter-chip" data-filter="expo" data-val="Internacional" onclick="setFilter('expo','Internacional',this)">Internacional</button>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label" data-tip="RV = sem come-cotas, IR só no resgate (melhor para longo prazo). TR = IR antecipado em maio e novembro (come-cotas).">Imposto</span>
+      <button class="filter-chip active" data-filter="trib" data-val="" onclick="setFilter('trib','',this)">Todos</button>
+      <button class="filter-chip" data-filter="trib" data-val="RV" onclick="setFilter('trib','RV',this)" data-tip="Renda Variável: paga IR apenas no resgate (15%). Sem come-cotas — todo o capital trabalha até você resgatar.">Sem come-cotas (RV)</button>
+      <button class="filter-chip" data-filter="trib" data-val="TR" onclick="setFilter('trib','TR',this)" data-tip="Tabela Regressiva: IR antecipado em maio e novembro. Mais ineficiente para horizontes longos.">Com come-cotas (TR)</button>
+    </div>
+  </div>
+  <div class="period-bar" id="periodBarEl">
+    <span class="filter-label" data-tip="Compare os fundos em uma janela de datas que você escolher, em vez dos períodos padrão.">Período:</span>
+    <label>De: <input type="date" id="periodStart" onchange="onPeriodChange()"></label>
+    <label>Até: <input type="date" id="periodEnd" onchange="onPeriodChange()"></label>
+    <span id="periodBadge" style="display:none" class="period-badge"></span>
+    <button class="period-clear" onclick="clearPeriod()" style="display:none" id="periodClear">limpar</button>
+    <span id="periodNote" style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted)"></span>
+  </div>
 </div>
 
 <div class="table-wrap" id="rankingTableWrap">
@@ -4489,10 +4525,41 @@ function runOptimizer() {
 
 const activeFilters = { tipo: '', expo: '', trib: '' };
 
+function toggleFilterPanel() {
+  const panel = document.getElementById('filterPanel');
+  const isOpen = panel.style.display !== 'none' && panel.style.display !== '';
+  panel.style.display = isOpen ? 'none' : '';
+  updateFilterBadge();
+}
+
+function updateFilterBadge() {
+  const active = Object.values(activeFilters).filter(v => v !== '').length;
+  const countEl = document.getElementById('filterActiveCount');
+  const btn = document.getElementById('filterToggleBtn');
+  const summary = document.getElementById('filterActiveSummary');
+  if (countEl) {
+    countEl.style.display = active > 0 ? '' : 'none';
+    countEl.textContent = active;
+  }
+  if (btn) btn.classList.toggle('has-active', active > 0);
+  // Summary text when panel is closed
+  const panel = document.getElementById('filterPanel');
+  if (summary && panel && panel.style.display === 'none') {
+    const parts = [];
+    if (activeFilters.tipo) parts.push(activeFilters.tipo);
+    if (activeFilters.expo) parts.push(activeFilters.expo);
+    if (activeFilters.trib) parts.push(activeFilters.trib === 'RV' ? 'Sem come-cotas' : 'Com come-cotas');
+    summary.textContent = parts.length > 0 ? parts.join(' · ') : '';
+  } else if (summary) {
+    summary.textContent = '';
+  }
+}
+
 function setFilter(dim, val, btn) {
   activeFilters[dim] = val;
   document.querySelectorAll('.filter-chip[data-filter="' + dim + '"]').forEach(c =>
     c.classList.toggle('active', c.dataset.val === val));
+  updateFilterBadge();
   render();
 }
 
