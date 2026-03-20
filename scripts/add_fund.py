@@ -95,9 +95,21 @@ def parse_csv(content: str) -> dict:
 
 
 def extract_fund(data: dict, cnpj_digits: str, cnpj_fmt: str) -> dict[str, float]:
+    """
+    Extrai cotas para um fundo de um arquivo CVM parseado.
+    Trata corretamente a RCVM 175 (pós-2023): após a reforma, o mesmo CNPJ
+    pode aparecer múltiplas vezes por dia (casca com cota ~1.0 + subclasses com
+    cota real). A lógica abaixo replica _extract_rows() do fetch_data.py:
+      1. Coleta todas as cotas por data.
+      2. Para datas com múltiplas cotas, descarta cotas < 1.5 (cascas).
+      3. Entre as remanescentes, escolhe a menor (mais próxima da série histórica).
+      4. Verifica continuidade com a última cota de linha única como referência.
+    """
     if not data or data["col_date"] < 0 or data["col_quota"] < 0:
         return {}
-    result: dict[str, float] = {}
+
+    # Passo 1: coletar todas as cotas por data
+    all_rows: dict[str, list[float]] = {}
     for line in data["lines"][1:]:
         if cnpj_digits not in line and cnpj_fmt not in line:
             continue
@@ -110,9 +122,38 @@ def extract_fund(data: dict, cnpj_digits: str, cnpj_fmt: str) -> dict[str, float
             d = cols[data["col_date"]].strip()
             q = float(cols[data["col_quota"]].replace(",", "."))
             if d and q > 0:
-                result[d] = q
+                all_rows.setdefault(d, []).append(q)
         except (ValueError, IndexError):
             continue
+
+    if not all_rows:
+        return {}
+
+    # Referência histórica: última data com cota única (pré-RCVM 175)
+    single_qs = {d: qs[0] for d, qs in all_rows.items() if len(qs) == 1}
+    last_ref = single_qs[max(single_qs)] if single_qs else None
+
+    result: dict[str, float] = {}
+    warned = False
+    for d in sorted(all_rows.keys()):
+        qs = all_rows[d]
+        if len(qs) == 1:
+            result[d] = qs[0]
+        else:
+            # Descartar cascas (cota < 1.5) e escolher a menor das reais
+            real_qs = sorted(q for q in qs if q >= 1.5)
+            if real_qs:
+                chosen = min(real_qs)
+                # Verificar continuidade para alertar sobre possível subclasse errada
+                if last_ref is not None and not warned:
+                    ratio = chosen / last_ref
+                    if ratio < 0.5 or ratio > 2.0:
+                        print(f"      [AVISO RCVM175] {d}: escolhida={chosen:.6f} "
+                              f"vs ref={last_ref:.6f} (ratio={ratio:.2f}) — verificar")
+                        warned = True
+                result[d] = chosen
+            else:
+                result[d] = max(qs)
     return result
 
 
@@ -450,6 +491,22 @@ def main():
     for p in processed:
         print(f"  · {p['exibicao']} ({p['cnpj_fmt']}) — desde {p['inception_date']}")
         print(f"    expo: normal={p['exposure']['net_normal']} crise={p['exposure']['net_crisis']} benchmark={p['exposure']['benchmark']}")
+
+    # Rodar fetch_data.main() para atualizar data.json imediatamente.
+    # Sem isso, o novo fundo ficaria com N/D em todas as métricas até o próximo
+    # update diário, porque data.json não é gerado por add_fund.py.
+    # Importar aqui (não no topo) para evitar circular import se fetch_data
+    # eventualmente importar add_fund no futuro.
+    print("\n── Rodando fetch_data para atualizar data.json com o(s) novo(s) fundo(s)…")
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        import fetch_data as _fd
+        _fd.main()
+        print("✓ data.json atualizado com sucesso.")
+    except Exception as _e:
+        print(f"⚠ fetch_data.main() falhou: {_e}")
+        print("  Execute manualmente: python scripts/fetch_data.py")
 
 
 if __name__ == "__main__":
