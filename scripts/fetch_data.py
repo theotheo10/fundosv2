@@ -268,7 +268,9 @@ def find_inception(fund: dict, anchor_year: int) -> dict | None:
 
 # ── Processamento por fundo (data.json) ───────────────────────────────────────
 
-def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict, ibov_price_map: dict | None = None) -> dict:
+def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict,
+                 ibov_price_map: dict | None = None,
+                 cdi_price_map: dict | None = None) -> dict:
     print(f"\n── {fund['name']}")
     latest = quota_on_or_before(anchor, fund)
     if not latest:
@@ -304,6 +306,15 @@ def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict, ibov_
         p_anch, d_anch = _best_price_and_date(ibov_price_map, ibov_dates, anchor)
         if p_inc and p_anch and d_inc and d_anch:
             ibov_cagr_inception = cagr(p_inc, p_anch, years_apart(d_inc, d_anch))
+
+    # CDI CAGR desde o inception — para calcular alphaVsCdi (âncora de multimercados)
+    cdi_cagr_inception = None
+    if inc_date and cdi_price_map:
+        cdi_dates = sorted(cdi_price_map.keys())
+        p_cdi_inc,  d_cdi_inc  = _best_price_and_date(cdi_price_map, cdi_dates, datetime.date.fromisoformat(inc_date))
+        p_cdi_anch, d_cdi_anch = _best_price_and_date(cdi_price_map, cdi_dates, anchor)
+        if p_cdi_inc and p_cdi_anch and d_cdi_inc and d_cdi_anch:
+            cdi_cagr_inception = cagr(p_cdi_inc, p_cdi_anch, years_apart(d_cdi_inc, d_cdi_anch))
 
     def do_cagr(q):
         if not q: return None
@@ -342,6 +353,17 @@ def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict, ibov_
         "cagr60":        do_cagr(q60),
         "cagrInception":      cagr(inc_quota, end_quota, years_apart(inc_date, end_date)) if inc_date else None,
         "ibovCagrInception":  round(ibov_cagr_inception, 4) if ibov_cagr_inception is not None else None,
+        # alpha vs CDI desde inception — âncora de skill para multimercados
+        "cdiCagrInception":   round(cdi_cagr_inception, 4) if cdi_cagr_inception is not None else None,
+        "alphaVsCdi":         round(
+            cagr(inc_quota, end_quota, years_apart(inc_date, end_date)) - cdi_cagr_inception, 4
+        ) if (inc_date and cdi_cagr_inception is not None
+              and cagr(inc_quota, end_quota, years_apart(inc_date, end_date)) is not None) else None,
+        # alpha vs IBOV desde inception — âncora de skill para fundos de ações
+        "alphaVsIbov":        round(
+            cagr(inc_quota, end_quota, years_apart(inc_date, end_date)) - ibov_cagr_inception, 4
+        ) if (inc_date and ibov_cagr_inception is not None
+              and cagr(inc_quota, end_quota, years_apart(inc_date, end_date)) is not None) else None,
         "error":         False,
     }
     def _fmt(v): return f"{v:.2f}" if v is not None else "N/D"
@@ -436,10 +458,10 @@ def fetch_cdi(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a60
         }
         vals = {k: f"{v:.2f}%" if v is not None else "N/D" for k, v in result_cdi.items()}
         print(f"  CDI  12M={vals['cagr12']} 36M={vals['cagr36']} 60M={vals['cagr60']}")
-        return result_cdi
+        return result_cdi, price_map
     except Exception as e:
         print(f"  ✗ CDI falhou: {e}")
-        return {"cagr12": None, "cagr36": None, "cagr60": None}
+        return {"cagr12": None, "cagr36": None, "cagr60": None}, {}
 
 
 # ── history.json — histórico crescente ────────────────────────────────────────
@@ -1342,7 +1364,7 @@ def main() -> None:
     # Fetch CDI before update_history so we can pass the annual rate for metric computation.
     # CDI is needed for Sharpe, Sortino, and semi-covariance inside update_history.
     print(f"\n── CDI (pré-fetch para métricas)")
-    cdi = fetch_cdi(anchor, a12, a36, a60)
+    cdi, cdi_price_map = fetch_cdi(anchor, a12, a36, a60)
 
     # Inject CDI and IBOV annual rates into update_history via function attributes.
     # update_history reads these via getattr(update_history, "_cdi_annual", 12.5).
@@ -1386,7 +1408,7 @@ def main() -> None:
         except Exception as e:
             print(f"Não foi possível ler data.json anterior: {e}")
 
-    results = [process_fund(f, anchor, prev_max_quotas, ibov_price_map=ibov_price_map) for f in FUNDS]
+    results = [process_fund(f, anchor, prev_max_quotas, ibov_price_map=ibov_price_map, cdi_price_map=cdi_price_map) for f in FUNDS]
 
     # Fronteira eficiente — calculada aqui porque precisa dos retornos esperados
     # (cagr36 de cada fundo), que só existem após process_fund() rodar.
