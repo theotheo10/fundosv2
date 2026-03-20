@@ -2232,7 +2232,7 @@ const FUND_META = {
   "17.400.251/0001-66": { nome:"Organon",            short:"Organon",  inception:"2013-02-22", initialQuota:1.0000, maxQuota:23.4157589,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
   "18.302.338/0001-63": { nome:"Ártica Long Term",   short:"Ártica",   inception:"2013-06-27", initialQuota:0.7647, maxQuota:20.9451521,  tipo:"Long Only",    trib:"RV", expo:"Majoritariamente Brasil",  banco:"BTG / C6", obs:"" },
   "37.495.383/0001-26": { nome:"Genoa Arpa",         short:"Genoa",    inception:"2021-04-30", initialQuota:1.0000, maxQuota:2.3753795,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"C6",       obs:"" },
-  "42.698.666/0001-05": { nome:"Artax Ultra",        short:"Artax",    inception:"2022-05-31", initialQuota:1.0000, maxQuota:2.0535150,   tipo:"Long Biased",  trib:"RV", expo:"Internacional",            banco:"Itaú",     obs:"Melhor versão: Itaú Artax Endurance (tributação RV)" },
+  "42.698.666/0001-05": { nome:"Artax Ultra",        short:"Artax",    inception:"2022-05-31", initialQuota:1.0000, maxQuota:2.0535150,   tipo:"Multimercado", trib:"RV", expo:"Internacional",            banco:"Itaú",     obs:"Melhor versão: Itaú Artax Endurance (tributação RV)" },
   "24.623.392/0001-03": { nome:"Guepardo Long Bias", short:"Guepardo", inception:"2016-07-11", initialQuota:1.0000, maxQuota:8.5831314,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
   "28.747.685/0001-53": { nome:"Kapitalo Tarkus",    short:"Kapitalo", inception:"2017-11-06", initialQuota:1.0000, maxQuota:4.2435095,   tipo:"Long Biased",  trib:"RV", expo:"Brasil",                  banco:"XP",       obs:"" },
   "10.500.884/0001-05": { nome:"Real Investor",      short:"Real",     inception:"2012-02-29", initialQuota:3.6300, maxQuota:31.0097067,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"Itaú",     obs:"" },
@@ -2245,6 +2245,7 @@ const FUND_META = {
   "46.351.969/0001-08": { nome:"Opportunity Global", short:"Opportunity", inception:"2022-12-16", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
   "15.334.585/0001-53": { nome:"SPX Patriot FIF CIC Ações RL", short:"Patriot", inception:"2013-01-02", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
   "47.511.351/0001-20": { nome:"TB FIF Cotas FIA", short:"TB", inception:"2022-08-31", initialQuota:100.000000, maxQuota:213.205436, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
+  "52.116.227/0001-09": { nome:"Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO", short:"Janeiro", inception:"2024-01-01", initialQuota:1.000000, maxQuota:1.000000, tipo:"Multimercado", trib:"TR", expo:"Majoritariamente Brasil", banco:"Itaú", obs:"" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva" };
 
@@ -2624,7 +2625,7 @@ const FUND_EXPOSURE = {
   "17.400.251/0001-66": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Organon
   "18.302.338/0001-63": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Ártica
   "37.495.383/0001-26": { net_normal:0.70, net_crisis:0.50, primary:"ibov"   }, // Genoa (líq. ~70%, reduz em crise)
-  "42.698.666/0001-05": { net_normal:0.30, net_crisis:0.10, primary:"mixed"  }, // Artax (macro global, expo variável)
+  "42.698.666/0001-05": { net_normal:0.30, net_crisis:0.10, primary:"sp500"  }, // Artax (macro global internacional)
   "24.623.392/0001-03": { net_normal:0.55, net_crisis:0.30, primary:"ibov"   }, // Guepardo (30-80%, defensivo)
   "28.747.685/0001-53": { net_normal:1.00, net_crisis:0.85, primary:"ibov"   }, // Kapitalo (TE~10% vs IBOV)
   "10.500.884/0001-05": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Real Investor
@@ -2637,6 +2638,7 @@ const FUND_EXPOSURE = {
   "46.351.969/0001-08": { net_normal:1.00, net_crisis:0.95, primary:"sp500"  }, // Opportunity Global
   "15.334.585/0001-53": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // SPX Patriot
   "47.511.351/0001-20": { net_normal:1.00, net_crisis:0.95, primary:"sp500"  }, // TB
+  "52.116.227/0001-09": { net_normal:0.30, net_crisis:0.10, primary:"ibov"   }, // Itaú Janeiro
 };
 
 // Historical stress scenarios
