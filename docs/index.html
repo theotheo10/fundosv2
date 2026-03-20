@@ -439,10 +439,10 @@
     background: var(--text); color: var(--bg);
     font-family: 'Courier New', monospace; font-size: 0.58rem;
     padding: 8px 11px; border-radius: 5px; white-space: pre-line;
-    width: 280px;
+    width: 320px;
     opacity: 0; pointer-events: none;
     transform: translateY(4px); transition: opacity 0.15s ease, transform 0.15s ease;
-    z-index: 9999; line-height: 1.8;
+    z-index: 9999; line-height: 1.7;
     box-shadow: 0 4px 16px rgba(0,0,0,0.25);
   }
 
@@ -1853,6 +1853,22 @@
             oninput="onOptMinWSlider()">
           <span class="opt-minw-val" id="optMinWVal">1.0%</span>
           <span class="opt-constraint-label" id="optMinWNote" style="opacity:0.5">(padrão)</span>
+        </div>
+        <div class="opt-constraint-row">
+          <span class="opt-constraint-label">Beta máx. vs. IBOV:</span>
+          <input type="range" class="opt-maxw-slider" id="optMaxBetaIbovSlider"
+            min="0" max="20" value="20" step="1"
+            oninput="onOptMaxBetaSlider('ibov')">
+          <span class="opt-maxw-val" id="optMaxBetaIbovVal">—</span>
+          <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5">(sem restrição)</span>
+        </div>
+        <div class="opt-constraint-row">
+          <span class="opt-constraint-label">Beta máx. vs. S&P:</span>
+          <input type="range" class="opt-maxw-slider" id="optMaxBetaSpSlider"
+            min="0" max="20" value="20" step="1"
+            oninput="onOptMaxBetaSlider('sp')">
+          <span class="opt-maxw-val" id="optMaxBetaSpVal">—</span>
+          <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-warn" id="optConstraintWarn">
           ⚠ restrições incompatíveis para este tamanho de carteira
@@ -3539,7 +3555,7 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
           .map(([T, val]) => {
             const label = T < 1.5 ? '12M' : T < 3.5 ? '36M' : T < 5.5 ? '60M' : `${T.toFixed(0)}A`;
             return `${label}: ${val >= 0 ? '+' : ''}${val.toFixed(1)}%`;
-          }).join('  ·  ');
+          }).join('\n');
         const dispNote = target.sigma > 2
           ? `\nDisp. entre períodos: ${target.sigma.toFixed(1)}pp → ajuste −${target.penalty.toFixed(1)}pp`
           : '';
@@ -4095,8 +4111,10 @@ document.addEventListener('mouseout', e => {
 
 let optN      = 3;
 let optObj    = 'sharpe';
-let optMaxW   = 1.0;   // 1.0 = no constraint (100%)
-let optMinW   = 0.01;  // 1% default minimum weight
+let optMaxW        = 1.0;   // 1.0 = no constraint (100%)
+let optMinW        = 0.01;  // 1% default minimum weight
+let optMaxBetaIbov = null;  // null = sem restrição
+let optMaxBetaSp   = null;  // null = sem restrição
 
 function setOptN(n) {
   optN = n;
@@ -4129,6 +4147,29 @@ function onOptMinWSlider() {
   document.getElementById('optMinWVal').textContent = pct.toFixed(1) + '%';
   document.getElementById('optMinWNote').textContent = pct === 1.0 ? '(padrão)' : '';
   validateOptConstraints();
+}
+
+function onOptMaxBetaSlider(which) {
+  const id     = which === 'ibov' ? 'optMaxBetaIbovSlider' : 'optMaxBetaSpSlider';
+  const valId  = which === 'ibov' ? 'optMaxBetaIbovVal'    : 'optMaxBetaSpVal';
+  const noteId = which === 'ibov' ? 'optMaxBetaIbovNote'   : 'optMaxBetaSpNote';
+  const raw    = parseInt(document.getElementById(id).value);
+  const noLimit = raw === 20;
+  if (which === 'ibov') optMaxBetaIbov = noLimit ? null : raw / 10;
+  else                  optMaxBetaSp   = noLimit ? null : raw / 10;
+  document.getElementById(valId).textContent  = noLimit ? '—' : (raw / 10).toFixed(1);
+  document.getElementById(noteId).textContent = noLimit ? '(sem restrição)' : '';
+}
+
+function calcPortfolioBeta(combo, weights, which) {
+  // Weighted average beta of the portfolio
+  let beta = 0;
+  combo.forEach((cnpj, i) => {
+    const b = fundBetas[cnpj];
+    if (!b) return;
+    beta += weights[i] * (which === 'ibov' ? (b.beta_ibov || 0) : (b.beta_sp500 || 0));
+  });
+  return beta;
 }
 
 function validateOptConstraints() {
@@ -4561,6 +4602,16 @@ function runOptimizer() {
         let w = _computeWeights(combo, mus, cov, cdiTarget, ibovProxy);
         w = _applyWeightConstraints(w, k);
         if (!w) continue;
+
+        // Beta constraints: reject portfolio if weighted beta exceeds user limit
+        if (optMaxBetaIbov !== null) {
+          const bIbov = calcPortfolioBeta(combo, w, 'ibov');
+          if (bIbov > optMaxBetaIbov + 1e-9) continue;
+        }
+        if (optMaxBetaSp !== null) {
+          const bSp = calcPortfolioBeta(combo, w, 'sp');
+          if (bSp > optMaxBetaSp + 1e-9) continue;
+        }
 
         const isAdv = ['sortino','calmar','ir','stress'].includes(optObj);
         const p = isAdv
@@ -7069,7 +7120,7 @@ function openCorrScatter(ca, cb) {
   // Only use days where BOTH funds have real non-zero returns (exclude pre-inception zeros)
   const realPts = [];
   for (let i = 0; i < n; i++) {
-    if (retsA[i] !== 0 && retsB[i] !== 0) {
+    if (isReal(retsA[i]) && isReal(retsB[i])) {
       realPts.push({ x: retsA[i] * 100, y: retsB[i] * 100 });
     }
   }
