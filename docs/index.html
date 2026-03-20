@@ -2456,35 +2456,35 @@ function cagrInception(f) {
 // ── Retorno Alvo ──────────────────────────────────────────────────────────────
 // calcTargetReturn — estimativa do retorno estrutural de um fundo
 //
-// Metodologia:
-//   1. Pesos √T: erro amostral do CAGR decresce com √T; 60M domina, 12M
-//      contribui mas não determina.
+// Metodologia multi-fator:
+//
+//   E[R] = c × sinalPróprio
+//        + (1-c) × benchmark
+//        + c × alphaDiferencial
+//
+//   onde c = (age/5)², benchmark = CDI (multi) ou IBOV (ações).
+//
+//   1. Pesos √T nas amostras: erro amostral do CAGR decresce com √T.
 //
 //   2. Penalização por dispersão ciclical: σ entre CAGRs de diferentes
-//      períodos indica fundo em pico/vale de ciclo. Desconto limitado a
-//      15% do valor bruto.
+//      períodos indica fundo em pico/vale de ciclo. Desconto ≤ 15%.
 //
-//   3. Pull de reversão à média (25% → 60M / inception).
+//   3. Pull de reversão à média (25% → 60M).
 //
-//   4. trackConfidence convexo — (age/5)²:
-//      Mais agressivo nos primeiros anos, onde 12M e 36M se sobrepõem
-//      quase completamente (amostras pseudoindependentes).
-//      Converge a 1 nos 5 anos igualmente ao linear.
+//   4. trackConfidence convexo c = (age/5)²:
+//      Fundo jovem → c≈0 → domina o benchmark conservador.
+//      Fundo maduro → c=1 → domina o sinal próprio.
+//      O alpha observado só ganha peso à medida que a idade acumula.
 //
-//   5. Âncora de skill diferenciada por mandato:
-//      - Ações / Long Only / Long Biased: âncora = IBOV_inception + alphaAnn
-//      - Multimercado: âncora = CDI_inception + alphaVsCdi
-//      Em ambos os casos floor mínimo = CDI corrente.
+//   5. Benchmark por mandato (âncora de ignorância):
+//      - Multimercado → CDI corrente
+//      - Ações / Long Biased / Long Only → IBOV histórico
+//      Entra com peso (1-c): máximo quando jovem, zero quando maduro.
 //
-//   6. Alpha relativo ao grupo contemporâneo (signal adicional):
-//      Corrige viés de ciclo — separa o alpha do fundo do retorno do
-//      mercado que existia independentemente dele no mesmo período.
-//      Peso proporcional a (1 − c), zero quando o fundo é maduro.
-//
-// Parâmetros:
-//   f              — objeto de fundo de data.json
-//   globalFunds    — array completo de fundos (para cálculo do grupo)
-//   globalCdiTarget — CDI corrente anualizado (número, ex: 14.75)
+//   6. alphaDiferencial = alphaObservado − alphaGrupoContemporâneo:
+//      Corrige viés de ciclo — desconta o alpha que os pares maduros
+//      também geraram no mesmo período. Entra com peso c: zero quando
+//      jovem (alpha curto não é confiável), pleno quando maduro.
 function calcTargetReturn(f, globalFunds, globalCdiTarget) {
   const meta = FUND_META[f.cnpjFmt] || {};
   const tipo = (meta.tipo || '').toLowerCase();
@@ -2528,26 +2528,42 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
     : 10;
   const c = Math.min(1, Math.pow(ageYears / 5, 2));
 
-  // ── 5. Âncora de skill por mandato ────────────────────────────────────────
-  const cdiFloor = globalCdiTarget ?? 14.75;  // floor absoluto = CDI corrente
+  // ── 5. Benchmark conservador por mandato (âncora de ignorância) ──────────
+  // Pergunta: se eu não soubesse nada sobre este fundo além do mandato,
+  // qual retorno esperaria? Essa é a âncora para fundos jovens.
+  // - Multimercado: CDI corrente (custo de oportunidade real da categoria)
+  // - Ações / Long Biased / Long Only: IBOV histórico longo (prêmio de risco
+  //   de mercado, sem alpha atribuído ao gestor)
+  const cdiFloor   = globalCdiTarget ?? 14.75;
+  const ibovLong   = (() => {
+    // Usa cagr36 do IBOV como estimativa de longo prazo; fallback para 12.0%
+    try {
+      if (typeof ibov !== 'undefined' && ibov) {
+        const iv = [ibov.cagr60, ibov.cagr36, ibov.cagr12].find(v => v != null);
+        if (iv != null) return iv;
+      }
+    } catch (_) {}
+    return 12.0;
+  })();
 
-  let skillAnchor;
-  if (isMulti) {
-    const cdiInc     = f.cdiCagrInception ?? cdiFloor;
-    const alphaVsCdi = f.alphaVsCdi ?? 0;
-    skillAnchor = cdiInc + alphaVsCdi;
-  } else {
-    const ibovInc    = f.ibovCagrInception ?? 12.0;
-    // alphaVsIbov vem do data.json (cagrInception - ibovCagrInception no mesmo período).
-    // alphaAnn é o alpha diário vs IBOV anualizado do historyData — mais preciso mas
-    // nem sempre disponível no objeto f. Prefere alphaVsIbov; alphaAnn como fallback.
-    const alphaVsIbov = f.alphaVsIbov ?? f.alphaAnn ?? 0;
-    skillAnchor = ibovInc + alphaVsIbov;
-  }
+  const benchmark = isMulti ? cdiFloor : ibovLong;
 
-  // ── 6. Alpha relativo ao grupo contemporâneo ──────────────────────────────
-  let groupAdjustment = 0;
-  if (c < 1 && globalFunds && globalFunds.length > 0) {
+  // ── 6. Signal de alpha observado (entra com peso crescente com a idade) ───
+  // Alpha do fundo vs. benchmark no período disponível.
+  // Confiança neste signal cresce com c — fundos jovens recebem pouco peso,
+  // fundos maduros recebem peso total.
+  const alphaObservado = isMulti
+    ? (f.alphaVsCdi  ?? 0)
+    : (f.alphaVsIbov ?? f.alphaAnn ?? 0);
+
+  // ── 7. Correção de ciclo via grupo contemporâneo ──────────────────────────
+  // Quanto do alpha observado é skill genuíno vs. beta de ciclo?
+  // Fundos maduros do mesmo mandato servem como termômetro do período.
+  // αDiferencial = αFundo − αGrupoNoMesmoPeíodo
+  // Se todos subiram junto com o mercado, o alpha do fundo é menos especial.
+  // Peso deste signal: c × w_group — cresce com idade E com disponibilidade de pares.
+  let alphaDiferencial = alphaObservado;  // default: sem correção de ciclo
+  if (globalFunds && globalFunds.length > 0) {
     const peers = globalFunds.filter(p => {
       if (p.cnpjFmt === f.cnpjFmt) return false;
       const pMeta = FUND_META[p.cnpjFmt] || {};
@@ -2564,39 +2580,54 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
         if (pCi == null) return null;
         return isMulti
           ? (p.alphaVsCdi  ?? pCi - (p.cdiCagrInception  ?? cdiFloor))
-          : (p.alphaVsIbov ?? p.alphaAnn ?? pCi - (p.ibovCagrInception ?? 12.0));
+          : (p.alphaVsIbov ?? p.alphaAnn ?? pCi - (p.ibovCagrInception ?? ibovLong));
       }).filter(v => v != null);
 
       if (peerAlphas.length > 0) {
-        const groupAlpha = peerAlphas.reduce((a, b) => a + b, 0) / peerAlphas.length;
-        const fundAlpha  = isMulti
-          ? (f.alphaVsCdi  ?? 0)
-          : (f.alphaVsIbov ?? f.alphaAnn ?? 0);
-        groupAdjustment  = fundAlpha - groupAlpha;
+        const groupAlpha  = peerAlphas.reduce((a, b) => a + b, 0) / peerAlphas.length;
+        // alphaDiferencial: quanto o fundo se saiu ALÉM do grupo no mesmo ciclo
+        alphaDiferencial  = alphaObservado - groupAlpha;
       }
     }
   }
 
-  // ── Blending final ────────────────────────────────────────────────────────
-  // c=1 (≥5 anos): sinal próprio puro.
-  // c→0 (novíssimo): âncora de skill (benchmarked, não CDI fixo).
-  const skillAnchorAdjusted = skillAnchor + groupAdjustment * (1 - c);
-  const blended  = final * c + skillAnchorAdjusted * (1 - c);
+  // ── Blending final multi-fator ────────────────────────────────────────────
+  //
+  // E[R] = c  × sinalPróprio              (histórico observado, ponderado por √T)
+  //      + (1-c) × benchmark               (âncora de ignorância por mandato)
+  //      + c × alphaDiferencial            (skill líquido de ciclo, ganha peso com idade)
+  //
+  // Interpretação:
+  //   • Fundo novíssimo (c≈0): quase tudo vai para o benchmark conservador.
+  //     O alpha observado entra com peso ≈0, independentemente de quão alto seja.
+  //   • Fundo maduro (c=1): sinal próprio domina + alpha diferencial completo.
+  //     Benchmark some do blending.
+  //   • Entre 0 e 1: transição suave. O alpha só ganha peso à medida que
+  //     o histórico acumula e o signal de grupo pode relativizá-lo.
+  //
+  // Nota: alphaDiferencial pode ser negativo (fundo abaixo do grupo) — isso
+  // penaliza adicionalmente fundos jovens que parecem bons mas ficaram abaixo
+  // dos pares no mesmo ciclo.
 
-  // Floor absoluto: CDI corrente.
+  const blended = final * c
+                + benchmark * (1 - c)
+                + alphaDiferencial * c;
+
+  // Floor absoluto: CDI corrente. Nenhum fundo entra no otimizador com E[R] < CDI.
   const discounted = Math.max(blended, cdiFloor);
 
   return {
-    value:       discounted,
-    raw:         rawAvg,
-    sigma:       sigma,
-    penalty:     penalty,
-    trackYears:  parseFloat(ageYears.toFixed(1)),
-    trackConf:   parseFloat(c.toFixed(2)),
-    skillAnchor: parseFloat(skillAnchorAdjusted.toFixed(2)),
-    groupAdj:    parseFloat(groupAdjustment.toFixed(2)),
-    isMulti:     isMulti,
-    samples:     samples,
+    value:           discounted,
+    raw:             rawAvg,
+    sigma:           sigma,
+    penalty:         penalty,
+    trackYears:      parseFloat(ageYears.toFixed(1)),
+    trackConf:       parseFloat(c.toFixed(2)),
+    benchmark:       parseFloat(benchmark.toFixed(2)),
+    alphaObs:        parseFloat(alphaObservado.toFixed(2)),
+    alphaDiff:       parseFloat(alphaDiferencial.toFixed(2)),
+    isMulti:         isMulti,
+    samples:         samples,
   };
 }
 
