@@ -24,7 +24,7 @@ FUNDS = [
     {"name": "Tarpon GT FIF Cotas FIA",                                            "cnpj": "22232927000190", "cnpjFmt": "22.232.927/0001-90", "exibicao": "Tarpon GT", "curto": "Tarpon"},
     {"name": "Organon FIF Cotas FIA",                                              "cnpj": "17400251000166", "cnpjFmt": "17.400.251/0001-66", "exibicao": "Organon", "curto": "Organon"},
     {"name": "Artica Long Term FIA",                                               "cnpj": "18302338000163", "cnpjFmt": "18.302.338/0001-63", "exibicao": "Ártica Long Term", "curto": "Ártica"},
-    {"name": "Genoa Capital Arpa CIC Classe FIM RL",                               "cnpj": "37495383000126", "cnpjFmt": "37.495.383/0001-26", "exibicao": "Genoa Arpa", "curto": "Genoa"},
+    {"name": "Genoa Capital Arpa CIC Classe FIM RL",                               "cnpj": "37495383000126", "cnpjFmt": "37.495.383/0001-26", "exibicao": "Genoa Arpa", "curto": "Arpa"},
     {"name": "Itaú Artax Ultra Multimercado FIF DA CIC RL",                        "cnpj": "42698666000105", "cnpjFmt": "42.698.666/0001-05", "exibicao": "Artax Ultra", "curto": "Artax"},
     {"name": "Guepardo Long Bias RV FIM",                                          "cnpj": "24623392000103", "cnpjFmt": "24.623.392/0001-03", "exibicao": "Guepardo Long Bias", "curto": "Guepardo"},
     {"name": "Kapitalo Tarkus FIF Cotas FIA",                                      "cnpj": "28747685000153", "cnpjFmt": "28.747.685/0001-53", "exibicao": "Kapitalo Tarkus", "curto": "Kapitalo"},
@@ -40,9 +40,6 @@ FUNDS = [
     {"name": "TB FIF Cotas FIA", "cnpj": "47511351000120", "cnpjFmt": "47.511.351/0001-20", "exibicao": "TB", "curto": "TB"},
     {"name": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO", "cnpj": "52116227000109", "cnpjFmt": "52.116.227/0001-09", "exibicao": "Itaú Janeiro Multimercado", "curto": "Janeiro"},
     {"name": "Ace Capital Multicenários FIC FIF Multimercado RL", "cnpj": "47612105000165", "cnpjFmt": "47.612.105/0001-65", "exibicao": "Ace Capital Multicenários", "curto": "Ace"},
-    {"name": "Kapitalo K10 FIF Cotas FIM", "exibicao": "Kapitalo K10", "curto": "K10", "cnpj": "29726133000121", "cnpjFmt": "29.726.133/0001-21"},
-    {"name": "Genoa Capital Radar CIC Classe FIM RL", "exibicao": "Genoa Radar", "curto": "Radar", "cnpj": "35828684000107", "cnpjFmt": "35.828.684/0001-07"},
-    {"name": "Witpar FIF Ações", "exibicao": "Witpar", "curto": "Witpar", "cnpj": "16876874000147", "cnpjFmt": "16.876.874/0001-47"},
 ]
 
 FIRST_MONTHLY_YEAR = 2021   # CVM: arquivos mensais a partir daqui
@@ -285,9 +282,7 @@ def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict, ibov_
         max_quota_date = prev.get("maxQuotaDate", "")
 
     result = {
-        "name":          fund.get("exibicao", fund["name"]),
-        "nameFull":      fund["name"],
-        "curto":         fund.get("curto", ""),
+        "name":          fund["name"],
         "cnpj":          fund["cnpjFmt"],
         "cnpjFmt":       fund["cnpjFmt"],
         "latestDate":    end_date,
@@ -663,7 +658,7 @@ def update_history(anchor: datetime.date) -> None:
     # ── Serializar ───────────────────────────────────────────────────────────
     funds_out = {
         fund["cnpjFmt"]: {
-            "nome":        fund.get("exibicao", fund["name"]),
+            "nome":        fund["name"],
             "dates":       common_dates,
             "quotas":      [quotas[fund["cnpjFmt"]].get(d) for d in common_dates],  # None = pre-inception
             "returns":     returns_by_fund[fund["cnpjFmt"]],
