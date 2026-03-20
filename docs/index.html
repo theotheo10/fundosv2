@@ -2533,7 +2533,7 @@ function getSortVal(f, key) {
 }
 
 function sortBy(key) {
-  if (['cagr12','cagr36','cagr60'].includes(key)) currentAlphaWindow = key;
+  if (['cagr12','cagr36','cagr60','inception'].includes(key)) currentAlphaWindow = key;
   if (currentSort === key) { sortDir *= -1; }
   else { currentSort = key; sortDir = 1; }
   updateHeaders();
@@ -2771,7 +2771,7 @@ function render() {
       <td>${fmtPct(f.cagr12)}</td>
       <td>${fmtPct(f.cagr36)}</td>
       <td>${fmtPct(f.cagr60)}</td>
-      <td>${fmtAlpha(calcAlpha(f, currentAlphaWindow))}</td>
+      <td>${fmtAlpha(calcAlpha(f, currentAlphaWindow), currentAlphaWindow)}</td>
       <td>${fmtPct(cagrInception(f))}</td>
       <td>${fmtTenure(f.cnpjFmt)}</td>
     </tr>
@@ -4679,19 +4679,29 @@ function getBenchmarkCAGR(cnpj, window) {
 
 function calcAlpha(f, window) {
   if (!window) window = currentAlphaWindow;
+  // Alpha "desde o início": usa o IBOV no mesmo período do fundo (inception até hoje)
+  if (window === 'inception') {
+    const fv = f.cagrInception;
+    const bv = f.ibovCagrInception;
+    if (fv == null || bv == null) return null;
+    return fv - bv;
+  }
+  if (!['cagr12','cagr36','cagr60'].includes(window)) return null;
   const fv = f[window];
   const bv = getBenchmarkCAGR(f.cnpjFmt, window);
   if (fv == null || bv == null) return null;
   return fv - bv;
 }
 
-function fmtAlpha(v) {
+function fmtAlpha(v, window) {
+  const isInception = (window === 'inception');
   if (v == null) return '<span class="cagr-val na" data-tip="Sem dados suficientes para calcular o alpha">N/D</span>';
   const sign = v >= 0 ? '+' : '';
   const cls  = v >= 0 ? 'pos' : 'neg';
+  const periodLabel = isInception ? 'desde o início do fundo (IBOV no mesmo período)' : 'no período da coluna';
   const tip  = (v >= 0
-    ? sign + v.toFixed(1) + 'pp acima do IBOV no período da coluna'
-    : v.toFixed(1) + 'pp abaixo do IBOV no período da coluna');
+    ? sign + v.toFixed(1) + 'pp acima do IBOV ' + periodLabel
+    : v.toFixed(1) + 'pp abaixo do IBOV ' + periodLabel);
   return '<span class="cagr-val ' + cls + '" style="font-size:0.78rem" data-tip="' + tip + '">' + sign + v.toFixed(1) + 'pp</span>';
 }
 
