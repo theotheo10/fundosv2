@@ -5635,12 +5635,20 @@ function renderConsistency() {
 
     // Monthly returns
     var monthRets = [];
+    var activeMths = 0;
     monthKeys.forEach(function(ym) {
       var s = months[ym].start, e = months[ym].end;
+      // Skip months entirely before fund inception (all returns null/0)
+      var hasData = false;
+      for (var i = s; i <= e && i < rets.length; i++) {
+        if (rets[i] != null && rets[i] !== 0) { hasData = true; break; }
+      }
       var cum = 1;
-      for (var i = s; i < e && i < rets.length; i++) cum *= (1 + rets[i]);
+      for (var i = s; i <= e && i < rets.length; i++) cum *= (1 + (rets[i] || 0));
       var r = cum - 1;
-      monthRets.push(r);
+      monthRets.push(hasData ? r : null);
+      if (!hasData) return;
+      activeMths++;
       if (r > 0) pos++;
       if (r < worst) worst = r;
       if (r > best)  best  = r;
@@ -5658,6 +5666,7 @@ function renderConsistency() {
     // Winning streak: longest run of consecutive positive months
     var streak = 0, maxStreak = 0;
     monthRets.forEach(function(r) {
+      if (r == null) return;  // pre-inception, skip
       if (r > 0) { streak++; if (streak > maxStreak) maxStreak = streak; }
       else streak = 0;
     });
@@ -5666,7 +5675,7 @@ function renderConsistency() {
     return {
       cnpj:      cnpj,
       nome:      meta.short || meta.nome || historyData.funds[cnpj].nome,
-      pctPos:    pos / nM * 100,
+      pctPos:    activeMths > 0 ? pos / activeMths * 100 : 0,
       best:      best * 100,
       worst:     worst * 100,
       maxDD:     maxDD * 100,
