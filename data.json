@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-20T02:38:56.294238+00:00",
+  "generatedAt": "2026-03-20T02:50:06.884519+00:00",
   "anchorDate": "2026-03-17",
   "ibov": {
     "cagr12": 37.92264033724011,
@@ -135,6 +135,13 @@
       "alpha_ann": 7.73,
       "r2": 0.4631,
       "n_obs": 857
+    },
+    "52.116.227/0001-09": {
+      "beta_ibov": 0.1098,
+      "beta_sp500": 0.0184,
+      "alpha_ann": 12.34,
+      "r2": 0.2344,
+      "n_obs": 596
     }
   },
   "funds": [
@@ -493,6 +500,27 @@
       "cagr36": 25.13173031908984,
       "cagr60": null,
       "cagrInception": 21.018276771468415,
+      "error": false
+    },
+    {
+      "name": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO",
+      "cnpj": "52.116.227/0001-09",
+      "cnpjFmt": "52.116.227/0001-09",
+      "latestDate": "2026-03-17",
+      "latestQuota": 1.410002,
+      "isDelayed": false,
+      "delayDays": 0,
+      "maxQuota": 1.462071,
+      "maxQuotaDate": "2026-02-25",
+      "inceptionDate": "2023-09-29",
+      "anchorDate": "2026-03-17",
+      "anchor12m": "2025-03-17",
+      "anchor36m": "2023-03-17",
+      "anchor60m": "2021-03-17",
+      "cagr12": 15.989254173938106,
+      "cagr36": null,
+      "cagr60": null,
+      "cagrInception": 14.963066587251529,
       "error": false
     }
   ]
