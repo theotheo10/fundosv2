@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-20T14:43:14.601590+00:00",
+  "generatedAt": "2026-03-20T15:17:24.842353+00:00",
   "anchorDate": "2026-03-18",
   "ibov": {
     "cagr12": 36.663555750655654,
@@ -18,165 +18,163 @@
   },
   "fund_betas": {
     "22.232.927/0001-90": {
-      "beta_ibov": 0.8057,
-      "beta_sp500": -0.0457,
-      "alpha_ann": 11.32,
-      "r2": 0.5447,
-      "n_obs": 920
+      "beta_ibov": 0.806,
+      "beta_sp500": -0.0441,
+      "alpha_ann": 10.98,
+      "r2": 0.5445,
+      "n_obs": 921
     },
     "17.400.251/0001-66": {
-      "beta_ibov": 0.9026,
-      "beta_sp500": -0.0336,
-      "alpha_ann": 9.7,
+      "beta_ibov": 0.9028,
+      "beta_sp500": -0.0325,
+      "alpha_ann": 9.45,
       "r2": 0.5671,
-      "n_obs": 920
+      "n_obs": 921
     },
     "18.302.338/0001-63": {
-      "beta_ibov": 0.782,
-      "beta_sp500": -0.0569,
-      "alpha_ann": 11.89,
-      "r2": 0.4413,
-      "n_obs": 920
+      "beta_ibov": 0.7821,
+      "beta_sp500": -0.0563,
+      "alpha_ann": 11.77,
+      "r2": 0.4414,
+      "n_obs": 921
     },
     "37.495.383/0001-26": {
-      "beta_ibov": 0.5167,
-      "beta_sp500": 0.1129,
-      "alpha_ann": 10.07,
-      "r2": 0.443,
-      "n_obs": 920
+      "beta_ibov": 0.5164,
+      "beta_sp500": 0.1106,
+      "alpha_ann": 10.57,
+      "r2": 0.4407,
+      "n_obs": 921
     },
     "42.698.666/0001-05": {
-      "beta_ibov": 0.2417,
-      "beta_sp500": -0.048,
-      "alpha_ann": 17.75,
-      "r2": 0.2301,
-      "n_obs": 920
+      "beta_ibov": 0.2416,
+      "beta_sp500": -0.0485,
+      "alpha_ann": 17.88,
+      "r2": 0.23,
+      "n_obs": 921
     },
     "24.623.392/0001-03": {
-      "beta_ibov": 0.8661,
-      "beta_sp500": -0.018,
-      "alpha_ann": 7.2,
+      "beta_ibov": 0.8662,
+      "beta_sp500": -0.0174,
+      "alpha_ann": 7.06,
       "r2": 0.6518,
-      "n_obs": 920
+      "n_obs": 921
     },
     "28.747.685/0001-53": {
-      "beta_ibov": 0.9064,
-      "beta_sp500": 0.0844,
-      "alpha_ann": 5.43,
-      "r2": 0.5649,
-      "n_obs": 920
+      "beta_ibov": 0.9071,
+      "beta_sp500": 0.0887,
+      "alpha_ann": 4.55,
+      "r2": 0.5633,
+      "n_obs": 921
     },
     "10.500.884/0001-05": {
-      "beta_ibov": 0.8529,
-      "beta_sp500": -0.029,
-      "alpha_ann": 5.4,
-      "r2": 0.8301,
-      "n_obs": 920
+      "beta_ibov": 0.853,
+      "beta_sp500": -0.0281,
+      "alpha_ann": 5.2,
+      "r2": 0.8299,
+      "n_obs": 921
     },
     "35.744.790/0001-02": {
-      "beta_ibov": 0.0253,
-      "beta_sp500": 0.0955,
-      "alpha_ann": 25.99,
-      "r2": 0.0475,
-      "n_obs": 920
+      "beta_ibov": 0.0252,
+      "beta_sp500": 0.0945,
+      "alpha_ann": 26.22,
+      "r2": 0.0467,
+      "n_obs": 921
     },
     "38.954.217/0001-03": {
-      "beta_ibov": 0.9721,
-      "beta_sp500": -0.0413,
-      "alpha_ann": 7.28,
-      "r2": 0.7435,
-      "n_obs": 920
+      "beta_ibov": 0.9723,
+      "beta_sp500": -0.0402,
+      "alpha_ann": 7.04,
+      "r2": 0.7434,
+      "n_obs": 921
     },
     "32.073.525/0001-43": {
-      "beta_ibov": 0.6986,
-      "beta_sp500": 0.0081,
-      "alpha_ann": 4.75,
-      "r2": 0.7252,
-      "n_obs": 920
+      "beta_ibov": 0.6983,
+      "beta_sp500": 0.0065,
+      "alpha_ann": 5.1,
+      "r2": 0.7238,
+      "n_obs": 921
     },
     "21.689.246/0001-92": {
-      "beta_ibov": 0.3477,
-      "beta_sp500": 0.6145,
-      "alpha_ann": 5.36,
-      "r2": 0.4707,
-      "n_obs": 920
+      "beta_ibov": 0.3476,
+      "beta_sp500": 0.6144,
+      "alpha_ann": 5.37,
+      "r2": 0.4715,
+      "n_obs": 921
     },
     "14.438.229/0001-17": {
-      "beta_ibov": 0.7285,
-      "beta_sp500": 0.0085,
-      "alpha_ann": -0.12,
-      "r2": 0.668,
-      "n_obs": 920
+      "beta_ibov": 0.7289,
+      "beta_sp500": 0.0109,
+      "alpha_ann": -0.6,
+      "r2": 0.6666,
+      "n_obs": 921
     },
     "17.397.315/0001-17": {
-      "beta_ibov": 0.5937,
-      "beta_sp500": -0.0768,
-      "alpha_ann": 16.29,
-      "r2": 0.6633,
-      "n_obs": 920
+      "beta_ibov": 0.5934,
+      "beta_sp500": -0.0785,
+      "alpha_ann": 16.67,
+      "r2": 0.6618,
+      "n_obs": 921
     },
     "46.351.969/0001-08": {
       "beta_ibov": 0.2453,
-      "beta_sp500": 0.5736,
-      "alpha_ann": 11.27,
-      "r2": 0.4491,
-      "n_obs": 786
+      "beta_sp500": 0.574,
+      "alpha_ann": 11.2,
+      "r2": 0.4506,
+      "n_obs": 787
     },
     "15.334.585/0001-53": {
-      "beta_ibov": 0.9569,
-      "beta_sp500": -0.0422,
-      "alpha_ann": 7.46,
-      "r2": 0.8414,
-      "n_obs": 920
+      "beta_ibov": 0.9567,
+      "beta_sp500": -0.0433,
+      "alpha_ann": 7.69,
+      "r2": 0.841,
+      "n_obs": 921
     },
     "47.511.351/0001-20": {
-      "beta_ibov": 0.4281,
-      "beta_sp500": 0.3496,
-      "alpha_ann": 7.73,
-      "r2": 0.4631,
-      "n_obs": 857
+      "beta_ibov": 0.4282,
+      "beta_sp500": 0.3504,
+      "alpha_ann": 7.58,
+      "r2": 0.4643,
+      "n_obs": 858
     },
     "52.116.227/0001-09": {
       "beta_ibov": 0.1098,
-      "beta_sp500": 0.0184,
-      "alpha_ann": 12.34,
-      "r2": 0.2344,
-      "n_obs": 596
+      "beta_sp500": 0.0188,
+      "alpha_ann": 12.26,
+      "r2": 0.2351,
+      "n_obs": 597
     },
     "47.612.105/0001-65": {
-      "beta_ibov": 0.2795,
-      "beta_sp500": 0.1062,
-      "alpha_ann": 17.66,
-      "r2": 0.234,
-      "n_obs": 798
+      "beta_ibov": 0.2797,
+      "beta_sp500": 0.1079,
+      "alpha_ann": 17.31,
+      "r2": 0.2352,
+      "n_obs": 799
     },
     "29.726.133/0001-21": {
-      "beta_ibov": 0.0743,
-      "beta_sp500": 0.1557,
-      "alpha_ann": 26.29,
-      "r2": 0.0019,
-      "n_obs": 1303
+      "beta_ibov": 0.0201,
+      "beta_sp500": 0.2486,
+      "alpha_ann": 19.8,
+      "r2": 0.0024,
+      "n_obs": 921
     },
     "35.828.684/0001-07": {
-      "beta_ibov": 0.0334,
-      "beta_sp500": -0.0068,
-      "alpha_ann": 13.83,
-      "r2": 0.0258,
-      "n_obs": 1262
+      "beta_ibov": 0.0402,
+      "beta_sp500": -0.0062,
+      "alpha_ann": 13.78,
+      "r2": 0.0383,
+      "n_obs": 921
     },
     "16.876.874/0001-47": {
-      "beta_ibov": 0.8683,
-      "beta_sp500": -0.0498,
-      "alpha_ann": 13.76,
-      "r2": 0.5801,
-      "n_obs": 1303
+      "beta_ibov": 0.841,
+      "beta_sp500": -0.0373,
+      "alpha_ann": 10.93,
+      "r2": 0.7137,
+      "n_obs": 921
     }
   },
   "funds": [
     {
-      "name": "Tarpon GT",
-      "nameFull": "Tarpon GT FIF Cotas FIA",
-      "curto": "Tarpon",
+      "name": "Tarpon GT FIF Cotas FIA",
       "cnpj": "22.232.927/0001-90",
       "cnpjFmt": "22.232.927/0001-90",
       "latestDate": "2026-03-18",
@@ -198,9 +196,7 @@
       "error": false
     },
     {
-      "name": "Organon",
-      "nameFull": "Organon FIF Cotas FIA",
-      "curto": "Organon",
+      "name": "Organon FIF Cotas FIA",
       "cnpj": "17.400.251/0001-66",
       "cnpjFmt": "17.400.251/0001-66",
       "latestDate": "2026-03-18",
@@ -222,9 +218,7 @@
       "error": false
     },
     {
-      "name": "Ártica Long Term",
-      "nameFull": "Artica Long Term FIA",
-      "curto": "Ártica",
+      "name": "Artica Long Term FIA",
       "cnpj": "18.302.338/0001-63",
       "cnpjFmt": "18.302.338/0001-63",
       "latestDate": "2026-03-18",
@@ -246,9 +240,7 @@
       "error": false
     },
     {
-      "name": "Genoa Arpa",
-      "nameFull": "Genoa Capital Arpa CIC Classe FIM RL",
-      "curto": "Genoa",
+      "name": "Genoa Capital Arpa CIC Classe FIM RL",
       "cnpj": "37.495.383/0001-26",
       "cnpjFmt": "37.495.383/0001-26",
       "latestDate": "2026-03-18",
@@ -270,9 +262,7 @@
       "error": false
     },
     {
-      "name": "Artax Ultra",
-      "nameFull": "Itaú Artax Ultra Multimercado FIF DA CIC RL",
-      "curto": "Artax",
+      "name": "Itaú Artax Ultra Multimercado FIF DA CIC RL",
       "cnpj": "42.698.666/0001-05",
       "cnpjFmt": "42.698.666/0001-05",
       "latestDate": "2026-03-18",
@@ -294,9 +284,7 @@
       "error": false
     },
     {
-      "name": "Guepardo Long Bias",
-      "nameFull": "Guepardo Long Bias RV FIM",
-      "curto": "Guepardo",
+      "name": "Guepardo Long Bias RV FIM",
       "cnpj": "24.623.392/0001-03",
       "cnpjFmt": "24.623.392/0001-03",
       "latestDate": "2026-03-18",
@@ -318,13 +306,11 @@
       "error": false
     },
     {
-      "name": "Kapitalo Tarkus",
-      "nameFull": "Kapitalo Tarkus FIF Cotas FIA",
-      "curto": "Kapitalo",
+      "name": "Kapitalo Tarkus FIF Cotas FIA",
       "cnpj": "28.747.685/0001-53",
       "cnpjFmt": "28.747.685/0001-53",
       "latestDate": "2026-03-18",
-      "latestQuota": 3.6738238,
+      "latestQuota": 3.683198,
       "isDelayed": false,
       "delayDays": 0,
       "maxQuota": 4.23334,
@@ -334,17 +320,15 @@
       "anchor12m": "2025-03-18",
       "anchor36m": "2023-03-18",
       "anchor60m": "2021-03-18",
-      "cagr12": 53.48657643763772,
-      "cagr36": 34.64537761559703,
-      "cagr60": 13.360416542458076,
-      "cagrInception": 16.59305289107238,
+      "cagr12": 53.878484348648506,
+      "cagr36": 34.75967116195973,
+      "cagr60": 13.418216029130825,
+      "cagrInception": 16.62926935132427,
       "ibovCagrInception": 10.7208,
       "error": false
     },
     {
-      "name": "Real Investor",
-      "nameFull": "Real Investor FIC FIF Ações RL",
-      "curto": "Real",
+      "name": "Real Investor FIC FIF Ações RL",
       "cnpj": "10.500.884/0001-05",
       "cnpjFmt": "10.500.884/0001-05",
       "latestDate": "2026-03-18",
@@ -366,9 +350,7 @@
       "error": false
     },
     {
-      "name": "Schroder Tech L&S",
-      "nameFull": "Gama Schroder Gaia Contour Tech Equity L&S BRL FIF CIC Mult IE RL",
-      "curto": "Schroder",
+      "name": "Gama Schroder Gaia Contour Tech Equity L&S BRL FIF CIC Mult IE RL",
       "cnpj": "35.744.790/0001-02",
       "cnpjFmt": "35.744.790/0001-02",
       "latestDate": "2026-03-18",
@@ -390,9 +372,7 @@
       "error": false
     },
     {
-      "name": "Pátria Long Biased",
-      "nameFull": "Patria Long Biased FIF Cotas FIM",
-      "curto": "Pátria",
+      "name": "Patria Long Biased FIF Cotas FIM",
       "cnpj": "38.954.217/0001-03",
       "cnpjFmt": "38.954.217/0001-03",
       "latestDate": "2026-03-18",
@@ -414,9 +394,7 @@
       "error": false
     },
     {
-      "name": "Absolute Pace",
-      "nameFull": "Absolute Pace Long Biased FIC FIF Ações RL",
-      "curto": "Pace",
+      "name": "Absolute Pace Long Biased FIC FIF Ações RL",
       "cnpj": "32.073.525/0001-43",
       "cnpjFmt": "32.073.525/0001-43",
       "latestDate": "2026-03-18",
@@ -438,9 +416,7 @@
       "error": false
     },
     {
-      "name": "Arbor",
-      "nameFull": "Arbor FIC FIA",
-      "curto": "Arbor",
+      "name": "Arbor FIC FIA",
       "cnpj": "21.689.246/0001-92",
       "cnpjFmt": "21.689.246/0001-92",
       "latestDate": "2026-03-18",
@@ -462,9 +438,7 @@
       "error": false
     },
     {
-      "name": "Charles River",
-      "nameFull": "Charles River FIF Ações",
-      "curto": "Charles",
+      "name": "Charles River FIF Ações",
       "cnpj": "14.438.229/0001-17",
       "cnpjFmt": "14.438.229/0001-17",
       "latestDate": "2026-03-18",
@@ -486,9 +460,7 @@
       "error": false
     },
     {
-      "name": "SPX Falcon",
-      "nameFull": "SPX Falcon FIF CIC Ações RL",
-      "curto": "Falcon",
+      "name": "SPX Falcon FIF CIC Ações RL",
       "cnpj": "17.397.315/0001-17",
       "cnpjFmt": "17.397.315/0001-17",
       "latestDate": "2026-03-18",
@@ -510,9 +482,7 @@
       "error": false
     },
     {
-      "name": "Opportunity Global",
-      "nameFull": "Opportunity Global Equity Real Institucional FIC FIF Ações IE RL",
-      "curto": "Opportunity",
+      "name": "Opportunity Global Equity Real Institucional FIC FIF Ações IE RL",
       "cnpj": "46.351.969/0001-08",
       "cnpjFmt": "46.351.969/0001-08",
       "latestDate": "2026-03-18",
@@ -534,9 +504,7 @@
       "error": false
     },
     {
-      "name": "SPX Patriot",
-      "nameFull": "SPX Patriot FIF CIC Ações RL",
-      "curto": "Patriot",
+      "name": "SPX Patriot FIF CIC Ações RL",
       "cnpj": "15.334.585/0001-53",
       "cnpjFmt": "15.334.585/0001-53",
       "latestDate": "2026-03-18",
@@ -558,9 +526,7 @@
       "error": false
     },
     {
-      "name": "TB",
-      "nameFull": "TB FIF Cotas FIA",
-      "curto": "TB",
+      "name": "TB FIF Cotas FIA",
       "cnpj": "47.511.351/0001-20",
       "cnpjFmt": "47.511.351/0001-20",
       "latestDate": "2026-03-18",
@@ -582,9 +548,7 @@
       "error": false
     },
     {
-      "name": "Itaú Janeiro Multimercado",
-      "nameFull": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO",
-      "curto": "Janeiro",
+      "name": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO",
       "cnpj": "52.116.227/0001-09",
       "cnpjFmt": "52.116.227/0001-09",
       "latestDate": "2026-03-18",
@@ -606,9 +570,7 @@
       "error": false
     },
     {
-      "name": "Ace Capital Multicenários",
-      "nameFull": "Ace Capital Multicenários FIC FIF Multimercado RL",
-      "curto": "Ace",
+      "name": "Ace Capital Multicenários FIC FIF Multimercado RL",
       "cnpj": "47.612.105/0001-65",
       "cnpjFmt": "47.612.105/0001-65",
       "latestDate": "2026-03-18",
@@ -630,13 +592,11 @@
       "error": false
     },
     {
-      "name": "Kapitalo K10",
-      "nameFull": "Kapitalo K10 FIF Cotas FIM",
-      "curto": "K10",
+      "name": "Kapitalo K10 FIF Cotas FIM",
       "cnpj": "29.726.133/0001-21",
       "cnpjFmt": "29.726.133/0001-21",
       "latestDate": "2026-03-18",
-      "latestQuota": 0.9933068,
+      "latestQuota": 2.659205887562,
       "isDelayed": false,
       "delayDays": 0,
       "maxQuota": 2.67793433718,
@@ -646,17 +606,15 @@
       "anchor12m": "2025-03-18",
       "anchor36m": "2023-03-18",
       "anchor60m": "2021-03-18",
-      "cagr12": -56.359083508393816,
-      "cagr36": -18.513742753278773,
-      "cagr60": -5.6394935720836425,
-      "cagrInception": -0.29207882779366257,
+      "cagr12": 16.91099084072867,
+      "cagr36": 13.104039758480868,
+      "cagr60": 14.904142112169216,
+      "cagrInception": 14.308472931359173,
       "ibovCagrInception": 9.8956,
       "error": false
     },
     {
-      "name": "Genoa Radar",
-      "nameFull": "Genoa Capital Radar CIC Classe FIM RL",
-      "curto": "Radar",
+      "name": "Genoa Capital Radar CIC Classe FIM RL",
       "cnpj": "35.828.684/0001-07",
       "cnpjFmt": "35.828.684/0001-07",
       "latestDate": "2026-03-18",
@@ -678,9 +636,7 @@
       "error": false
     },
     {
-      "name": "Witpar",
-      "nameFull": "Witpar FIF Ações",
-      "curto": "Witpar",
+      "name": "Witpar FIF Ações",
       "cnpj": "16.876.874/0001-47",
       "cnpjFmt": "16.876.874/0001-47",
       "latestDate": "2026-03-18",
