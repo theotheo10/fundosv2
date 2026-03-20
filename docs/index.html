@@ -1828,6 +1828,7 @@
             </div>
           </div>
           <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
+          <button class="opt-run" id="optCancelBtn" onclick="cancelOptimizer()" style="display:none;background:var(--border);color:var(--text);margin-left:6px">Cancelar</button>
         </div>
         <div class="opt-beta-row">
           <input type="checkbox" id="optBetaAdj" onchange="updateBetaAdjNote()">
@@ -4376,152 +4377,212 @@ function applyOptimizedPortfolio(cnpjs, weights) {
 }
 
 // ── Entrada principal ─────────────────────────────────────────────────────────
+// ── Shared optimizer state (used by chunked runner) ──────────────────────
+let _optCancelled = false;
+
+function cancelOptimizer() {
+  _optCancelled = true;
+  document.getElementById('optCancelBtn').style.display = 'none';
+  document.getElementById('optRunBtn').disabled = false;
+  document.getElementById('optStatus').textContent = 'Cancelado.';
+}
+
+function _applyWeightConstraints(w, k) {
+  const feasible = (optMinW * k <= 1.0 + 1e-9)
+                && (optMaxW * k >= 1.0 - 1e-9)
+                && (optMinW  <= optMaxW + 1e-9);
+  if (!feasible) return null;
+  if (optMaxW >= 1.0 && optMinW <= 1e-9) return w;
+  for (let iter = 0; iter < 50; iter++) {
+    const slack = (1.0 - w.reduce((a,b) => a+b, 0)) / k;
+    w = w.map(x => x + slack);
+    const prev = [...w];
+    w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+    if (w.every((x, i) => Math.abs(x - prev[i]) < 1e-10)) break;
+  }
+  for (let iter = 0; iter < 50; iter++) {
+    const diff = 1.0 - w.reduce((a, b) => a + b, 0);
+    if (Math.abs(diff) < 1e-12) break;
+    const freeIdx = diff > 0
+      ? w.map((x, i) => x < optMaxW - 1e-12 ? i : -1).filter(i => i >= 0)
+      : w.map((x, i) => x > optMinW + 1e-12 ? i : -1).filter(i => i >= 0);
+    if (freeIdx.length === 0) break;
+    const per = diff / freeIdx.length;
+    freeIdx.forEach(i => { w[i] += per; });
+    w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
+  }
+  return w;
+}
+
+function _computeWeights(combo, mus, cov, cdiTarget, ibovProxy) {
+  let w = null;
+  if (optObj === 'vol') {
+    w = minVolWeights(cov);
+  } else if (optObj === 'sharpe') {
+    w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+    if (!w) w = minVolWeights(cov);
+  } else if (optObj === 'return') {
+    w = maxReturnWeights(mus);
+  } else if (optObj === 'sortino') {
+    w = maxSortinoWeights(combo, mus, cdiTarget, historyData);
+    if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+    if (!w) w = minVolWeights(cov);
+  } else if (optObj === 'calmar' || optObj === 'stress') {
+    w = maxSharpeWeights(combo, mus, cdiTarget, cov);
+    if (!w) w = minVolWeights(cov);
+  } else if (optObj === 'ir') {
+    w = maxSharpeWeights(combo, mus, ibovProxy, cov);
+    if (!w) w = minVolWeights(cov);
+  }
+  return w || new Array(combo.length).fill(1 / combo.length);
+}
+
+function _isBetter(p, best) {
+  if (!best) return true;
+  if (optObj === 'vol')     return p.vol    < best.vol;
+  if (optObj === 'sharpe')  return p.sharpe > best.sharpe;
+  if (optObj === 'return')  return p.ret    > best.ret;
+  if (optObj === 'sortino') return (p.sortino ?? -Infinity) > (best.sortino ?? -Infinity);
+  if (optObj === 'calmar')  return (p.calmar  ?? -Infinity) > (best.calmar  ?? -Infinity);
+  if (optObj === 'ir')      return (p.ir      ?? -Infinity) > (best.ir      ?? -Infinity);
+  if (optObj === 'stress')  return (p.calmar  ?? -Infinity) > (best.calmar  ?? -Infinity);
+  return false;
+}
+
+function _finishOptimizer(best, nCombos, stressCandidates, btn, status) {
+  if (!best) {
+    const k = optN;
+    let reason = '';
+    if (optMaxW * k < 1.0 - 1e-6)
+      reason = `Impossível: ${k} fundos × máx ${(optMaxW*100).toFixed(0)}% = ${(optMaxW*k*100).toFixed(0)}% < 100%.`;
+    else if (optMinW * k > 1.0 + 1e-6)
+      reason = `Impossível: ${k} fundos × mín ${(optMinW*100).toFixed(0)}% = ${(optMinW*k*100).toFixed(0)}% > 100%.`;
+    else
+      reason = 'Não foi possível encontrar portfólio válido com as restrições atuais.';
+    status.textContent = reason;
+    btn.disabled = false;
+    document.getElementById('optCancelBtn').style.display = 'none';
+    return;
+  }
+
+  // Phase 2 for stress
+  if (optObj === 'stress' && stressCandidates && stressCandidates.length > 0) {
+    let bestStress = null;
+    for (const cand of stressCandidates) {
+      const ws = worstStressReturn(cand.cnpjs, cand.w);
+      if (!bestStress || ws > bestStress._worstStress)
+        bestStress = { ...cand, _worstStress: ws };
+    }
+    if (bestStress) best = bestStress;
+  }
+
+  const metricLabel =
+    optObj === 'vol'     ? `vol. ${best.vol.toFixed(1)}%` :
+    optObj === 'sharpe'  ? `Sharpe ${best.sharpe.toFixed(2)}` :
+    optObj === 'return'  ? `retorno ${best.ret.toFixed(1)}%` :
+    optObj === 'sortino' ? `Sortino ${(best.sortino??0).toFixed(2)}` :
+    optObj === 'calmar'  ? `Calmar ${(best.calmar??0).toFixed(2)}` :
+    optObj === 'ir'      ? `IR ${(best.ir??0).toFixed(2)}` :
+    /* stress */           `Stress (Calmar ${(best.calmar??0).toFixed(2)})`;
+
+  status.textContent =
+    `${nCombos} combinações · ${metricLabel} · ` +
+    best.cnpjs.map((c, i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
+
+  applyOptimizedPortfolio(best.cnpjs, best.w);
+  btn.disabled = false;
+  document.getElementById('optCancelBtn').style.display = 'none';
+}
+
 function runOptimizer() {
   if (!historyData) return;
 
   const btn    = document.getElementById('optRunBtn');
   const status = document.getElementById('optStatus');
+  const cancelBtn = document.getElementById('optCancelBtn');
+
+  _optCancelled = false;
   btn.disabled = true;
+  cancelBtn.style.display = '';
   status.textContent = 'Calculando…';
 
-  // Defer para não bloquear o render
-  setTimeout(() => {
+  const allCnpjs   = Object.keys(historyData.funds);
+  const k          = optN;
+  const ibovProxy  = (ibov && ibov.cagr36) || 20;
+
+  // Build muMap
+  const muMap = {};
+  for (const cnpj of allCnpjs) {
+    const fData = funds.find(f => f.cnpjFmt === cnpj);
+    const t = fData ? calcTargetReturn(fData) : null;
+    muMap[cnpj] = t ? t.value : null;
+  }
+
+  // CDI target
+  let cdiTarget = 10;
+  if (cdi) {
+    const s = [];
+    if (cdi.cagr12 != null) s.push([1, cdi.cagr12]);
+    if (cdi.cagr36 != null) s.push([3, cdi.cagr36]);
+    if (cdi.cagr60 != null) s.push([5, cdi.cagr60]);
+    if (s.length) cdiTarget = s.reduce((a,[T,v]) => a+T*v, 0) / s.reduce((a,[T]) => a+T, 0);
+  }
+
+  const validCnpjs = allCnpjs.filter(c => muMap[c] != null);
+
+  // Pre-materialise all combos to allow chunking
+  const allCombos = [...combinations(validCnpjs, k)];
+  const total     = allCombos.length;
+  const CHUNK     = 150;
+
+  let best            = null;
+  let nCombos         = 0;
+  let idx             = 0;
+  const stressCandidates = optObj === 'stress' ? [] : null;
+
+  function processChunk() {
+    if (_optCancelled) return;
+    const end = Math.min(idx + CHUNK, total);
     try {
-      const allCnpjs = Object.keys(historyData.funds);
-      const k        = optN;
-
-      // Retornos alvo por fundo
-      const muMap = {};
-      for (const cnpj of allCnpjs) {
-        const fData = funds.find(f => f.cnpjFmt === cnpj);
-        const t     = fData ? calcTargetReturn(fData) : null;
-        muMap[cnpj] = t ? t.value : null;
-      }
-
-      // CDI alvo
-      let cdiTarget = 10;  // fallback
-      if (cdi) {
-        const s = [];
-        if (cdi.cagr12 != null) s.push([1, cdi.cagr12]);
-        if (cdi.cagr36 != null) s.push([3, cdi.cagr36]);
-        if (cdi.cagr60 != null) s.push([5, cdi.cagr60]);
-        if (s.length) cdiTarget = s.reduce((a,[T,v]) => a + T*v, 0) / s.reduce((a,[T]) => a+T, 0);
-      }
-
-      // Filtra fundos com dados completos
-      const validCnpjs = allCnpjs.filter(c => muMap[c] != null);
-
-      let best = null;
-      let nCombos = 0;
-      const stressCandidates = optObj === 'stress' ? [] : null;  // top-30 by sharpe for phase 2
-
-      for (const combo of combinations(validCnpjs, k)) {
+      for (; idx < end; idx++) {
+        const combo = allCombos[idx];
         nCombos++;
         const mus = combo.map(c => muMap[c]);
         const cov = covMatrix(combo, historyData);
+        let w = _computeWeights(combo, mus, cov, cdiTarget, ibovProxy);
+        w = _applyWeightConstraints(w, k);
+        if (!w) continue;
 
-        let w = null;
-        if (optObj === 'vol') {
-          w = minVolWeights(cov);
-        } else if (optObj === 'sharpe') {
-          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
-          if (!w) w = minVolWeights(cov);  // fallback
-        } else {
-          // Máx. retorno: pesos proporcionais ao excesso de retorno alvo.
-          // NÃO usa maxSharpeWeights aqui — o portfólio tangente maximiza
-          // Sharpe, não retorno. Usar Sharpe para selecionar pesos em modo
-          // "máx. retorno" concentra demais em ativos de alto Sharpe e
-          // produz resultados inconsistentes entre diferentes valores de k.
-          w = maxReturnWeights(mus);
+        const isAdv = ['sortino','calmar','ir','stress'].includes(optObj);
+        const p = isAdv
+          ? evalPortfolioAdvanced(w, combo, mus, cdiTarget, ibovProxy, cov, historyData)
+          : evalPortfolio(w, combo, mus, cdiTarget, cov);
+
+        if (_isBetter(p, best)) best = p;
+
+        if (stressCandidates !== null) {
+          stressCandidates.push({ ...p, cnpjs: combo, w });
+          stressCandidates.sort((a, b) => (b.calmar ?? -Infinity) - (a.calmar ?? -Infinity));
+          if (stressCandidates.length > 30) stressCandidates.pop();
         }
-        if (!w) w = new Array(k).fill(1 / k);  // fallback uniforme
-
-        // Enforce min/max weight constraints
-        // Feasibility: minW*k ≤ 1, maxW*k ≥ 1, minW ≤ maxW
-        const feasible = (optMinW * k <= 1.0 + 1e-9)
-                      && (optMaxW * k >= 1.0 - 1e-9)
-                      && (optMinW  <= optMaxW + 1e-9);
-        if (!feasible) { continue; }  // skip infeasible combination
-
-        if (optMaxW < 1.0 || optMinW > 1e-9) {
-          // Alternating projections onto {sum=1} and box [minW, maxW]
-          // Bug-free version: never renorm after clip (that can violate maxW)
-          for (let iter = 0; iter < 50; iter++) {
-            // Project onto sum=1: add uniform slack
-            const slack = (1.0 - w.reduce((a,b) => a+b, 0)) / k;
-            w = w.map(x => x + slack);
-            // Project onto box
-            const prev = [...w];
-            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
-            if (w.every((x, i) => Math.abs(x - prev[i]) < 1e-10)) break;
-          }
-          // Final redistribution to guarantee sum=1 while respecting bounds
-          for (let iter = 0; iter < 50; iter++) {
-            const diff = 1.0 - w.reduce((a, b) => a + b, 0);
-            if (Math.abs(diff) < 1e-12) break;
-            const freeIdx = diff > 0
-              ? w.map((x, i) => x < optMaxW - 1e-12 ? i : -1).filter(i => i >= 0)
-              : w.map((x, i) => x > optMinW + 1e-12 ? i : -1).filter(i => i >= 0);
-            if (freeIdx.length === 0) break;
-            const per = diff / freeIdx.length;
-            freeIdx.forEach(i => { w[i] += per; });
-            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
-          }
-        }
-
-        const p = evalPortfolio(w, combo, mus, cdiTarget, cov);
-
-        if (!best) { best = p; continue; }
-
-        const better =
-          optObj === 'vol'    ? p.vol    < best.vol    :
-          optObj === 'sharpe' ? p.sharpe > best.sharpe :
-          /* return */          p.ret    > best.ret;
-
-        if (better) best = p;
       }
-
-      if (!best) {
-        let reason = '';
-        if (optMaxW * k < 1.0 - 1e-6) {
-          reason = `Impossível: ${k} fundos × máx ${(optMaxW*100).toFixed(0)}% = ${(optMaxW*k*100).toFixed(0)}% < 100%. Aumente o peso máximo ou o número de fundos.`;
-        } else if (optMinW * k > 1.0 + 1e-6) {
-          reason = `Impossível: ${k} fundos × mín ${(optMinW*100).toFixed(0)}% = ${(optMinW*k*100).toFixed(0)}% > 100%. Reduza o peso mínimo.`;
-        } else {
-          reason = 'Não foi possível encontrar portfólio válido com as restrições atuais.';
-        }
-        status.textContent = reason;
-        btn.disabled = false;
-        return;
-      }
-
-      // Phase 2 for stress: re-evaluate top-N candidates by worst stress scenario
-      // This avoids 43k × 5 stress calculations — only runs on top 30 by sharpe
-      if (optObj === 'stress' && stressCandidates && stressCandidates.length > 0) {
-        let bestStress = null;
-        for (const cand of stressCandidates) {
-          const ws = worstStressReturn(cand.cnpjs, cand.w);
-          if (!bestStress || ws > bestStress._worstStress) {
-            bestStress = { ...cand, _worstStress: ws };
-          }
-        }
-        if (bestStress) best = bestStress;
-      }
-
-      const objLabel = optObj === 'vol' ? `vol. ${best.vol.toFixed(1)}%` :
-                       optObj === 'sharpe' ? `Sharpe ${best.sharpe.toFixed(2)}` :
-                       `retorno ${best.ret.toFixed(1)}%`;
-      status.textContent =
-        `${nCombos} combinações avaliadas · melhor: ${objLabel} · ` +
-        best.cnpjs.map((c,i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
-
-      applyOptimizedPortfolio(best.cnpjs, best.w);
-
     } catch(e) {
-      document.getElementById('optStatus').textContent = 'Erro: ' + e.message;
+      status.textContent = 'Erro: ' + e.message;
+      btn.disabled = false;
+      cancelBtn.style.display = 'none';
+      return;
     }
-    btn.disabled = false;
-  }, 20);
+
+    status.textContent = `Calculando… ${Math.round(idx / total * 100)}% (${nCombos}/${total})`;
+
+    if (idx < total) {
+      setTimeout(processChunk, 0);
+    } else {
+      _finishOptimizer(best, nCombos, stressCandidates, btn, status);
+    }
+  }
+
+  setTimeout(processChunk, 20);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -8255,179 +8316,6 @@ function worstStressReturn(cnpjs, weights) {
   });
   return worst;
 }
-
-// ── Patch de setOptObj para incluir novos modos ────────────────────────────
-const _origSetOptObj = setOptObj;
-setOptObj = function(obj) {
-  optObj = obj;
-  // All 6 button IDs
-  ['optObjSharpe','optObjReturn','optObjVol',
-   'optObjSortino','optObjCalmar','optObjIR','optObjStress'].forEach(function(id) {
-    const el = document.getElementById(id);
-    if (el) el.classList.toggle('active', el.id === 'optObj' + obj.charAt(0).toUpperCase() + obj.slice(1));
-  });
-};
-
-// ── Patch de runOptimizer para incluir novos modos ─────────────────────────
-const _origRunOpt = runOptimizer;
-runOptimizer = function() {
-  // Only intercept for new modes; fall through to original for classic modes
-  if (!['sortino','calmar','ir','stress'].includes(optObj)) {
-    _origRunOpt();
-    return;
-  }
-
-  if (!historyData) return;
-  const btn    = document.getElementById('optRunBtn');
-  const status = document.getElementById('optStatus');
-  btn.disabled = true;
-  status.innerHTML = 'Calculando<span class="calc-dot">.</span><span class="calc-dot">.</span><span class="calc-dot">.</span>';
-
-  setTimeout(function() {
-    try {
-      const allCnpjs = Object.keys(historyData.funds);
-      const k        = optN;
-
-      // Retornos alvo
-      const muMap = {};
-      for (const cnpj of allCnpjs) {
-        const fData = funds.find(f => f.cnpjFmt === cnpj);
-        const t     = fData ? calcTargetReturn(fData) : null;
-        muMap[cnpj] = t ? t.value : null;
-      }
-
-      // CDI e IBOV alvo
-      let cdiTarget = 10;
-      if (cdi) {
-        const s = [];
-        if (cdi.cagr12 != null) s.push([1, cdi.cagr12]);
-        if (cdi.cagr36 != null) s.push([3, cdi.cagr36]);
-        if (cdi.cagr60 != null) s.push([5, cdi.cagr60]);
-        if (s.length) cdiTarget = s.reduce((a,[T,v]) => a+T*v,0) / s.reduce((a,[T])=>a+T,0);
-      }
-      const ibovProxy = ibov.cagr36 || 20;
-
-      const validCnpjs = allCnpjs.filter(c => muMap[c] != null);
-      let best = null;
-      let nCombos = 0;
-      const stressCandidates = optObj === 'stress' ? [] : null;
-
-      for (const combo of combinations(validCnpjs, k)) {
-        nCombos++;
-        const mus = combo.map(c => muMap[c]);
-        const cov = covMatrix(combo, historyData);
-
-        // Weight computation strategy by objective
-        let w = null;
-        if (optObj === 'sortino') {
-          w = maxSortinoWeights(combo, mus, cdiTarget, historyData);
-          if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);
-          if (!w) w = minVolWeights(cov);
-        } else if (optObj === 'calmar') {
-          w = maxSharpeWeights(combo, mus, cdiTarget, cov);
-          if (!w) w = minVolWeights(cov);
-        } else if (optObj === 'ir') {
-          w = maxSharpeWeights(combo, mus, ibovProxy, cov);
-          if (!w) w = minVolWeights(cov);
-        } else if (optObj === 'stress') {
-          // For stress: use min-variance weights (reduces exposure to volatile funds)
-          // Stress score computed after loop in phase 2
-          w = minVolWeights(cov);
-          if (!w) w = maxSharpeWeights(combo, mus, cdiTarget, cov);
-        }
-        if (!w) w = new Array(k).fill(1 / k);
-
-        // Apply weight constraints (same as original)
-        const feasible = (optMinW * k <= 1.0 + 1e-9)
-                      && (optMaxW * k >= 1.0 - 1e-9)
-                      && (optMinW  <= optMaxW + 1e-9);
-        if (!feasible) continue;
-
-        if (optMaxW < 1.0 || optMinW > 1e-9) {
-          for (let iter = 0; iter < 50; iter++) {
-            const slack = (1.0 - w.reduce((a,b) => a+b, 0)) / k;
-            w = w.map(x => x + slack);
-            const prev = [...w];
-            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
-            if (w.every((x, i) => Math.abs(x - prev[i]) < 1e-10)) break;
-          }
-          for (let iter = 0; iter < 50; iter++) {
-            const diff = 1.0 - w.reduce((a, b) => a + b, 0);
-            if (Math.abs(diff) < 1e-12) break;
-            const freeIdx = diff > 0
-              ? w.map((x, i) => x < optMaxW - 1e-12 ? i : -1).filter(i => i >= 0)
-              : w.map((x, i) => x > optMinW + 1e-12 ? i : -1).filter(i => i >= 0);
-            if (freeIdx.length === 0) break;
-            const per = diff / freeIdx.length;
-            freeIdx.forEach(i => { w[i] += per; });
-            w = w.map(x => Math.min(optMaxW, Math.max(optMinW, x)));
-          }
-        }
-
-        const p = evalPortfolioAdvanced(w, combo, mus, cdiTarget, ibovProxy, cov, historyData);
-
-        if (!best) { best = p; continue; }
-
-        // For stress: defer expensive calculation — collect top candidates by sharpe
-        const _ws = null;  // computed in phase 2 after main loop
-
-        const better =
-          optObj === 'sortino' ? p.sortino > best.sortino :
-          optObj === 'calmar'  ? p.calmar  > best.calmar  :
-          optObj === 'stress'  ? (p.calmar ?? -Infinity) > (best?.calmar ?? -Infinity) :
-          /* ir */               p.ir      > best.ir;
-
-        if (better) {
-          best = p;
-        }
-        // Collect top-30 candidates for stress phase 2
-        if (stressCandidates !== null) {
-          stressCandidates.push({ ...p, cnpjs: combo, w });
-          stressCandidates.sort((a, b) => (b.calmar ?? -Infinity) - (a.calmar ?? -Infinity));
-          if (stressCandidates.length > 30) stressCandidates.pop();
-        }
-      }
-
-      if (!best) {
-        // Diagnose why optimization failed
-        let reason = '';
-        if (optMaxW * k < 1.0 - 1e-6) {
-          reason = `Impossível: ${k} fundos × máx ${(optMaxW*100).toFixed(0)}% = ${(optMaxW*k*100).toFixed(0)}% < 100%. Aumente o peso máximo ou o número de fundos.`;
-        } else if (optMinW * k > 1.0 + 1e-6) {
-          reason = `Impossível: ${k} fundos × mín ${(optMinW*100).toFixed(0)}% = ${(optMinW*k*100).toFixed(0)}% > 100%. Reduza o peso mínimo.`;
-        } else {
-          reason = 'Não foi possível encontrar portfólio válido com as restrições atuais.';
-        }
-        status.textContent = reason;
-        btn.disabled = false;
-        return;
-      }
-
-      // Build status with relevant metric
-      let metricStr, metricLabel;
-      if (optObj === 'sortino') {
-        metricStr  = best.sortino.toFixed(2);
-        metricLabel = `Sortino ${metricStr}`;
-      } else if (optObj === 'calmar') {
-        metricStr  = best.calmar.toFixed(2);
-        metricLabel = `Calmar ${metricStr}`;
-      } else {
-        metricStr  = best.ir.toFixed(2);
-        metricLabel = `IR ${metricStr}`;
-      }
-
-      status.textContent =
-        `${nCombos} combinações · ${metricLabel} · ` +
-        best.cnpjs.map((c, i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
-
-      applyOptimizedPortfolio(best.cnpjs, best.w);
-
-    } catch(e) {
-      document.getElementById('optStatus').textContent = 'Erro: ' + e.message;
-    }
-    btn.disabled = false;
-  }, 20);
-};
 
 
 
