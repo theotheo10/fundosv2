@@ -444,6 +444,23 @@ def fetch_cdi(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a60
 
 # ── history.json — histórico crescente ────────────────────────────────────────
 
+def _legacy_max_dd(rets: list) -> float:
+    """Fallback para maxDrawdown caso compute_fund_metrics retorne vazio."""
+    start = 0
+    for i, r in enumerate(rets):
+        if r is not None:
+            start = max(0, i - 1)
+            break
+    cum = peak = 1.0
+    dd_max = 0.0
+    for r in rets[start:]:
+        if r is None: continue
+        cum *= (1 + r)
+        if cum > peak: peak = cum
+        dd = (cum - peak) / peak
+        if dd < dd_max: dd_max = dd
+    return round(dd_max * 100, 2)
+
 def months_to_fetch(last_date_in_history: str | None, anchor: datetime.date) -> list:
     """
     Retorna lista de (year, month) a buscar na CVM.
@@ -678,23 +695,257 @@ def update_history(anchor: datetime.date) -> None:
     corr  = {ca: {cb: (1.0 if ca == cb else pearson_real(ca, cb))
                   for cb in cnpjs} for ca in cnpjs}
 
-    # ── Drawdown máximo ──────────────────────────────────────────────────────
-    def max_dd(rets: list) -> float:
-        # Skip leading zeros (pre-inception)
-        start = 0
+    # ── Métricas por fundo (servidor) ────────────────────────────────────────
+    # Calculadas uma vez por dia aqui e consumidas diretamente pelo browser.
+    # Evita recomputação O(n²·T) no thread principal a cada interação do usuário.
+
+    def first_real_idx_list(rets: list) -> int:
+        """Índice do primeiro retorno real (não-None) na série."""
         for i, r in enumerate(rets):
             if r is not None:
-                start = max(0, i - 1)
-                break
-        cum = peak = 1.0
-        dd_max = 0.0
-        for r in rets[start:]:
-            if r is None: continue
+                return max(0, i - 1)
+        return 0
+
+    def compute_fund_metrics(cnpj: str, cdi_annual: float) -> dict:
+        """
+        Calcula métricas de risco/retorno para um fundo sobre o histórico completo.
+
+        Rolling alpha e Beat IBOV usam retornos diários reais do IBOV quando disponíveis
+        (_ibov_daily_rets, injetado por main()), eliminando o viés do proxy constante.
+        Para janelas sem cobertura do IBOV real, usa o proxy como fallback.
+
+        Retorna dict com: vol, sharpe, sortino, calmar, maxDrawdown, cagrHist,
+                          rollingAlpha (array), rollingDates (array),
+                          propensity (Beat IBOV %), alphaAnn, teAnn, ir.
+        """
+        rets_all   = returns_by_fund[cnpj]
+        # dates_all[i] corresponde a returns[i]: retorno de common_dates[i] → common_dates[i+1]
+        # returns[i] = quota[i+1] / quota[i] - 1, portanto a data "de chegada" é common_dates[i+1]
+        dates_all  = common_dates  # len = n_returns + 1
+
+        fi   = first_real_idx_list(rets_all)
+        rets = [r for r in rets_all[fi:] if r is not None]
+        n    = len(rets)
+        if n < 60:
+            return {}
+
+        # Datas das barras reais (data de chegada de cada retorno)
+        dates_real = dates_all[fi + 1: fi + 1 + n]
+
+        cdi_daily         = math.pow(1 + cdi_annual / 100, 1 / 252) - 1
+        ibov_proxy_daily  = _ibov_daily_proxy  # fallback quando IBOV real não disponível
+
+        # Retorno anualizado (CAGR sobre o período com dados reais)
+        cum = 1.0
+        for r in rets:
             cum *= (1 + r)
-            if cum > peak: peak = cum
-            dd = (cum - peak) / peak
-            if dd < dd_max: dd_max = dd
-        return round(dd_max * 100, 2)
+        cagr_val = (math.pow(cum, 252 / n) - 1) * 100
+
+        # Volatilidade anualizada
+        mean_r = sum(rets) / n
+        var_r  = sum((r - mean_r) ** 2 for r in rets) / (n - 1)
+        vol    = math.sqrt(var_r * 252) * 100
+
+        # Sharpe (MAR = CDI)
+        sharpe = (cagr_val - cdi_annual) / vol if vol > 0 else None
+
+        # Sortino (semi-desvio vs CDI diário)
+        excess_d = [r - cdi_daily for r in rets]
+        down_sq  = sum(e * e for e in excess_d if e < 0) / n
+        semi_vol = math.sqrt(down_sq * 252) * 100
+        sortino  = (cagr_val - cdi_annual) / semi_vol if semi_vol > 0 else None
+
+        # Max drawdown e Calmar
+        c2 = pk = 1.0
+        mdd = 0.0
+        for r in rets:
+            c2 *= (1 + r)
+            if c2 > pk:
+                pk = c2
+            dd = (c2 - pk) / pk
+            if dd < mdd:
+                mdd = dd
+        mdd_pct = mdd * 100  # negativo
+        calmar  = cagr_val / abs(mdd_pct) if mdd_pct < 0 else None
+
+        # ── Helper: retorno IBOV real para uma data, com fallback ao proxy ──────
+        def ibov_ret(date_str: str) -> float:
+            r = _ibov_daily_rets.get(date_str)
+            return r if r is not None else ibov_proxy_daily
+
+        # ── IR vs IBOV (usando retornos reais quando disponíveis) ───────────────
+        # excess[i] = r_fund[i] - r_ibov[date_i]
+        ibov_excess_d = [rets[i] - ibov_ret(dates_real[i]) for i in range(n)]
+        alpha_d_daily = sum(ibov_excess_d) / n
+        alpha_ann     = (math.pow(1 + alpha_d_daily, 252) - 1) * 100
+        te_d          = math.sqrt(sum((e - alpha_d_daily) ** 2 for e in ibov_excess_d) / (n - 1))
+        te_ann        = te_d * math.sqrt(252) * 100
+        ir            = alpha_ann / te_ann if te_ann > 0 else None
+
+        # ── Rolling alpha 12M (janela 252 pregões, retornos IBOV reais) ─────────
+        WINDOW      = 252
+        rolling_alpha = []
+        rolling_dates = []
+        for i in range(n - WINDOW + 1):
+            cf = 1.0
+            ci = 1.0
+            for j in range(i, i + WINDOW):
+                cf *= (1 + rets[j])
+                ci *= (1 + ibov_ret(dates_real[j]))
+            # Anualizar ambos: (1+r_fund)^(252/WINDOW) - (1+r_ibov)^(252/WINDOW)
+            # Para WINDOW=252 exatamente, isso é simplesmente cf-1 e ci-1 em termos anuais
+            ra = (math.pow(cf, 252 / WINDOW) - math.pow(ci, 252 / WINDOW)) * 100
+            rolling_alpha.append(round(ra, 2))
+            if i + WINDOW - 1 < len(dates_real):
+                rolling_dates.append(dates_real[i + WINDOW - 1])
+
+        # ── Beat IBOV (janela trimestral 63 pregões, passo 21) ──────────────────
+        beats = 0
+        total = 0
+        for i in range(0, n - 62, 21):
+            cf = ci = 1.0
+            for j in range(i, i + 63):
+                cf *= (1 + rets[j])
+                ci *= (1 + ibov_ret(dates_real[j]))
+            if cf > ci:
+                beats += 1
+            total += 1
+        propensity = round(beats / total * 100, 1) if total > 0 else None
+
+        return {
+            "vol":          round(vol,       2),
+            "sharpe":       round(sharpe,    4) if sharpe    is not None else None,
+            "sortino":      round(sortino,   4) if sortino   is not None else None,
+            "calmar":       round(calmar,    4) if calmar    is not None else None,
+            "maxDrawdown":  round(mdd_pct,   2),
+            "cagrHist":     round(cagr_val,  4),
+            "alphaAnn":     round(alpha_ann, 4),
+            "teAnn":        round(te_ann,    4),
+            "ir":           round(ir,        4) if ir        is not None else None,
+            "propensity":   propensity,
+            "rollingAlpha": rolling_alpha,
+            "rollingDates": rolling_dates,
+        }
+
+    # ── Covariância e semi-covariância (universo completo) ───────────────────
+    # Pré-calculadas sobre o histórico completo para que o otimizador no browser
+    # apenas faça slicing de submatrizes (O(k²)) em vez de recomputar do zero.
+    # Unidades: %² anualizadas — idêntico a covMatrix() no index.html.
+
+    def compute_cov_matrix(cdi_annual: float) -> dict:
+        """
+        Calcula covariância e semi-covariância para todos os pares de fundos.
+        Retorna {"cov": {cnpjA: {cnpjB: valor}}, "semiCov": {...}}
+        """
+        all_cnpjs = [f["cnpjFmt"] for f in FUNDS]
+        n_total   = len(common_dates) - 1  # número de retornos
+
+        cdi_daily = math.pow(1 + cdi_annual / 100, 1 / 252) - 1
+
+        # Índice de primeiro retorno real por fundo
+        fi_map = {cnpj: first_real_idx_list(returns_by_fund[cnpj]) for cnpj in all_cnpjs}
+
+        # Médias (sobre todo o período real de cada fundo)
+        means = {}
+        for cnpj in all_cnpjs:
+            fi  = fi_map[cnpj]
+            rs  = [r for r in returns_by_fund[cnpj][fi:] if r is not None]
+            means[cnpj] = sum(rs) / len(rs) if rs else 0.0
+
+        cov_out      = {ca: {} for ca in all_cnpjs}
+        semi_cov_out = {ca: {} for ca in all_cnpjs}
+
+        for i, ca in enumerate(all_cnpjs):
+            for j, cb in enumerate(all_cnpjs):
+                if j < i:
+                    # Simétrica — copiar
+                    cov_out[ca][cb]      = cov_out[cb][ca]
+                    semi_cov_out[ca][cb] = semi_cov_out[cb][ca]
+                    continue
+
+                if ca == cb:
+                    # Variância diagonal
+                    fi  = fi_map[ca]
+                    rs  = [r for r in returns_by_fund[ca][fi:] if r is not None]
+                    nn  = len(rs)
+                    if nn < 2:
+                        cov_out[ca][cb] = semi_cov_out[ca][cb] = 0.0
+                        continue
+                    ma  = means[ca]
+                    var = sum((r - ma) ** 2 for r in rs) / (nn - 1) * 252 * 10000
+                    cov_out[ca][cb] = round(var, 6)
+                    # Semi-variância diagonal
+                    sds = [min(r - cdi_daily, 0) for r in rs]
+                    sv  = sum(s * s for s in sds) / nn * 252 * 10000
+                    semi_cov_out[ca][cb] = round(sv, 6)
+                    continue
+
+                # Par distinto: usar apenas datas onde ambos têm retorno real
+                fia, fib   = fi_map[ca], fi_map[cb]
+                t_start    = max(fia, fib)
+                ra_all     = returns_by_fund[ca]
+                rb_all     = returns_by_fund[cb]
+                pairs      = [(ra_all[t], rb_all[t])
+                              for t in range(t_start, n_total)
+                              if ra_all[t] is not None and rb_all[t] is not None]
+                nn = len(pairs)
+                if nn < 30:
+                    cov_out[ca][cb] = semi_cov_out[ca][cb] = 0.0
+                    continue
+
+                ma, mb = means[ca], means[cb]
+                # Covariância
+                s = sum((a - ma) * (b - mb) for a, b in pairs)
+                cov_out[ca][cb] = round(s / (nn - 1) * 252 * 10000, 6)
+                # Semi-covariância
+                sds_a = [min(a - cdi_daily, 0) for a, _ in pairs]
+                sds_b = [min(b - cdi_daily, 0) for _, b in pairs]
+                ss    = sum(sds_a[k] * sds_b[k] for k in range(nn))
+                semi_cov_out[ca][cb] = round(ss / nn * 252 * 10000, 6)
+
+        return {"cov": cov_out, "semiCov": semi_cov_out}
+
+    # ── Injetar proxy IBOV para compute_fund_metrics ─────────────────────────
+    # (A fronteira eficiente é calculada em main() via compute_efficient_frontier()
+    #  após process_fund() ter produzido os retornos esperados por fundo.
+    #  O resultado é então injetado no history.json por patch_history_frontier().)
+    # Precisamos do retorno anualizado do IBOV para o cálculo do rolling alpha.
+    # Usamos o CAGR implícito calculado sobre o período do history — consistente
+    # com o que o browser usa (ibov.cagr36 como proxy constante).
+    # Este valor é passado via closure através de _ibov_daily_proxy.
+    # Será sobrescrito pelo valor real vindo do data.json logo após main() rodar.
+    # Aqui usamos um valor padrão conservador; main() injetará o real.
+    _ibov_daily_proxy = math.pow(1 + 0.15, 1 / 252) - 1  # fallback 15% a.a.
+
+    # ── Calcular CDI anual para esta run ─────────────────────────────────────
+    # Aproximação: derivada do CAGR de 36M do CDI (já calculado em main).
+    # Aqui dentro de update_history não temos acesso direto ao CDI fetchado,
+    # então usamos fallback de 12.5% — sobrescrito em main() se necessário.
+    # Para future-proofing, aceitamos cdi_annual como argumento opcional.
+
+    # ── Chamada das métricas precomputadas ───────────────────────────────────
+    # Nota: _ibov_daily_proxy e _cdi_annual_proxy são closures definidas acima
+    # e serão sobrepostas por main() antes de chamar update_history().
+    # A função aceita os valores via argumento para evitar estado global.
+    _cdi_annual_proxy  = getattr(update_history, "_cdi_annual", 12.5)
+    _ibov_annual_proxy = getattr(update_history, "_ibov_annual", 15.0)
+    _ibov_daily_proxy  = math.pow(1 + _ibov_annual_proxy / 100, 1 / 252) - 1
+    # Retornos diários reais do IBOV (injetados por main() antes desta chamada).
+    # Usados para rolling alpha rigoroso e Beat IBOV — elimina o viés do proxy constante.
+    _ibov_daily_rets: dict = getattr(update_history, "_ibov_daily_rets", {})
+
+    print("  Calculando métricas por fundo…")
+    fund_metrics: dict = {}
+    for fund in FUNDS:
+        cnpj = fund["cnpjFmt"]
+        m = compute_fund_metrics(cnpj, _cdi_annual_proxy)
+        if m:
+            fund_metrics[cnpj] = m
+    print(f"  Métricas calculadas: {len(fund_metrics)} fundos")
+
+    print("  Calculando matrizes de covariância e semi-covariância…")
+    cov_data = compute_cov_matrix(_cdi_annual_proxy)
+    print("  Covariâncias prontas")
 
     # ── Serializar ───────────────────────────────────────────────────────────
     funds_out = {
@@ -703,7 +954,9 @@ def update_history(anchor: datetime.date) -> None:
             "dates":       common_dates,
             "quotas":      [quotas[fund["cnpjFmt"]].get(d) for d in common_dates],  # None = pre-inception
             "returns":     returns_by_fund[fund["cnpjFmt"]],
-            "maxDrawdown": max_dd(returns_by_fund[fund["cnpjFmt"]]),
+            "maxDrawdown": fund_metrics.get(fund["cnpjFmt"], {}).get("maxDrawdown",
+                           _legacy_max_dd(returns_by_fund[fund["cnpjFmt"]])),
+            "metrics":     fund_metrics.get(fund["cnpjFmt"], {}),
         }
         for fund in FUNDS
     }
@@ -712,20 +965,99 @@ def update_history(anchor: datetime.date) -> None:
     n_years = (datetime.date.fromisoformat(common_dates[-1]) -
                datetime.date.fromisoformat(common_dates[0])).days / 365.25
 
+    # Serializar retornos diários reais do IBOV alinhados com commonDates.
+    # Apenas as datas presentes em commonDates são necessárias — evita serializar
+    # fins de semana e feriados que não têm cotas de fundos.
+    ibov_rets_filtered = {
+        d: _ibov_daily_rets[d]
+        for d in common_dates
+        if d in _ibov_daily_rets
+    }
+
     output = {
-        "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "from":        common_dates[0],
-        "to":          common_dates[-1],
-        "nDays":       n_days,
-        "nYears":      round(n_years, 2),
-        "commonDates": common_dates,
-        "correlation": corr,
-        "funds":       funds_out,
+        "generatedAt":      datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "from":             common_dates[0],
+        "to":               common_dates[-1],
+        "nDays":            n_days,
+        "nYears":           round(n_years, 2),
+        "commonDates":      common_dates,
+        "correlation":      corr,
+        "covMatrix":        cov_data["cov"],
+        "semiCovMatrix":    cov_data["semiCov"],
+        "ibovReturns":      ibov_rets_filtered,
+        "funds":            funds_out,
     }
 
     hist_path.write_text(json.dumps(output, ensure_ascii=False, separators=(",", ":")))
     size_kb = hist_path.stat().st_size // 1024
     print(f"  ✓ history.json: {n_days} pregões, {n_years:.1f} anos, {size_kb} KB")
+
+
+
+def compute_efficient_frontier(mu_map: dict, cov_out: dict, corr: dict) -> list:
+    """
+    Pré-calcula a fronteira eficiente aproximada via Monte Carlo (Dirichlet).
+    Mesma lógica de renderEfficientFrontier() no index.html — garante consistência.
+
+    mu_map:  {cnpjFmt: retorno_esperado_%}   (geralmente cagr36 do fundo)
+    cov_out: {cnpjFmt: {cnpjFmt: float}}     covariância %² anualizada (diagonal = var)
+    corr:    {cnpjFmt: {cnpjFmt: float}}     correlação de Pearson
+
+    Retorna lista de {x: vol_%, y: ret_%} representando o envelope de Pareto.
+    """
+    import random as _random
+
+    valid  = [c for c in mu_map if mu_map[c] is not None]
+    k      = len(valid)
+    if k < 2:
+        return []
+
+    mus_v  = [mu_map[c] for c in valid]
+    vols_v = [math.sqrt(max(cov_out.get(c, {}).get(c, 0.0), 0.0)) for c in valid]
+
+    N   = 800
+    pts = []
+    for _ in range(N):
+        raw = [-math.log(max(1e-10, _random.random())) for _ in range(k)]
+        s   = sum(raw)
+        w   = [r / s for r in raw]
+
+        pt_ret = sum(w[i] * mus_v[i] for i in range(k))
+
+        pt_var = 0.0
+        for i in range(k):
+            for j in range(k):
+                rho = corr.get(valid[i], {}).get(valid[j], 0.0) if i != j else 1.0
+                pt_var += w[i] * w[j] * vols_v[i] * vols_v[j] * rho
+        pt_vol = math.sqrt(max(0.0, pt_var))
+        pts.append((round(pt_vol, 2), round(pt_ret, 2)))
+
+    # Envelope de Pareto: para cada bin de 0.5% de volatilidade, manter maior retorno
+    BIN   = 0.5
+    bins: dict = {}
+    for vol_p, ret_p in pts:
+        b = round(round(vol_p / BIN) * BIN, 1)
+        if b not in bins or ret_p > bins[b]:
+            bins[b] = ret_p
+
+    return sorted([{"x": v, "y": r} for v, r in bins.items()], key=lambda p: p["x"])
+
+
+def patch_history_frontier(hist_path: Path, frontier: list) -> None:
+    """
+    Adiciona/atualiza o campo 'efficientFrontier' no history.json existente.
+    Operação atômica: lê → modifica em memória → escreve.
+    Chamada de main() após process_fund() ter gerado os mu_map.
+    """
+    if not hist_path.exists() or not frontier:
+        return
+    try:
+        hist = json.loads(hist_path.read_text())
+        hist["efficientFrontier"] = frontier
+        hist_path.write_text(json.dumps(hist, ensure_ascii=False, separators=(",", ":")))
+        print(f"  ✓ efficientFrontier: {len(frontier)} pontos escritos em history.json")
+    except Exception as e:
+        print(f"  ⚠ patch_history_frontier falhou: {e}")
 
 
 def reconstruct_max_quotas_from_history(hist_path: Path) -> dict:
@@ -1007,6 +1339,31 @@ def main() -> None:
     oldest_inception = datetime.date(2005, 1, 1)  # safe lower bound covering all funds
     ibov, ibov_price_map = fetch_ibov(anchor, a12, a36, a60, oldest_inception=oldest_inception)
 
+    # Fetch CDI before update_history so we can pass the annual rate for metric computation.
+    # CDI is needed for Sharpe, Sortino, and semi-covariance inside update_history.
+    print(f"\n── CDI (pré-fetch para métricas)")
+    cdi = fetch_cdi(anchor, a12, a36, a60)
+
+    # Inject CDI and IBOV annual rates into update_history via function attributes.
+    # update_history reads these via getattr(update_history, "_cdi_annual", 12.5).
+    # Using weighted average of available periods (same logic as the browser's cdiTarget).
+    _cdi_pts   = [(1, cdi["cagr12"]), (3, cdi["cagr36"]), (5, cdi["cagr60"])]
+    _cdi_valid = [(T, v) for T, v in _cdi_pts if v is not None]
+    update_history._cdi_annual  = (
+        sum(T * v for T, v in _cdi_valid) / sum(T for T, _ in _cdi_valid)
+        if _cdi_valid else 12.5
+    )
+    update_history._ibov_annual = ibov.get("cagr36") or ibov.get("cagr12") or 15.0
+
+    # Pré-fetch IBOV daily returns para rolling alpha rigoroso.
+    # fetch_daily_index_returns é chamado de novo mais abaixo para os betas,
+    # mas precisamos dos retornos antes de update_history. Reutilizamos o mesmo
+    # resultado armazenando no atributo da função.
+    print(f"\n── IBOV daily returns (para rolling alpha e beat)")
+    _idx_rets_early = fetch_daily_index_returns(anchor, HISTORY_START_YEAR)
+    update_history._ibov_daily_rets = _idx_rets_early.get("ibov", {})
+    print(f"  {len(update_history._ibov_daily_rets)} pregões disponíveis")
+
     # Atualiza history.json ANTES de calcular maxQuotas —
     # assim reconstruct_max_quotas_from_history lê o histórico completo e atualizado,
     # incluindo backfill de fundos novos ou recém-limpos.
@@ -1031,28 +1388,61 @@ def main() -> None:
 
     results = [process_fund(f, anchor, prev_max_quotas, ibov_price_map=ibov_price_map) for f in FUNDS]
 
+    # Fronteira eficiente — calculada aqui porque precisa dos retornos esperados
+    # (cagr36 de cada fundo), que só existem após process_fund() rodar.
+    # Usa cov e corr do history.json que update_history() acabou de escrever.
+    print(f"\n── Fronteira eficiente")
+    try:
+        _hist_snap  = json.loads(hist_path.read_text())
+        _cov_snap   = _hist_snap.get("covMatrix", {})
+        _corr_snap  = _hist_snap.get("correlation", {})
+        _mu_map     = {
+            r["cnpjFmt"]: r.get("cagr36")
+            for r in results
+            if not r.get("error") and r.get("cagr36") is not None
+        }
+        _frontier = compute_efficient_frontier(_mu_map, _cov_snap, _corr_snap)
+        patch_history_frontier(hist_path, _frontier)
+        print(f"  {len(_frontier)} pontos na fronteira eficiente")
+    except Exception as _fe:
+        print(f"  ⚠ fronteira eficiente falhou: {_fe}")
+
     delayed = [r for r in results if not r.get("error") and r.get("isDelayed")]
     if delayed:
         print(f"\n⚠ Fundos atrasados em relação à âncora ({anchor}):")
         for r in delayed:
             print(f"  {r['name']}: última cota {r['latestDate']} ({r['delayDays']}d)")
 
-    print(f"\n── CDI")
-    cdi = fetch_cdi(anchor, a12, a36, a60)
+    # CDI já buscado antes de update_history (pré-fetch acima).
 
     print(f"\n── S&P 500")
     sp500 = fetch_sp500(anchor, a12, a36, a60)
 
     print(f"\n── Betas (regressão OLS vs IBOV e S&P BRL)")
-    index_rets = fetch_daily_index_returns(anchor, HISTORY_START_YEAR)
+    # Reutiliza o fetch já feito antes de update_history — evita segunda chamada à API.
+    index_rets = _idx_rets_early
     fund_betas = compute_fund_betas(hist_path, index_rets)
     print(f"  Betas calculados: {len(fund_betas)} fundos")
+
+    # ── CDI fallback: se BCB falhou, usa último valor bom gravado ───────────────
+    # Garante que o CDI nunca fica null no data.json por causa de falha transitória da API.
+    cdi_final = cdi
+    if all(v is None for v in cdi.values()) and out_path.exists():
+        try:
+            prev_data = json.loads(out_path.read_text())
+            prev_cdi  = prev_data.get("cdi", {})
+            if any(v is not None for v in prev_cdi.values()):
+                cdi_final = prev_cdi
+                print(f"  ⚠ CDI: BCB falhou, usando último valor gravado: "
+                      f"12M={prev_cdi.get('cagr12')} 36M={prev_cdi.get('cagr36')} 60M={prev_cdi.get('cagr60')}")
+        except Exception as _e:
+            print(f"  ⚠ CDI fallback falhou: {_e}")
 
     data_out = {
         "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "anchorDate":  anchor.isoformat(),
         "ibov":        ibov,
-        "cdi":         cdi,
+        "cdi":         cdi_final,
         "sp500":       sp500,
         "fund_betas":  fund_betas,
         "funds":       results,
