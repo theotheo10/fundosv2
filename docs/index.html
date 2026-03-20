@@ -2485,6 +2485,11 @@ function cagrInception(f) {
 //      Corrige viés de ciclo — desconta o alpha que os pares maduros
 //      também geraram no mesmo período. Entra com peso c: zero quando
 //      jovem (alpha curto não é confiável), pleno quando maduro.
+//
+//   7. Teto = cagrInception (universal):
+//      E[R] não pode superar o retorno histórico completo do fundo.
+//      Extrapolar além do que o histórico real demonstrou não tem
+//      justificativa — aplica a fundos jovens e maduros igualmente.
 function calcTargetReturn(f, globalFunds, globalCdiTarget) {
   const meta = FUND_META[f.cnpjFmt] || {};
   const tipo = (meta.tipo || '').toLowerCase();
@@ -2613,8 +2618,18 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
                 + benchmark * (1 - c)
                 + alphaDiferencial * c;
 
+  // Teto: cagrInception é o retorno histórico completo mais longo disponível.
+  // E[R] não pode superar esse valor — seria extrapolar além do que o
+  // histórico real do fundo demonstrou. Aplica universalmente: fundo jovem
+  // ou maduro, qualquer mandato.
+  // Usa f.cagrInception do data.json (calculado em process_fund);
+  // cagrInception() recalcula dinamicamente a partir da cota — prefere este
+  // por ser mais atualizado.
+  const ciCap = cagrInception(f) ?? f.cagrInception ?? null;
+  const capped = ciCap != null ? Math.min(blended, ciCap) : blended;
+
   // Floor absoluto: CDI corrente. Nenhum fundo entra no otimizador com E[R] < CDI.
-  const discounted = Math.max(blended, cdiFloor);
+  const discounted = Math.max(capped, cdiFloor);
 
   return {
     value:           discounted,
@@ -2626,6 +2641,7 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
     benchmark:       parseFloat(benchmark.toFixed(2)),
     alphaObs:        parseFloat(alphaObservado.toFixed(2)),
     alphaDiff:       parseFloat(alphaDiferencial.toFixed(2)),
+    ciCap:           ciCap != null ? parseFloat(ciCap.toFixed(2)) : null,
     isMulti:         isMulti,
     samples:         samples,
   };
