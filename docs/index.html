@@ -774,9 +774,9 @@
     .heatmap-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     #advMetricsContainer { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .adv-metrics-table { min-width: 600px; font-size: 0.62rem; }
-    .consistency-table { font-size: 0.62rem; }
-    .consistency-table td:first-child { max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .cons-bar-track { width: 60px; }
+    .consistency-table { font-size: 0.60rem; }
+    .consistency-table td:first-child { max-width: 110px; font-size: 0.72rem; }
+    .cons-bar-track { width: 44px; }
     #rollingAlphaStats > div { grid-template-columns: 1fr 1fr !important; }
   }
 
@@ -911,27 +911,30 @@
   /* underwater / drawdown */
   #underwaterCanvas { width:100%; height:100%; display:block; }
   /* consistency */
-  .consistency-table { width:100%; border-collapse:collapse; }
+  .consistency-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .consistency-table { width:100%; border-collapse:collapse; min-width:380px; }
   .consistency-table th {
     font-family:'Courier New',monospace; font-size:0.57rem;
     text-transform:uppercase; letter-spacing:0.09em; color:var(--muted);
-    padding:4px 10px 4px 0; text-align:right; border-bottom:1px solid var(--border);
+    padding:4px 8px 4px 0; text-align:right; border-bottom:1px solid var(--border);
+    white-space:nowrap;
   }
-  .consistency-table th:first-child { text-align:left; padding-left:0; width:40%; }
-  .consistency-table th.th-bar { width:30%; }
+  .consistency-table th:first-child { text-align:left; padding-left:0; }
+  .consistency-table th.th-bar { width:auto; }
   .consistency-table td {
-    padding:6px 10px 6px 0; border-bottom:0.5px solid var(--border);
-    font-family:'Courier New',monospace; font-size:0.7rem; text-align:right;
-    vertical-align:middle;
+    padding:5px 8px 5px 0; border-bottom:0.5px solid var(--border);
+    font-family:'Courier New',monospace; font-size:0.68rem; text-align:right;
+    vertical-align:middle; white-space:nowrap;
   }
   .consistency-table td:first-child {
     text-align:left; padding-left:0;
-    font-family:Georgia,serif; font-size:0.8rem; color:var(--text);
+    font-family:Georgia,serif; font-size:0.78rem; color:var(--text);
+    max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   }
-  .cons-bar-cell { display:flex; align-items:center; gap:8px; justify-content:flex-end; }
-  .cons-bar-track { width:80px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; }
+  .cons-bar-cell { display:flex; align-items:center; gap:6px; justify-content:flex-end; }
+  .cons-bar-track { width:60px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; flex-shrink:0; }
   .cons-bar-fill  { height:100%; border-radius:2px; background:var(--green); }
-  .cons-pct { min-width:28px; text-align:right; }
+  .cons-pct { min-width:26px; text-align:right; }
   /* stress test */
   .stress-scenario { margin-bottom:0.8rem; padding:0.7rem 0.9rem; border:0.5px solid var(--border); border-radius:7px; }
   .stress-scenario-title { font-family:'Courier New',monospace; font-size:0.62rem; color:var(--muted); margin-bottom:0.4rem; }
@@ -5653,7 +5656,7 @@ function renderConsistency() {
     + ' · Comparativo vs CDI e IBOV na tabela de retornos anuais acima'
     + '</div>';
 
-  container.innerHTML = html;
+  container.innerHTML = '<div class="consistency-wrap">' + html + '</div>';
 }
 
 
