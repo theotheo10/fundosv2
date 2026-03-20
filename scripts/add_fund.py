@@ -159,7 +159,7 @@ def fetch_full_history(cnpj_digits: str, cnpj_fmt: str) -> dict[str, float]:
 def interpolate(quotas: dict[str, float], all_dates: list[str]) -> dict[str, float]:
     if not quotas:
         return quotas
-    sorted_known = sorted(k for k, v in quotas.items() if v > 0)
+    sorted_known = sorted(k for k, v in quotas.items() if v and v > 0)
     if not sorted_known:
         return quotas
     fund_start = sorted_known[0]
@@ -197,8 +197,8 @@ def pearson_safe(ca: str, cb: str,
                  all_quotas: dict[str, dict[str, float]]) -> float:
     qs_a    = all_quotas.get(ca, {})
     qs_b    = all_quotas.get(cb, {})
-    valid_a = {d for d, v in qs_a.items() if v > 0}
-    valid_b = {d for d, v in qs_b.items() if v > 0}
+    valid_a = {d for d, v in qs_a.items() if v and v > 0}
+    valid_b = {d for d, v in qs_b.items() if v and v > 0}
     common  = sorted(valid_a & valid_b)
     if len(common) < 30:
         return 0.0
@@ -231,13 +231,13 @@ def update_history(new_funds: list[dict]) -> None:
     all_fund_quotas: dict[str, dict[str, float]] = {}
     for cnpj, fd in hist.get("funds", {}).items():
         qs = dict(zip(fd["dates"], fd["quotas"]))
-        all_fund_quotas[cnpj] = {d: v for d, v in qs.items() if v > 0}
+        all_fund_quotas[cnpj] = {d: v for d, v in qs.items() if v and v > 0}
 
     for nf in new_funds:
         all_fund_quotas[nf["cnpj_fmt"]] = nf["quotas"]
 
     all_dates = sorted({d for qs in all_fund_quotas.values()
-                        for d, v in qs.items() if v > 0})
+                        for d, v in qs.items() if v and v > 0})
     print(f"  Total datas (union): {len(all_dates)} ({all_dates[0]} → {all_dates[-1]})")
 
     for cnpj, qs in all_fund_quotas.items():
@@ -250,7 +250,7 @@ def update_history(new_funds: list[dict]) -> None:
 
     funds_out = {}
     for cnpj, qs in all_fund_quotas.items():
-        fund_dates  = sorted(d for d, v in qs.items() if v > 0)
+        fund_dates  = sorted(d for d, v in qs.items() if v and v > 0)
         fund_quotas = [qs[d] for d in fund_dates]
         returns     = safe_returns(qs, fund_dates)
         cum = pk = 1.0; mdd = 0.0
