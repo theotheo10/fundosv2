@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-20T03:25:30.095941+00:00",
+  "generatedAt": "2026-03-20T03:46:50.886633+00:00",
   "anchorDate": "2026-03-17",
   "ibov": {
     "cagr12": 37.92264033724011,
@@ -18,32 +18,32 @@
   },
   "fund_betas": {
     "22.232.927/0001-90": {
-      "beta_ibov": 0.7654,
-      "beta_sp500": -0.0467,
-      "alpha_ann": 11.67,
-      "r2": 0.5289,
-      "n_obs": 1183
+      "beta_ibov": 0.8057,
+      "beta_sp500": -0.0457,
+      "alpha_ann": 11.32,
+      "r2": 0.5447,
+      "n_obs": 920
     },
     "17.400.251/0001-66": {
-      "beta_ibov": 0.9072,
-      "beta_sp500": -0.0278,
-      "alpha_ann": 12.39,
-      "r2": 0.5663,
-      "n_obs": 1183
+      "beta_ibov": 0.9026,
+      "beta_sp500": -0.0336,
+      "alpha_ann": 9.7,
+      "r2": 0.5671,
+      "n_obs": 920
     },
     "18.302.338/0001-63": {
-      "beta_ibov": 0.729,
-      "beta_sp500": -0.0209,
-      "alpha_ann": 8.29,
-      "r2": 0.4453,
-      "n_obs": 1183
+      "beta_ibov": 0.782,
+      "beta_sp500": -0.0569,
+      "alpha_ann": 11.89,
+      "r2": 0.4413,
+      "n_obs": 920
     },
     "37.495.383/0001-26": {
-      "beta_ibov": 0.5057,
-      "beta_sp500": 0.0904,
-      "alpha_ann": 11.27,
-      "r2": 0.4279,
-      "n_obs": 1183
+      "beta_ibov": 0.5167,
+      "beta_sp500": 0.1129,
+      "alpha_ann": 10.07,
+      "r2": 0.443,
+      "n_obs": 920
     },
     "42.698.666/0001-05": {
       "beta_ibov": 0.2417,
@@ -53,67 +53,67 @@
       "n_obs": 920
     },
     "24.623.392/0001-03": {
-      "beta_ibov": 0.9072,
-      "beta_sp500": -0.026,
-      "alpha_ann": 10.1,
-      "r2": 0.674,
-      "n_obs": 1183
+      "beta_ibov": 0.8661,
+      "beta_sp500": -0.018,
+      "alpha_ann": 7.2,
+      "r2": 0.6518,
+      "n_obs": 920
     },
     "28.747.685/0001-53": {
-      "beta_ibov": 0.9015,
-      "beta_sp500": 0.0712,
-      "alpha_ann": 4.75,
-      "r2": 0.6035,
-      "n_obs": 1183
+      "beta_ibov": 0.9064,
+      "beta_sp500": 0.0844,
+      "alpha_ann": 5.43,
+      "r2": 0.5649,
+      "n_obs": 920
     },
     "10.500.884/0001-05": {
-      "beta_ibov": 0.8619,
-      "beta_sp500": -0.0232,
-      "alpha_ann": 5.57,
-      "r2": 0.8258,
-      "n_obs": 1183
+      "beta_ibov": 0.8529,
+      "beta_sp500": -0.029,
+      "alpha_ann": 5.4,
+      "r2": 0.8301,
+      "n_obs": 920
     },
     "35.744.790/0001-02": {
-      "beta_ibov": 0.0595,
-      "beta_sp500": 0.0979,
-      "alpha_ann": 16.95,
-      "r2": 0.0629,
-      "n_obs": 1183
+      "beta_ibov": 0.0253,
+      "beta_sp500": 0.0955,
+      "alpha_ann": 25.99,
+      "r2": 0.0475,
+      "n_obs": 920
     },
     "38.954.217/0001-03": {
-      "beta_ibov": 0.9583,
-      "beta_sp500": -0.0337,
-      "alpha_ann": 4.81,
-      "r2": 0.7539,
-      "n_obs": 1183
+      "beta_ibov": 0.9721,
+      "beta_sp500": -0.0413,
+      "alpha_ann": 7.28,
+      "r2": 0.7435,
+      "n_obs": 920
     },
     "32.073.525/0001-43": {
-      "beta_ibov": 0.7084,
-      "beta_sp500": 0.0146,
-      "alpha_ann": 8.04,
-      "r2": 0.7475,
-      "n_obs": 1183
+      "beta_ibov": 0.6986,
+      "beta_sp500": 0.0081,
+      "alpha_ann": 4.75,
+      "r2": 0.7252,
+      "n_obs": 920
     },
     "21.689.246/0001-92": {
-      "beta_ibov": 0.4145,
-      "beta_sp500": 0.6161,
-      "alpha_ann": -1.23,
-      "r2": 0.4562,
-      "n_obs": 1183
+      "beta_ibov": 0.3477,
+      "beta_sp500": 0.6145,
+      "alpha_ann": 5.36,
+      "r2": 0.4707,
+      "n_obs": 920
     },
     "14.438.229/0001-17": {
-      "beta_ibov": 0.7258,
-      "beta_sp500": -0.0076,
-      "alpha_ann": 3.69,
-      "r2": 0.6662,
-      "n_obs": 1183
+      "beta_ibov": 0.7285,
+      "beta_sp500": 0.0085,
+      "alpha_ann": -0.12,
+      "r2": 0.668,
+      "n_obs": 920
     },
     "17.397.315/0001-17": {
-      "beta_ibov": 0.6251,
-      "beta_sp500": -0.0515,
-      "alpha_ann": 13.17,
-      "r2": 0.683,
-      "n_obs": 1183
+      "beta_ibov": 0.5937,
+      "beta_sp500": -0.0768,
+      "alpha_ann": 16.29,
+      "r2": 0.6633,
+      "n_obs": 920
     },
     "46.351.969/0001-08": {
       "beta_ibov": 0.2453,
@@ -123,11 +123,11 @@
       "n_obs": 786
     },
     "15.334.585/0001-53": {
-      "beta_ibov": 0.9702,
-      "beta_sp500": -0.0261,
-      "alpha_ann": 4.68,
-      "r2": 0.8462,
-      "n_obs": 1183
+      "beta_ibov": 0.9569,
+      "beta_sp500": -0.0422,
+      "alpha_ann": 7.46,
+      "r2": 0.8414,
+      "n_obs": 920
     },
     "47.511.351/0001-20": {
       "beta_ibov": 0.4281,
@@ -171,6 +171,7 @@
       "cagr36": 25.90325368880233,
       "cagr60": 19.78499894358947,
       "cagrInception": 27.838416061772687,
+      "ibovCagrInception": 15.3258,
       "error": false
     },
     {
@@ -192,6 +193,7 @@
       "cagr36": 24.22021194505475,
       "cagr60": 22.84854459795238,
       "cagrInception": 29.103302204223812,
+      "ibovCagrInception": 11.0268,
       "error": false
     },
     {
@@ -213,6 +215,7 @@
       "cagr36": 29.88290416202066,
       "cagr60": 16.36537644373659,
       "cagrInception": 14.338719896278796,
+      "ibovCagrInception": 6.9992,
       "error": false
     },
     {
@@ -234,6 +237,7 @@
       "cagr36": 24.178972333992842,
       "cagr60": null,
       "cagrInception": 17.71731698145722,
+      "ibovCagrInception": 8.923,
       "error": false
     },
     {
@@ -255,6 +259,7 @@
       "cagr36": 20.750277746691847,
       "cagr60": null,
       "cagrInception": 19.882389228521102,
+      "ibovCagrInception": 13.5603,
       "error": false
     },
     {
@@ -276,6 +281,7 @@
       "cagr36": 25.35763639708797,
       "cagr60": 17.406265604108363,
       "cagrInception": 17.883740696805273,
+      "ibovCagrInception": 12.793,
       "error": false
     },
     {
@@ -297,6 +303,7 @@
       "cagr36": 36.29452988498683,
       "cagr60": 13.846351369276144,
       "cagrInception": 17.107819457921924,
+      "ibovCagrInception": 10.7823,
       "error": false
     },
     {
@@ -318,6 +325,7 @@
       "cagr36": 24.354237932137536,
       "cagr60": 14.129460941529759,
       "cagrInception": 15.052324763630098,
+      "ibovCagrInception": 8.3542,
       "error": false
     },
     {
@@ -339,6 +347,7 @@
       "cagr36": 30.210194832357384,
       "cagr60": 17.975202828995318,
       "cagrInception": 17.968826147730475,
+      "ibovCagrInception": 8.4145,
       "error": false
     },
     {
@@ -360,6 +369,7 @@
       "cagr36": 29.2796032776131,
       "cagr60": 15.037468094437646,
       "cagrInception": 16.658924647368778,
+      "ibovCagrInception": 8.4145,
       "error": false
     },
     {
@@ -381,6 +391,7 @@
       "cagr36": 21.518667088875066,
       "cagr60": 16.65517465671438,
       "cagrInception": 20.69257774098596,
+      "ibovCagrInception": 9.9648,
       "error": false
     },
     {
@@ -402,6 +413,7 @@
       "cagr36": 30.425438841232744,
       "cagr60": 9.372083569255896,
       "cagrInception": 22.11809020821549,
+      "ibovCagrInception": 15.3258,
       "error": false
     },
     {
@@ -423,6 +435,7 @@
       "cagr36": 11.182957979965845,
       "cagr60": 13.783043955093156,
       "cagrInception": 20.95563176962585,
+      "ibovCagrInception": 12.4384,
       "error": false
     },
     {
@@ -444,6 +457,7 @@
       "cagr36": 27.527949798841146,
       "cagr60": 19.337490804773005,
       "cagrInception": 16.558179684194172,
+      "ibovCagrInception": 11.0268,
       "error": false
     },
     {
@@ -465,6 +479,7 @@
       "cagr36": 30.012359498688458,
       "cagr60": null,
       "cagrInception": 30.187590628161452,
+      "ibovCagrInception": 18.886,
       "error": false
     },
     {
@@ -486,6 +501,7 @@
       "cagr36": 26.934800357069342,
       "cagr60": 13.884696220558922,
       "cagrInception": 13.678695761710058,
+      "ibovCagrInception": 8.3542,
       "error": false
     },
     {
@@ -507,6 +523,7 @@
       "cagr36": 25.13173031908984,
       "cagr60": null,
       "cagrInception": 21.018276771468415,
+      "ibovCagrInception": 15.1283,
       "error": false
     },
     {
@@ -528,6 +545,7 @@
       "cagr36": null,
       "cagr60": null,
       "cagrInception": 14.963066587251529,
+      "ibovCagrInception": 19.3943,
       "error": false
     },
     {
@@ -549,6 +567,7 @@
       "cagr36": 26.555853906748837,
       "cagr60": null,
       "cagrInception": 25.512891184504195,
+      "ibovCagrInception": 15.4225,
       "error": false
     }
   ]
