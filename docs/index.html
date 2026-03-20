@@ -577,15 +577,56 @@
   }
 
   /* ── Otimizador ── */
+  /* ── Optimizer collapsible drawer ──────────────────────────────── */
   .opt-bar {
-    padding: 0.7rem 1rem 0.6rem;
     border-top: 1px solid var(--border);
     background: var(--bg);
+  }
+  .opt-toggle-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    padding: 0.55rem 1rem;
+  }
+  .opt-toggle-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--muted);
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 5px; padding: 3px 9px;
+    cursor: pointer; transition: border-color 0.15s, color 0.15s;
+    user-select: none;
+  }
+  .opt-toggle-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .opt-toggle-btn.open  { border-color: var(--accent); color: var(--accent); }
+  .opt-toggle-chevron {
+    display: inline-block; font-size: 0.5rem; line-height: 1;
+    transition: transform 0.22s ease;
+  }
+  .opt-toggle-btn.open .opt-toggle-chevron { transform: rotate(180deg); }
+  .opt-summary {
+    font-family: 'Courier New', monospace; font-size: 0.56rem;
+    color: var(--muted); transition: opacity 0.15s;
+  }
+  .opt-toggle-btn.open ~ .opt-summary { opacity: 0; pointer-events: none; }
+  .opt-drawer {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity   0.22s ease;
+    opacity: 0;
+  }
+  .opt-drawer.open {
+    max-height: 900px;
+    opacity: 1;
+  }
+  .opt-drawer-inner {
+    padding: 0 1rem 0.75rem;
   }
   .opt-bar-label {
     font-family: 'Courier New', monospace; font-size: 0.56rem;
     text-transform: uppercase; letter-spacing: 0.1em;
     color: var(--muted); margin-bottom: 0.55rem;
+    display: none; /* label now lives in the toggle button */
   }
   .opt-controls {
     display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
@@ -680,7 +721,8 @@
     .port-metric-val { font-size: 1rem; }
 
     /* ── Portfólio — otimizador ───────────────────────────────────── */
-    .opt-bar { padding: 0.8rem; }
+    .opt-toggle-row { padding: 0.45rem 0.75rem; }
+    .opt-drawer-inner { padding: 0 0.75rem 0.6rem; }
     .opt-size-group, .opt-obj-group { flex-wrap: wrap; }
     .opt-btn { font-size: 0.58rem; padding: 4px 8px; }
     .opt-run { width: 100%; margin-top: 0.3rem; }
@@ -1672,7 +1714,7 @@
     font-family: 'Courier New', monospace; font-size: 0.60rem;
     padding: 9px 13px; border-radius: 6px;
     white-space: pre-line; word-break: break-word;
-    max-width: 300px; min-width: 100px;
+    width: max-content; max-width: 280px;
     pointer-events: none;
     opacity: 0; transform: translateY(4px);
     transition: opacity 0.13s ease, transform 0.13s ease;
@@ -1795,6 +1837,15 @@
         <span class="port-bar-label" id="portTotalPct">0% alocado</span>
       </div>
       <div class="opt-bar">
+        <div class="opt-toggle-row">
+          <button class="opt-toggle-btn" id="optToggleBtn" onclick="toggleOptDrawer()" aria-expanded="false">
+            <span>Otimizador</span>
+            <span class="opt-toggle-chevron">▾</span>
+          </button>
+          <span class="opt-summary" id="optSummary"></span>
+        </div>
+        <div class="opt-drawer" id="optDrawer">
+        <div class="opt-drawer-inner">
         <div class="opt-bar-label">Otimizador de carteira</div>
         <div class="opt-controls">
           <div class="opt-size-group">
@@ -1882,6 +1933,8 @@
           ⚠ restrições incompatíveis para este tamanho de carteira
         </div>
         <div class="opt-status" id="optStatus">Aguardando dados…</div>
+        </div><!-- /opt-drawer-inner -->
+        </div><!-- /opt-drawer -->
       </div>
       <div class="fund-selector" id="fundSelector"></div>
     </div>
@@ -4131,12 +4184,48 @@ let optMaxBetaIbov      = null;  // null = sem restrição
 let optMaxBetaSp        = null;  // null = sem restrição
 let optMaxStressLoss    = null;  // null = sem restrição; valor em fração negativa (ex: -0.10 = -10%)
 
+// ── Optimizer drawer toggle ──────────────────────────────────────────────────
+function toggleOptDrawer() {
+  const drawer = document.getElementById('optDrawer');
+  const btn    = document.getElementById('optToggleBtn');
+  const isOpen = drawer.classList.contains('open');
+  drawer.classList.toggle('open', !isOpen);
+  btn.classList.toggle('open', !isOpen);
+  btn.setAttribute('aria-expanded', String(!isOpen));
+  updateOptSummary();
+}
+
+function updateOptSummary() {
+  const el     = document.getElementById('optSummary');
+  const isOpen = document.getElementById('optDrawer')?.classList.contains('open');
+  if (!el || isOpen) return;
+
+  // Build a compact summary of current config when drawer is closed
+  const nLabel  = optN === 3 ? '3' : optN === 5 ? '5' : '10';
+  const objLabels = {
+    sharpe: 'Sharpe', vol: 'Mín.var', return: 'Retorno',
+    sortino: 'Sortino', calmar: 'Calmar', ir: 'IR', stress: 'Stress'
+  };
+  const obj = objLabels[optObj] || optObj;
+
+  // Constraints active
+  const constraints = [];
+  if (optMaxW     !== null) constraints.push(`w≤${Math.round(optMaxW*100)}%`);
+  if (optMinW     !== null && optMinW > 0.01) constraints.push(`w≥${(optMinW*100).toFixed(1)}%`);
+  if (optMaxBetaIbov !== null) constraints.push(`β_ibov≤${optMaxBetaIbov.toFixed(1)}`);
+  if (optMaxBetaSp   !== null) constraints.push(`β_sp≤${optMaxBetaSp.toFixed(1)}`);
+  if (optMaxStressLoss !== null) constraints.push(`stress≥${(optMaxStressLoss*100).toFixed(0)}%`);
+
+  el.textContent = `${nLabel}f · ${obj}` + (constraints.length ? ' · ' + constraints.join(' · ') : '');
+}
+
 function setOptN(n) {
   optN = n;
   ['3','5','10'].forEach(k =>
     document.getElementById('optN' + k).classList.toggle('active', +k === n)
   );
   validateOptConstraints();
+  updateOptSummary();
 }
 function setOptObj(obj) {
   optObj = obj;
@@ -4144,6 +4233,7 @@ function setOptObj(obj) {
     document.getElementById('optObj' + k.charAt(0).toUpperCase() + k.slice(1))
       .classList.toggle('active', k === obj)
   );
+  updateOptSummary();
 }
 
 function onOptMaxWSlider() {
@@ -4152,6 +4242,7 @@ function onOptMaxWSlider() {
   document.getElementById('optMaxWVal').textContent = v + '%';
   document.getElementById('optMaxWNote').textContent = v === 100 ? '(sem restrição)' : '';
   validateOptConstraints();
+  updateOptSummary();
 }
 
 function onOptMinWSlider() {
@@ -4162,6 +4253,7 @@ function onOptMinWSlider() {
   document.getElementById('optMinWVal').textContent = pct.toFixed(1) + '%';
   document.getElementById('optMinWNote').textContent = pct === 1.0 ? '(padrão)' : '';
   validateOptConstraints();
+  updateOptSummary();
 }
 
 function onOptMaxBetaSlider(which) {
@@ -4175,6 +4267,7 @@ function onOptMaxBetaSlider(which) {
   document.getElementById(valId).textContent     = noLimit ? '—' : (raw / 10).toFixed(1);
   document.getElementById(noteId).style.opacity  = noLimit ? '0.5' : '1';
   document.getElementById(noteId).textContent    = noLimit ? '(sem restrição)' : '';
+  updateOptSummary();
 }
 
 function onOptMaxStressLossSlider() {
@@ -4188,6 +4281,7 @@ function onOptMaxStressLossSlider() {
   valEl.textContent         = noLimit ? '—' : `-${raw}%`;
   noteEl.style.opacity      = noLimit ? '0.5' : '1';
   noteEl.textContent        = noLimit ? '(sem restrição)' : 'pior cenário';
+  updateOptSummary();
 }
 
 function calcPortfolioBeta(combo, weights, which) {
@@ -9022,13 +9116,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function move(e) {
     if (!tip.classList.contains('visible')) return;
-    const tw = tip.offsetWidth  || 260;
-    const th = tip.offsetHeight || 60;
+    // Use getBoundingClientRect for accurate rendered size after width:max-content
+    const rect = tip.getBoundingClientRect();
+    const tw = rect.width  || tip.offsetWidth  || 200;
+    const th = rect.height || tip.offsetHeight || 60;
     const mg = 14;
     let x = e.clientX + mg;
     let y = e.clientY + mg;
+    // Flip left if it would overflow the right edge
     if (x + tw > window.innerWidth  - mg) x = e.clientX - tw - mg;
+    // Clamp to left edge in case cursor is very close to left
+    if (x < mg) x = mg;
+    // Flip up if it would overflow the bottom
     if (y + th > window.innerHeight - mg) y = e.clientY - th - mg;
+    if (y < mg) y = mg;
     tip.style.left = x + 'px';
     tip.style.top  = y + 'px';
   }
