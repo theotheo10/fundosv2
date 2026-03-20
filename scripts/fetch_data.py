@@ -227,7 +227,7 @@ def find_inception(fund: dict, anchor_year: int) -> dict | None:
 
 # ── Processamento por fundo (data.json) ───────────────────────────────────────
 
-def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict) -> dict:
+def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict, ibov_price_map: dict | None = None) -> dict:
     print(f"\n── {fund['name']}")
     latest = quota_on_or_before(anchor, fund)
     if not latest:
@@ -254,6 +254,15 @@ def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict) -> di
     inception   = find_inception(fund, anchor.year)
     inc_quota   = inception["quota"] if inception else None
     inc_date    = inception["date"]  if inception else None
+
+    # IBOV CAGR desde o inception deste fundo especificamente
+    ibov_cagr_inception = None
+    if inc_date and ibov_price_map:
+        ibov_dates = sorted(ibov_price_map.keys())
+        p_inc, d_inc   = _best_price_and_date(ibov_price_map, ibov_dates, datetime.date.fromisoformat(inc_date))
+        p_anch, d_anch = _best_price_and_date(ibov_price_map, ibov_dates, anchor)
+        if p_inc and p_anch and d_inc and d_anch:
+            ibov_cagr_inception = cagr(p_inc, p_anch, years_apart(d_inc, d_anch))
 
     def do_cagr(q):
         if not q: return None
@@ -290,7 +299,8 @@ def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict) -> di
         "cagr12":        do_cagr(q12),
         "cagr36":        do_cagr(q36),
         "cagr60":        do_cagr(q60),
-        "cagrInception": cagr(inc_quota, end_quota, years_apart(inc_date, end_date)) if inc_date else None,
+        "cagrInception":      cagr(inc_quota, end_quota, years_apart(inc_date, end_date)) if inc_date else None,
+        "ibovCagrInception":  round(ibov_cagr_inception, 4) if ibov_cagr_inception is not None else None,
         "error":         False,
     }
     def _fmt(v): return f"{v:.2f}" if v is not None else "N/D"
@@ -308,10 +318,12 @@ def _best_price_and_date(price_map: dict, dates: list, target: datetime.date):
     return price_map[d], d
 
 
-def fetch_ibov(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a60: datetime.date) -> dict:
-    ticker  = "%5EBVSP"
+def fetch_ibov(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a60: datetime.date,
+               oldest_inception: datetime.date | None = None) -> tuple[dict, dict]:
+    ticker   = "%5EBVSP"
+    fetch_from = oldest_inception - datetime.timedelta(days=10) if oldest_inception else a60 - datetime.timedelta(days=10)
     period1 = int(datetime.datetime.combine(
-        a60 - datetime.timedelta(days=10), datetime.time(),
+        fetch_from, datetime.time(),
         tzinfo=datetime.timezone.utc).timestamp())
     period2 = int(datetime.datetime.combine(
         anchor + datetime.timedelta(days=5), datetime.time(),
@@ -344,10 +356,10 @@ def fetch_ibov(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a6
         }
         vals = {k: f"{v:.2f}%" if v is not None else "N/D" for k, v in result_ibov.items()}
         print(f"  IBOV 12M={vals['cagr12']} 36M={vals['cagr36']} 60M={vals['cagr60']}")
-        return result_ibov
+        return result_ibov, price_map
     except Exception as e:
         print(f"  ✗ IBOV falhou: {e}")
-        return {"cagr12": None, "cagr36": None, "cagr60": None}
+        return {"cagr12": None, "cagr36": None, "cagr60": None}, {}
 
 
 def fetch_cdi(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a60: datetime.date) -> dict:
@@ -965,16 +977,18 @@ def main() -> None:
         except Exception as e:
             print(f"Não foi possível ler data.json anterior: {e}")
 
-    results = [process_fund(f, anchor, prev_max_quotas) for f in FUNDS]
+    # Fetch IBOV first so we can pass price_map to process_fund for per-fund inception alpha
+    print(f"\n── Ibovespa")
+    oldest_inception = datetime.date(2005, 1, 1)  # safe lower bound covering all funds
+    ibov, ibov_price_map = fetch_ibov(anchor, a12, a36, a60, oldest_inception=oldest_inception)
+
+    results = [process_fund(f, anchor, prev_max_quotas, ibov_price_map=ibov_price_map) for f in FUNDS]
 
     delayed = [r for r in results if not r.get("error") and r.get("isDelayed")]
     if delayed:
         print(f"\n⚠ Fundos atrasados em relação à âncora ({anchor}):")
         for r in delayed:
             print(f"  {r['name']}: última cota {r['latestDate']} ({r['delayDays']}d)")
-
-    print(f"\n── Ibovespa")
-    ibov = fetch_ibov(anchor, a12, a36, a60)
 
     print(f"\n── CDI")
     cdi = fetch_cdi(anchor, a12, a36, a60)
