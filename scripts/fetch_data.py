@@ -108,9 +108,10 @@ def _extract_rows(data: dict | None, fund: dict) -> list:
     if not data or data["col_date"] < 0 or data["col_quota"] < 0:
         return []
     cnpj, fmt = fund["cnpj"], fund["cnpjFmt"]
-    # date -> best quota (pós-RCVM 175: múltiplas linhas por dia p/ mesmo CNPJ;
-    # casca tem cota ~1.0, subclasse tem cota real >> 1.0 → pegar a maior)
-    best: dict[str, float] = {}
+    # Collect ALL rows for this fund on each date
+    # pós-RCVM 175: mesmo CNPJ aparece múltiplas vezes por dia (casca + subclasses)
+    # Estratégia: para cada data, guardar todas as cotas e depois escolher a correta
+    all_rows: dict[str, list[float]] = {}
     for line in data["lines"][1:]:
         if cnpj not in line and fmt not in line:
             continue
@@ -123,12 +124,31 @@ def _extract_rows(data: dict | None, fund: dict) -> list:
             d = cols[data["col_date"]].strip()
             q = float(cols[data["col_quota"]].replace(",", "."))
             if d and q > 0:
-                if d not in best or q > best[d]:
-                    best[d] = q
+                if d not in all_rows:
+                    all_rows[d] = []
+                all_rows[d].append(q)
         except (ValueError, IndexError):
             continue
-    out = [{"date": d, "quota": q} for d, q in best.items()]
-    out.sort(key=lambda r: r["date"])
+    if not all_rows:
+        return []
+    # Detectar se há múltiplas cotas por dia (pós-RCVM 175)
+    multi_dates = {d: qs for d, qs in all_rows.items() if len(qs) > 1}
+    if multi_dates:
+        # Logar as cotas encontradas para diagnóstico
+        sample_date = sorted(multi_dates.keys())[-1]  # data mais recente com múltiplas cotas
+        print(f"      [RCVM175] {len(multi_dates)} datas com múltiplas cotas. Exemplo {sample_date}: {sorted(multi_dates[sample_date])}")
+    out = []
+    for d in sorted(all_rows.keys()):
+        qs = all_rows[d]
+        if len(qs) == 1:
+            out.append({"date": d, "quota": qs[0]})
+        else:
+            # Excluir cotas < 1.5 (cascas pós-RCVM 175 com cota ~1.0)
+            real_qs = sorted(q for q in qs if q >= 1.5)
+            if real_qs:
+                out.append({"date": d, "quota": min(real_qs)})
+            else:
+                out.append({"date": d, "quota": max(qs)})
     return out
 
 
