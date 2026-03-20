@@ -333,14 +333,7 @@ def update_index(funds: list[dict]) -> None:
             f'maxQuota:{f["max_quota"]}, tipo:"{f["tipo"]}", trib:"{f["trib"]}", '
             f'expo:"{f["expo"]}", banco:"{f["banco"]}", obs:"" }},\n'
         )
-        src = src.replace('};\n\nconst TRIB_LABEL', f'{new_meta}}};\n\nconst TRIB_LABEL', 1)
-
-        # JS FUNDS array (for selectors)
-        src = src.replace(
-            '];\n\nlet sortKey',
-            f'  {{ cnpjFmt: "{f["cnpj_fmt"]}", name: "{f["exibicao"]}", short: "{f["curto"]}" }},\n];\n\nlet sortKey',
-            1
-        )
+        src = src.replace('};\nconst TRIB_LABEL', f'{new_meta}}};\nconst TRIB_LABEL', 1)
 
         # FUND_EXPOSURE entry for stress test
         expo = f["exposure"]
