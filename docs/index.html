@@ -5604,7 +5604,7 @@ function renderConsistency() {
     const meta = FUND_META[cnpj] || {};
     return {
       cnpj:      cnpj,
-      nome:      meta.nome || historyData.funds[cnpj].nome,
+      nome:      meta.short || meta.nome || historyData.funds[cnpj].nome,
       pctPos:    pos / nM * 100,
       best:      best * 100,
       worst:     worst * 100,
