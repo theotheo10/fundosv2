@@ -21,25 +21,25 @@ from pathlib import Path
 
 # ── Lista de fundos ────────────────────────────────────────────────────────────
 FUNDS = [
-    {"name": "Tarpon GT FIF Cotas FIA",                                            "cnpj": "22232927000190", "cnpjFmt": "22.232.927/0001-90"},
-    {"name": "Organon FIF Cotas FIA",                                              "cnpj": "17400251000166", "cnpjFmt": "17.400.251/0001-66"},
-    {"name": "Artica Long Term FIA",                                               "cnpj": "18302338000163", "cnpjFmt": "18.302.338/0001-63"},
-    {"name": "Genoa Capital Arpa CIC Classe FIM RL",                               "cnpj": "37495383000126", "cnpjFmt": "37.495.383/0001-26"},
-    {"name": "Itaú Artax Ultra Multimercado FIF DA CIC RL",                        "cnpj": "42698666000105", "cnpjFmt": "42.698.666/0001-05"},
-    {"name": "Guepardo Long Bias RV FIM",                                          "cnpj": "24623392000103", "cnpjFmt": "24.623.392/0001-03"},
-    {"name": "Kapitalo Tarkus FIF Cotas FIA",                                      "cnpj": "28747685000153", "cnpjFmt": "28.747.685/0001-53"},
-    {"name": "Real Investor FIC FIF Ações RL",                                     "cnpj": "10500884000105", "cnpjFmt": "10.500.884/0001-05"},
-    {"name": "Gama Schroder Gaia Contour Tech Equity L&S BRL FIF CIC Mult IE RL", "cnpj": "35744790000102", "cnpjFmt": "35.744.790/0001-02"},
-    {"name": "Patria Long Biased FIF Cotas FIM",                                   "cnpj": "38954217000103", "cnpjFmt": "38.954.217/0001-03"},
-    {"name": "Absolute Pace Long Biased FIC FIF Ações RL",                         "cnpj": "32073525000143", "cnpjFmt": "32.073.525/0001-43"},
-    {"name": "Arbor FIC FIA",                                                      "cnpj": "21689246000192", "cnpjFmt": "21.689.246/0001-92"},
-    {"name": "Charles River FIF Ações",                                            "cnpj": "14438229000117", "cnpjFmt": "14.438.229/0001-17"},
-    {"name": "SPX Falcon FIF CIC Ações RL",                                        "cnpj": "17397315000117", "cnpjFmt": "17.397.315/0001-17"},
-    {"name": "Opportunity Global Equity Real Institucional FIC FIF Ações IE RL",        "cnpj": "46351969000108", "cnpjFmt": "46.351.969/0001-08"},
-    {"name": "SPX Patriot FIF CIC Ações RL", "cnpj": "15334585000153", "cnpjFmt": "15.334.585/0001-53"},
-    {"name": "TB FIF Cotas FIA", "cnpj": "47511351000120", "cnpjFmt": "47.511.351/0001-20"},
-    {"name": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO", "cnpj": "52116227000109", "cnpjFmt": "52.116.227/0001-09"},
-    {"name": "Ace Capital Multicenários FIC FIF Multimercado RL", "cnpj": "47612105000165", "cnpjFmt": "47.612.105/0001-65"},
+    {"name": "Tarpon GT FIF Cotas FIA",                                            "cnpj": "22232927000190", "cnpjFmt": "22.232.927/0001-90", "exibicao": "Tarpon GT", "curto": "Tarpon"},
+    {"name": "Organon FIF Cotas FIA",                                              "cnpj": "17400251000166", "cnpjFmt": "17.400.251/0001-66", "exibicao": "Organon", "curto": "Organon"},
+    {"name": "Artica Long Term FIA",                                               "cnpj": "18302338000163", "cnpjFmt": "18.302.338/0001-63", "exibicao": "Ártica Long Term", "curto": "Ártica"},
+    {"name": "Genoa Capital Arpa CIC Classe FIM RL",                               "cnpj": "37495383000126", "cnpjFmt": "37.495.383/0001-26", "exibicao": "Genoa Arpa", "curto": "Genoa"},
+    {"name": "Itaú Artax Ultra Multimercado FIF DA CIC RL",                        "cnpj": "42698666000105", "cnpjFmt": "42.698.666/0001-05", "exibicao": "Artax Ultra", "curto": "Artax"},
+    {"name": "Guepardo Long Bias RV FIM",                                          "cnpj": "24623392000103", "cnpjFmt": "24.623.392/0001-03", "exibicao": "Guepardo Long Bias", "curto": "Guepardo"},
+    {"name": "Kapitalo Tarkus FIF Cotas FIA",                                      "cnpj": "28747685000153", "cnpjFmt": "28.747.685/0001-53", "exibicao": "Kapitalo Tarkus", "curto": "Kapitalo"},
+    {"name": "Real Investor FIC FIF Ações RL",                                     "cnpj": "10500884000105", "cnpjFmt": "10.500.884/0001-05", "exibicao": "Real Investor", "curto": "Real"},
+    {"name": "Gama Schroder Gaia Contour Tech Equity L&S BRL FIF CIC Mult IE RL", "cnpj": "35744790000102", "cnpjFmt": "35.744.790/0001-02", "exibicao": "Schroder Tech L&S", "curto": "Schroder"},
+    {"name": "Patria Long Biased FIF Cotas FIM",                                   "cnpj": "38954217000103", "cnpjFmt": "38.954.217/0001-03", "exibicao": "Pátria Long Biased", "curto": "Pátria"},
+    {"name": "Absolute Pace Long Biased FIC FIF Ações RL",                         "cnpj": "32073525000143", "cnpjFmt": "32.073.525/0001-43", "exibicao": "Absolute Pace", "curto": "Pace"},
+    {"name": "Arbor FIC FIA",                                                      "cnpj": "21689246000192", "cnpjFmt": "21.689.246/0001-92", "exibicao": "Arbor", "curto": "Arbor"},
+    {"name": "Charles River FIF Ações",                                            "cnpj": "14438229000117", "cnpjFmt": "14.438.229/0001-17", "exibicao": "Charles River", "curto": "Charles"},
+    {"name": "SPX Falcon FIF CIC Ações RL",                                        "cnpj": "17397315000117", "cnpjFmt": "17.397.315/0001-17", "exibicao": "SPX Falcon", "curto": "Falcon"},
+    {"name": "Opportunity Global Equity Real Institucional FIC FIF Ações IE RL",        "cnpj": "46351969000108", "cnpjFmt": "46.351.969/0001-08", "exibicao": "Opportunity Global", "curto": "Opportunity"},
+    {"name": "SPX Patriot FIF CIC Ações RL", "cnpj": "15334585000153", "cnpjFmt": "15.334.585/0001-53", "exibicao": "SPX Patriot", "curto": "Patriot"},
+    {"name": "TB FIF Cotas FIA", "cnpj": "47511351000120", "cnpjFmt": "47.511.351/0001-20", "exibicao": "TB", "curto": "TB"},
+    {"name": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO", "cnpj": "52116227000109", "cnpjFmt": "52.116.227/0001-09", "exibicao": "Itaú Janeiro Multimercado", "curto": "Janeiro"},
+    {"name": "Ace Capital Multicenários FIC FIF Multimercado RL", "cnpj": "47612105000165", "cnpjFmt": "47.612.105/0001-65", "exibicao": "Ace Capital Multicenários", "curto": "Ace"},
 ]
 
 FIRST_MONTHLY_YEAR = 2021   # CVM: arquivos mensais a partir daqui
@@ -282,7 +282,9 @@ def process_fund(fund: dict, anchor: datetime.date, prev_max_quotas: dict, ibov_
         max_quota_date = prev.get("maxQuotaDate", "")
 
     result = {
-        "name":          fund["name"],
+        "name":          fund.get("exibicao", fund["name"]),
+        "nameFull":      fund["name"],
+        "curto":         fund.get("curto", ""),
         "cnpj":          fund["cnpjFmt"],
         "cnpjFmt":       fund["cnpjFmt"],
         "latestDate":    end_date,
@@ -658,7 +660,7 @@ def update_history(anchor: datetime.date) -> None:
     # ── Serializar ───────────────────────────────────────────────────────────
     funds_out = {
         fund["cnpjFmt"]: {
-            "nome":        fund["name"],
+            "nome":        fund.get("exibicao", fund["name"]),
             "dates":       common_dates,
             "quotas":      [quotas[fund["cnpjFmt"]].get(d) for d in common_dates],  # None = pre-inception
             "returns":     returns_by_fund[fund["cnpjFmt"]],
