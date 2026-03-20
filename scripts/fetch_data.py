@@ -137,7 +137,12 @@ def _extract_rows(data: dict | None, fund: dict) -> list:
         # Logar as cotas encontradas para diagnóstico
         sample_date = sorted(multi_dates.keys())[-1]  # data mais recente com múltiplas cotas
         print(f"      [RCVM175] {len(multi_dates)} datas com múltiplas cotas. Exemplo {sample_date}: {sorted(multi_dates[sample_date])}")
+    # Última cota com linha única = referência histórica pré-RCVM 175
+    single_qs = {d: qs[0] for d, qs in all_rows.items() if len(qs) == 1}
+    last_ref = single_qs[max(single_qs)] if single_qs else None
+
     out = []
+    warned = False
     for d in sorted(all_rows.keys()):
         qs = all_rows[d]
         if len(qs) == 1:
@@ -146,7 +151,16 @@ def _extract_rows(data: dict | None, fund: dict) -> list:
             # Excluir cotas < 1.5 (cascas pós-RCVM 175 com cota ~1.0)
             real_qs = sorted(q for q in qs if q >= 1.5)
             if real_qs:
-                out.append({"date": d, "quota": min(real_qs)})
+                chosen = min(real_qs)
+                # Verificar continuidade com série histórica
+                if last_ref is not None and not warned:
+                    ratio = chosen / last_ref
+                    if ratio < 0.5 or ratio > 2.0:
+                        print(f"      [AVISO RCVM175] subclasse suspeita em {d}: "
+                              f"escolhida={chosen:.6f} vs ref={last_ref:.6f} "
+                              f"(ratio={ratio:.2f}) — verificar manualmente")
+                        warned = True
+                out.append({"date": d, "quota": chosen})
             else:
                 out.append({"date": d, "quota": max(qs)})
     return out
@@ -724,10 +738,13 @@ def reconstruct_max_quotas_from_history(hist_path: Path) -> dict:
             dates  = fd.get("dates", [])
             quotas = fd.get("quotas", [])
             if not quotas: continue
-            max_idx = quotas.index(max(quotas))
+            # Filtrar None (pré-inception) antes de calcular máximo
+            valid = [(q, d) for q, d in zip(quotas, dates) if q is not None]
+            if not valid: continue
+            max_quota, max_date = max(valid, key=lambda x: x[0])
             result[cnpj] = {
-                "maxQuota":     quotas[max_idx],
-                "maxQuotaDate": dates[max_idx] if max_idx < len(dates) else "",
+                "maxQuota":     max_quota,
+                "maxQuotaDate": max_date,
             }
         print(f"  Reconstruídos {len(result)} maxQuotas do history.json (fallback)")
         return result
