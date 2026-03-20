@@ -5421,7 +5421,7 @@ function renderScatter() {
     const t = calcTargetReturn(fData);
     if (!t) return;
     points.push({ x: parseFloat(vol.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
-      label: fd.nome, color: CHART_COLORS[i % CHART_COLORS.length] });
+      label: (FUND_META[cnpj]||{}).nome || fd.nome, color: CHART_COLORS[i % CHART_COLORS.length] });
   });
 
   if (!points.length) return;
@@ -8012,7 +8012,7 @@ function renderEfficientFrontier() {
     const vol2  = Math.sqrt(var2*252)*100;
     fundPoints.push({
       x: parseFloat(vol2.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
-      label: fd.nome, cnpj, color: CHART_COLORS[i % CHART_COLORS.length],
+      label: (FUND_META[cnpj]||{}).nome || fd.nome, cnpj, color: CHART_COLORS[i % CHART_COLORS.length],
       sortino: m.sortino, calmar: m.calmar, ir: m.ir, beta: m.beta,
     });
   });
