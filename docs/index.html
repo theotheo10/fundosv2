@@ -4848,9 +4848,9 @@ function getBenchmarkCAGR(cnpj, window) {
   const meta = FUND_META[cnpj] || {};
   // In custom period mode, use period-specific accumulated benchmark returns
   if (customPeriodStart && customPeriodEnd) {
-    return (meta.tipo === 'Multimercado') ? customPeriodCDI : customPeriodIBOV;
+    return customPeriodIBOV;
   }
-  return (meta.tipo === 'Multimercado') ? cdi[window] : ibov[window];
+  return ibov[window];
 }
 
 function calcAlpha(f, window) {
@@ -7969,8 +7969,8 @@ function renderRollingAlpha() {
   const m = getAdvMetrics(cnpj);
   if (!m || !m.rollingAlpha.length) return;
 
-  if (wrap)  wrap.style.display  = '';
-  if (stats) stats.style.display = '';
+  if (wrap)  wrap.style.display  = 'block';
+  if (stats) stats.style.display = 'block';
   if (empty) empty.style.display = 'none';
 
   // Stats summary
@@ -8013,65 +8013,67 @@ function renderRollingAlpha() {
   const pointColors = data.map(v => v >= 0 ? 'rgba(26,122,82,0.85)' : 'rgba(184,50,50,0.85)');
   const lineColor   = color;
 
-  _rollingChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        // Zero line reference
-        { label: 'IBOV (0%)', data: data.map(() => 0),
-          borderColor: 'rgba(128,128,128,0.3)', borderWidth: 1,
-          borderDash: [4,3], pointRadius: 0, fill: false, tension: 0, order: 2 },
-        // Alpha line
-        { label: 'Alpha 12M rolante',
-          data,
-          borderColor: lineColor, borderWidth: 1.5,
-          backgroundColor: function(ctx2) {
-            const chart = ctx2.chart;
-            const {ctx: c, chartArea} = chart;
-            if (!chartArea) return 'transparent';
-            const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-            grad.addColorStop(0, 'rgba(26,122,82,0.15)');
-            grad.addColorStop(0.5, 'rgba(128,128,128,0.05)');
-            grad.addColorStop(1, 'rgba(184,50,50,0.12)');
-            return grad;
-          },
-          fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4,
-          pointBackgroundColor: pointColors, order: 1
-        }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(26,25,22,0.92)',
-          titleColor: '#aaa', bodyColor: '#e8e6e0',
-          titleFont: { family: 'Courier New', size: 11 },
-          bodyFont:  { family: 'Courier New', size: 11 },
-          padding: 10,
-          callbacks: {
-            title: items => items[0]?.label || '',
-            label: function(c) {
-              if (c.datasetIndex === 0) return null;
-              const v = c.parsed.y;
-              return `  Alpha 12M: ${v >= 0 ? '+' : ''}${v.toFixed(1)}% vs. IBOV`;
+  setTimeout(function() {
+    _rollingChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          // Zero line reference
+          { label: 'IBOV (0%)', data: data.map(() => 0),
+            borderColor: 'rgba(128,128,128,0.3)', borderWidth: 1,
+            borderDash: [4,3], pointRadius: 0, fill: false, tension: 0, order: 2 },
+          // Alpha line
+          { label: 'Alpha 12M rolante',
+            data,
+            borderColor: lineColor, borderWidth: 1.5,
+            backgroundColor: function(ctx2) {
+              const chart = ctx2.chart;
+              const {ctx: c, chartArea} = chart;
+              if (!chartArea) return 'transparent';
+              const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              grad.addColorStop(0, 'rgba(26,122,82,0.15)');
+              grad.addColorStop(0.5, 'rgba(128,128,128,0.05)');
+              grad.addColorStop(1, 'rgba(184,50,50,0.12)');
+              return grad;
+            },
+            fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4,
+            pointBackgroundColor: pointColors, order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(26,25,22,0.92)',
+            titleColor: '#aaa', bodyColor: '#e8e6e0',
+            titleFont: { family: 'Courier New', size: 11 },
+            bodyFont:  { family: 'Courier New', size: 11 },
+            padding: 10,
+            callbacks: {
+              title: items => items[0]?.label || '',
+              label: function(c) {
+                if (c.datasetIndex === 0) return null;
+                const v = c.parsed.y;
+                return `  Alpha 12M: ${v >= 0 ? '+' : ''}${v.toFixed(1)}% vs. IBOV`;
+              }
             }
           }
+        },
+        scales: {
+          x: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
+                         maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+               grid: { display: false } },
+          y: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
+                         callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%' },
+               grid: { color: 'rgba(128,128,128,0.08)' } }
         }
-      },
-      scales: {
-        x: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
-                       maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
-             grid: { display: false } },
-        y: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
-                       callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%' },
-             grid: { color: 'rgba(128,128,128,0.08)' } }
       }
-    }
-  });
+    })
+  }, 0);
 
   const nome = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome;
   if (note) note.innerHTML = `Alpha 12M rolante de <strong>${nome}</strong> vs. IBOV proxy (cagr36 anualizado diariamente). Cada ponto = retorno anualizado dos últimos 252 pregões do fundo menos o do IBOV.`;
