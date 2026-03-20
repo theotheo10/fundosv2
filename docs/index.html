@@ -2236,6 +2236,8 @@ const FUND_META = {
   "14.438.229/0001-17": { nome:"Charles River",      short:"Charles",  inception:"2011-11-07", initialQuota:1.0000, maxQuota:13.4070715,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"C6",       obs:"" },
   "17.397.315/0001-17": { nome:"SPX Falcon",         short:"Falcon",   inception:"2012-09-17", initialQuota:1.0000, maxQuota:7.3045380,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"Itaú",     obs:"" },
   "46.351.969/0001-08": { nome:"Opportunity Global", short:"Opportunity", inception:"2022-12-16", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
+  "15.334.585/0001-53": { nome:"SPX Patriot FIF CIC Ações RL", short:"Patriot", inception:"2013-01-02", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
+  "47.511.351/0001-20": { nome:"TB FIF Cotas FIA", short:"TB", inception:"2022-08-31", initialQuota:100.000000, maxQuota:213.205436, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva" };
 
@@ -2626,8 +2628,8 @@ const FUND_EXPOSURE = {
   "14.438.229/0001-17": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Charles River
   "17.397.315/0001-17": { net_normal:0.80, net_crisis:0.65, primary:"ibov"   }, // SPX Falcon
   "46.351.969/0001-08": { net_normal:1.00, net_crisis:0.95, primary:"sp500"  }, // Opportunity Global
-  "15.334.585/0001-53": { net_normal:1.0, net_crisis:0.95, primary:"ibov" }, // SPX Patriot
-  "47.511.351/0001-20": { net_normal:1.0, net_crisis:0.95, primary:"sp500" }, // TB
+  "15.334.585/0001-53": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // SPX Patriot
+  "47.511.351/0001-20": { net_normal:1.00, net_crisis:0.95, primary:"sp500"  }, // TB
 };
 
 // Historical stress scenarios
