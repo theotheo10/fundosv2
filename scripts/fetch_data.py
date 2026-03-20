@@ -1002,9 +1002,17 @@ def main() -> None:
     out_path  = Path(__file__).parent.parent / "docs" / "data.json"
     hist_path = Path(__file__).parent.parent / "docs" / "history.json"
 
-    # Sempre usa history.json como fonte primária para maxQuota —
-    # é o único lugar com o histórico completo de cotas.
-    # data.json anterior é usado apenas para fundos ausentes do history.
+    # Fetch IBOV first so we can pass price_map to process_fund for per-fund inception alpha
+    print(f"\n── Ibovespa")
+    oldest_inception = datetime.date(2005, 1, 1)  # safe lower bound covering all funds
+    ibov, ibov_price_map = fetch_ibov(anchor, a12, a36, a60, oldest_inception=oldest_inception)
+
+    # Atualiza history.json ANTES de calcular maxQuotas —
+    # assim reconstruct_max_quotas_from_history lê o histórico completo e atualizado,
+    # incluindo backfill de fundos novos ou recém-limpos.
+    update_history(anchor)
+
+    # Agora lê maxQuotas do history.json já atualizado
     prev_max_quotas = reconstruct_max_quotas_from_history(hist_path)
 
     if out_path.exists():
@@ -1020,11 +1028,6 @@ def main() -> None:
             print(f"Carregados {len(prev_max_quotas)} maxQuotas (history + data.json)")
         except Exception as e:
             print(f"Não foi possível ler data.json anterior: {e}")
-
-    # Fetch IBOV first so we can pass price_map to process_fund for per-fund inception alpha
-    print(f"\n── Ibovespa")
-    oldest_inception = datetime.date(2005, 1, 1)  # safe lower bound covering all funds
-    ibov, ibov_price_map = fetch_ibov(anchor, a12, a36, a60, oldest_inception=oldest_inception)
 
     results = [process_fund(f, anchor, prev_max_quotas, ibov_price_map=ibov_price_map) for f in FUNDS]
 
@@ -1058,8 +1061,6 @@ def main() -> None:
     out_path.parent.mkdir(exist_ok=True)
     out_path.write_text(json.dumps(data_out, ensure_ascii=False, indent=2))
     print(f"\n✓ data.json escrito ({len(results)} fundos)")
-
-    update_history(anchor)
 
 
 if __name__ == "__main__":
