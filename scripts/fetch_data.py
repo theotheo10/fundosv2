@@ -108,7 +108,9 @@ def _extract_rows(data: dict | None, fund: dict) -> list:
     if not data or data["col_date"] < 0 or data["col_quota"] < 0:
         return []
     cnpj, fmt = fund["cnpj"], fund["cnpjFmt"]
-    out = []
+    # date -> best quota (pós-RCVM 175: múltiplas linhas por dia p/ mesmo CNPJ;
+    # casca tem cota ~1.0, subclasse tem cota real >> 1.0 → pegar a maior)
+    best: dict[str, float] = {}
     for line in data["lines"][1:]:
         if cnpj not in line and fmt not in line:
             continue
@@ -121,9 +123,11 @@ def _extract_rows(data: dict | None, fund: dict) -> list:
             d = cols[data["col_date"]].strip()
             q = float(cols[data["col_quota"]].replace(",", "."))
             if d and q > 0:
-                out.append({"date": d, "quota": q})
+                if d not in best or q > best[d]:
+                    best[d] = q
         except (ValueError, IndexError):
             continue
+    out = [{"date": d, "quota": q} for d, q in best.items()]
     out.sort(key=lambda r: r["date"])
     return out
 
