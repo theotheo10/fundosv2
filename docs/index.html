@@ -8283,7 +8283,7 @@ runOptimizer = function() {
         const better =
           optObj === 'sortino' ? p.sortino > best.sortino :
           optObj === 'calmar'  ? p.calmar  > best.calmar  :
-          optObj === 'stress'  ? p.sharpe  > (best?.sharpe ?? -Infinity) :
+          optObj === 'stress'  ? (p.calmar ?? -Infinity) > (best?.calmar ?? -Infinity) :
           /* ir */               p.ir      > best.ir;
 
         if (better) {
@@ -8292,7 +8292,7 @@ runOptimizer = function() {
         // Collect top-30 candidates for stress phase 2
         if (stressCandidates !== null) {
           stressCandidates.push({ ...p, cnpjs: combo, w });
-          stressCandidates.sort((a, b) => b.sharpe - a.sharpe);
+          stressCandidates.sort((a, b) => (b.calmar ?? -Infinity) - (a.calmar ?? -Infinity));
           if (stressCandidates.length > 30) stressCandidates.pop();
         }
       }
