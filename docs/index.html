@@ -177,7 +177,7 @@
   .legend-src { font-size: 0.62rem; opacity: 0.6; }
 
   /* ── Tabs ── */
-  .tabs { display: flex; gap: 0; margin-bottom: 1.8rem; border-bottom: 1px solid var(--border); }
+  .tabs { display: flex; gap: 0; margin-bottom: 0.7rem; border-bottom: 1px solid var(--border); }
   .tab-btn {
     font-family: 'Courier New', monospace; font-size: 0.72rem;
     text-transform: uppercase; letter-spacing: 0.1em;
@@ -820,7 +820,7 @@
   }
   /* Filter panel */
   .filter-panel {
-    padding:0.65rem 0.9rem;
+    padding:0.5rem 0.9rem 0.4rem;
     background:var(--surface);
     border:0.5px solid var(--border);
     border-radius:6px;
@@ -828,7 +828,7 @@
     animation: fadeIn 0.12s ease;
   }
   @keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
-  .filter-bar { display:flex; flex-direction:column; gap:6px; margin-bottom:0.6rem; }
+  .filter-bar { display:flex; flex-direction:column; gap:5px; margin-bottom:0.4rem; }
   .filter-row { display:flex; gap:5px; align-items:center; flex-wrap:nowrap; }
   .filter-divider { width:1px; height:14px; background:var(--border); margin:0 4px; flex-shrink:0; }
   .filter-chip {
@@ -842,7 +842,7 @@
   .filter-label { font-family:'Courier New',monospace; font-size:0.6rem; color:var(--muted); }
 
   /* ── Custom period selector ── */
-  .period-bar { display:flex; gap:10px; align-items:center; margin-bottom:1rem; flex-wrap:wrap; }
+  .period-bar { display:flex; gap:8px; align-items:center; margin-bottom:0; flex-wrap:wrap; }
   .period-bar label { font-family:'Courier New',monospace; font-size:0.65rem; color:var(--muted); }
   .period-bar input[type=date] {
     font-family:'Courier New',monospace; font-size:0.72rem; padding:3px 8px;
@@ -4529,8 +4529,16 @@ const activeFilters = { tipo: '', expo: '', trib: '' };
 
 function toggleFilterPanel() {
   const panel = document.getElementById('filterPanel');
-  const isOpen = panel.style.display !== 'none' && panel.style.display !== '';
-  panel.style.display = isOpen ? 'none' : '';
+  const isOpen = panel.dataset.open === '1';
+  if (isOpen) {
+    panel.style.display = 'none';
+    panel.dataset.open = '0';
+  } else {
+    panel.style.display = '';
+    // force block in case CSS default is none
+    if (getComputedStyle(panel).display === 'none') panel.style.display = 'block';
+    panel.dataset.open = '1';
+  }
   updateFilterBadge();
 }
 
@@ -4546,7 +4554,7 @@ function updateFilterBadge() {
   if (btn) btn.classList.toggle('has-active', active > 0);
   // Summary text when panel is closed
   const panel = document.getElementById('filterPanel');
-  if (summary && panel && panel.style.display === 'none') {
+  if (summary && panel && panel.dataset.open !== '1') {
     const parts = [];
     if (activeFilters.tipo) parts.push(activeFilters.tipo);
     if (activeFilters.expo) parts.push(activeFilters.expo);
@@ -8299,6 +8307,7 @@ runOptimizer = function() {
       const validCnpjs = allCnpjs.filter(c => muMap[c] != null);
       let best = null;
       let nCombos = 0;
+      const stressCandidates = optObj === 'stress' ? [] : null;
 
       for (const combo of combinations(validCnpjs, k)) {
         nCombos++;
