@@ -502,25 +502,27 @@
     font-family: 'Courier New', monospace; font-size: 0.7rem;
     color: var(--muted); padding: 1.5rem; text-align: center;
   }
-  .ir-table-wrap { overflow-x: auto; }
+  .ir-table-wrap { width: 100%; }
   .ir-table {
     width: 100%; border-collapse: collapse;
-    font-size: 0.76rem; min-width: 680px;
+    font-size: 0.7rem; table-layout: auto;
   }
   .ir-table thead th {
-    font-family: 'Courier New', monospace; font-size: 0.56rem;
-    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
-    padding: 0.5rem 0.8rem; text-align: right; border-bottom: 1px solid var(--border);
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+    padding: 0.4rem 0.5rem; text-align: right; border-bottom: 1px solid var(--border);
     background: var(--bg); white-space: nowrap;
   }
-  .ir-table thead th:first-child { text-align: left; }
+  .ir-table thead th:first-child { text-align: left; padding-left: 0; }
   .ir-table tbody td {
-    padding: 0.55rem 0.8rem; text-align: right;
+    padding: 0.45rem 0.5rem; text-align: right;
     border-bottom: 1px solid var(--border);
-    font-family: 'Courier New', monospace; font-size: 0.75rem;
+    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    white-space: nowrap;
   }
   .ir-table tbody td:first-child {
-    text-align: left; font-family: inherit; font-size: 0.77rem;
+    text-align: left; font-family: inherit; font-size: 0.75rem;
+    padding-left: 0; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .ir-table tbody tr:last-child td { border-bottom: none; }
   .ir-table tbody tr.ir-total-row td {
@@ -713,8 +715,11 @@
     .ir-header { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
     .ir-header-title { font-size: 0.65rem; }
     .ir-slider-wrap { width: 100%; }
-    .ir-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    .ir-table { font-size: 0.65rem; min-width: 580px; }
+    .ir-table-wrap { width: 100%; }
+    .ir-table { font-size: 0.58rem; }
+    .ir-table thead th { padding: 0.3rem 0.3rem; font-size: 0.48rem; }
+    .ir-table tbody td { padding: 0.35rem 0.3rem; font-size: 0.6rem; }
+    .ir-table tbody td:first-child { max-width: 90px; }
     .ir-legend { flex-wrap: wrap; gap: 6px; }
     .ir-cc-timeline { padding: 0.6rem 0.8rem; }
 
@@ -2290,7 +2295,7 @@ const FUND_META = {
   "14.438.229/0001-17": { nome:"Charles River",      short:"Charles",  inception:"2011-11-07", initialQuota:1.0000, maxQuota:13.4070715,  tipo:"Long Only",    trib:"RV", expo:"Brasil",                  banco:"C6",       obs:"" },
   "17.397.315/0001-17": { nome:"SPX Falcon",         short:"Falcon",   inception:"2012-09-17", initialQuota:1.0000, maxQuota:7.3045380,   tipo:"Long Biased",  trib:"RV", expo:"Majoritariamente Brasil",  banco:"Itaú",     obs:"" },
   "46.351.969/0001-08": { nome:"Opportunity Global", short:"Opportunity", inception:"2022-12-16", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
-  "15.334.585/0001-53": { nome:"SPX Patriot FIF CIC Ações RL", short:"Patriot", inception:"2013-01-02", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
+  "15.334.585/0001-53": { nome:"SPX Patriot", short:"Patriot", inception:"2013-01-02", initialQuota:1.000000, maxQuota:1.000000, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
   "47.511.351/0001-20": { nome:"TB FIF Cotas FIA", short:"TB", inception:"2022-08-31", initialQuota:100.000000, maxQuota:213.205436, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
   "52.116.227/0001-09": { nome:"Itaú Janeiro Multimercado", short:"Janeiro", inception:"2023-09-29", initialQuota:1.000000, maxQuota:1.000000, tipo:"Multimercado", trib:"TR", expo:"Majoritariamente Brasil", banco:"Itaú", obs:"" },
   "47.612.105/0001-65": { nome:"Ace Capital Multicenários", short:"Ace", inception:"2022-11-30", initialQuota:1.0, maxQuota:2.17970569, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG", obs:"" },
@@ -3849,13 +3854,13 @@ function renderIR() {
   let html = `<div class="ir-table-wrap"><table class="ir-table">
     <thead><tr>
       <th>Fundo</th>
-      <th data-tip="Retorno esperado anualizado com base no histórico. Bruto de IR.">Retorno alvo*</th>
+      <th data-tip="Retorno esperado anualizado com base no histórico. Bruto de IR.">Ret. alvo*</th>
       <th>Aporte</th>
       <th data-tip="Valor projetado no resgate antes de qualquer tributação.">Valor bruto</th>
-      <th data-tip="Total de IR pago — inclui come-cotas semestrais (TR) e IR no resgate.">IR total pago</th>
-      <th data-tip="Alíquota efetiva real. RV = 15%. TR = mais, pois o come-cotas retira capital que deixou de crescer.">Custo real do IR</th>
-      <th data-tip="Valor líquido após todos os impostos.">O que fica com você</th>
-      <th data-tip="CAGR líquido: taxa de crescimento anual após todos os impostos.">Retorno a.a. líquido</th>
+      <th data-tip="Total de IR pago — inclui come-cotas semestrais (TR) e IR no resgate.">IR total</th>
+      <th data-tip="Alíquota efetiva real. RV = 15%. TR = mais, pois o come-cotas retira capital que deixou de crescer.">Custo IR</th>
+      <th data-tip="Valor líquido após todos os impostos.">Líquido</th>
+      <th data-tip="CAGR líquido: taxa de crescimento anual após todos os impostos.">CAGR líq.</th>
     </tr></thead><tbody>`;
 
   for (const row of rows) {
@@ -5680,7 +5685,7 @@ function renderConsistency() {
     const meta = FUND_META[cnpj] || {};
     return {
       cnpj:      cnpj,
-      nome:      meta.short || meta.nome || historyData.funds[cnpj].nome,
+      nome:      meta.nome || meta.short || historyData.funds[cnpj].nome,
       pctPos:    activeMths > 0 ? pos / activeMths * 100 : 0,
       best:      best * 100,
       worst:     worst * 100,
