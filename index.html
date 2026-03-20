@@ -4268,6 +4268,19 @@ function invertMatrix(M) {
 // ── Covariância a partir de retornos diários ──────────────────────────────────
 // Retorna matriz k×k de covariâncias anualizadas (×252) em (%²)
 function covMatrix(cnpjs, historyData) {
+  // Use server-precomputed covariance matrix when available (computed daily by fetch_data.py).
+  // Falls back to on-the-fly computation when history.json predates the server-side upgrade.
+  if (historyData.covMatrix) {
+    const k   = cnpjs.length;
+    const cov = Array.from({length: k}, () => new Array(k).fill(0));
+    for (let i = 0; i < k; i++)
+      for (let j = 0; j < k; j++) {
+        const v = historyData.covMatrix[cnpjs[i]]?.[cnpjs[j]];
+        cov[i][j] = (v != null) ? v : 0;
+      }
+    return cov;
+  }
+  // ── Fallback: compute on-the-fly (pre-upgrade history.json) ──────────────
   const k    = cnpjs.length;
   const commonStart = getCommonStartIndex(cnpjs);
   const rets = cnpjs.map(c => historyData.funds[c].returns);
@@ -4278,9 +4291,9 @@ function covMatrix(cnpjs, historyData) {
     for (let j = i; j < k; j++) {
       let s = 0;
       const tPairStart = Math.max(getFirstRealIndex(cnpjs[i]), getFirstRealIndex(cnpjs[j]));
-  for (let t = tPairStart; t < n; t++)
+      for (let t = tPairStart; t < n; t++)
         s += (rets[i][t] - means[i]) * (rets[j][t] - means[j]);
-      cov[i][j] = cov[j][i] = (s / (n - 1)) * 252 * 10000; // (%²) anualizado
+      cov[i][j] = cov[j][i] = (s / (n - 1)) * 252 * 10000;
     }
   return cov;
 }
@@ -4848,9 +4861,9 @@ function getBenchmarkCAGR(cnpj, window) {
   const meta = FUND_META[cnpj] || {};
   // In custom period mode, use period-specific accumulated benchmark returns
   if (customPeriodStart && customPeriodEnd) {
-    return (meta.tipo === 'Multimercado') ? customPeriodCDI : customPeriodIBOV;
+    return customPeriodIBOV;
   }
-  return (meta.tipo === 'Multimercado') ? cdi[window] : ibov[window];
+  return ibov[window];
 }
 
 function calcAlpha(f, window) {
@@ -7657,6 +7670,65 @@ function computeAdvancedMetrics(cnpj) {
   if (!historyData || !historyData.funds[cnpj]) return null;
   const fd = historyData.funds[cnpj];
 
+  // Use server-precomputed metrics when available (computed daily by fetch_data.py).
+  // Fields: vol, sharpe, sortino, calmar, maxDrawdown, cagrHist,
+  //         rollingAlpha (array), rollingDates (array).
+  // Falls back to full JS computation when metrics are absent (pre-upgrade history.json
+  // or fund added via add_fund before the next daily update runs).
+  const _pre = fd.metrics;
+  if (_pre && _pre.vol != null && _pre.sharpe !== undefined) {
+    // Supplement with fields that depend on runtime data (IBOV/CDI from data.json)
+    // and fields not worth precomputing (propensity, betaBenchmark label).
+    const ibovCagr36 = (ibov.cagr36 || 20);
+    const cdiCagr36  = (cdi.cagr36  || 12);
+    const _olsBetas  = fundBetas[cnpj] || {};
+    const _meta      = FUND_META[cnpj] || {};
+    const _isIntl    = (_meta.expo || '').includes('Internacional');
+    const _isMM      = (_meta.tipo || '').includes('Multimercado') || (_meta.tipo || '').includes('Long & Short');
+
+    let beta, betaBenchmark;
+    if (_olsBetas.beta_ibov != null && _olsBetas.n_obs >= 60) {
+      if (_isIntl) {
+        beta = _olsBetas.beta_sp500 ?? _olsBetas.beta_ibov;
+        betaBenchmark = 'S&P 500 (BRL)';
+      } else if (_isMM) {
+        const absIbov = Math.abs(_olsBetas.beta_ibov || 0);
+        const absSp   = Math.abs(_olsBetas.beta_sp500 || 0);
+        beta = absIbov >= absSp ? _olsBetas.beta_ibov : _olsBetas.beta_sp500;
+        betaBenchmark = absIbov >= absSp ? 'IBOV' : 'S&P 500 (BRL)';
+      } else {
+        beta = _olsBetas.beta_ibov;
+        betaBenchmark = 'IBOV';
+      }
+    } else {
+      beta = null;
+      betaBenchmark = _isIntl ? 'S&P 500 (proxy)' : 'IBOV (proxy)';
+    }
+
+    // Rolling alpha stats from precomputed array
+    const ra = _pre.rollingAlpha || [];
+    return {
+      cagr:          _pre.cagrHist,
+      sortino:       _pre.sortino,
+      calmar:        _pre.calmar,
+      beta,          betaBenchmark,
+      ir:            _pre.ir ?? null,
+      teAnn:         _pre.teAnn ?? null,
+      propensity:    _pre.propensity ?? null,
+      alphaAnn:      _pre.alphaAnn ?? null,
+      rollingAlpha:  ra,
+      rollingDates:  _pre.rollingDates || [],
+      raMin:    ra.length ? Math.min(...ra) : null,
+      raMax:    ra.length ? Math.max(...ra) : null,
+      raLatest: ra.length ? ra[ra.length - 1] : null,
+      raMean:   ra.length ? ra.reduce((s,x) => s+x, 0) / ra.length : null,
+      mddPct:   _pre.maxDrawdown,
+      ddDev:    _pre.ddDev ?? null,
+      cdiCagr36, ibovCagr36,
+    };
+  }
+
+  // ── Fallback: full JS computation (pre-upgrade history.json) ─────────────
   // Find first non-zero return — skip the interpolated zero period before inception
   const allRets = fd.returns;
   let firstReal = 0;
@@ -7670,8 +7742,15 @@ function computeAdvancedMetrics(cnpj) {
 
   const ibovCagr36 = (ibov.cagr36 || 20);
   const cdiCagr36  = (cdi.cagr36  || 12);
-  const ibovDaily  = Math.pow(1 + ibovCagr36/100, 1/252) - 1;
-  const cdiDaily   = Math.pow(1 + cdiCagr36/100,  1/252) - 1;
+  const ibovProxyDaily = Math.pow(1 + ibovCagr36/100, 1/252) - 1;
+  const cdiDaily       = Math.pow(1 + cdiCagr36/100,  1/252) - 1;
+  // Use actual IBOV daily returns when available (stored in history.json by fetch_data.py).
+  // Falls back to constant proxy only for dates not covered by the IBOV series.
+  const _ibovRets = historyData.ibovReturns || {};
+  function ibovDailyRet(dateStr) {
+    const r = _ibovRets[dateStr];
+    return (r != null) ? r : ibovProxyDaily;
+  }
 
   // Annualized return (CAGR over available period)
   let cum = 1;
@@ -7730,37 +7809,36 @@ function computeAdvancedMetrics(cnpj) {
     betaBenchmark = _isIntl ? 'S&P 500 (proxy)' : 'IBOV (proxy)';
   }
 
-  // Information Ratio vs IBOV proxy
-  const excessIbov = rets.map(r => r - ibovDaily);
+  // Information Ratio vs IBOV (usando retornos reais quando disponíveis)
+  const excessIbov = rets.map((r, i) => r - ibovDailyRet(dates[i]));
   const alphaDail  = excessIbov.reduce((s,e) => s+e, 0) / n;
   const alphaAnn   = (Math.pow(1 + alphaDail, 252) - 1) * 100;
   const teD  = Math.sqrt(excessIbov.reduce((s,e) => s + (e-alphaDail)**2, 0) / (n-1));
   const teAnn = teD * Math.sqrt(252) * 100;
   const ir = teAnn > 0 ? alphaAnn / teAnn : null;
 
-  // Rolling 12M alpha vs IBOV
+  // Rolling 12M alpha vs IBOV (retornos reais por data, fallback ao proxy)
   const WINDOW = 252;
   const rollingAlpha = [];
   const rollingDates = [];
-  // dates already sliced to fund's real period
   for (let i = 0; i <= n - WINDOW; i++) {
     let cf = 1, ci = 1;
     for (let j = i; j < i + WINDOW; j++) {
       cf *= (1 + rets[j]);
-      ci *= (1 + ibovDaily);
+      ci *= (1 + ibovDailyRet(dates[j]));
     }
     const ra = (Math.pow(cf, 252/WINDOW) - Math.pow(ci, 252/WINDOW)) * 100;
     rollingAlpha.push(parseFloat(ra.toFixed(2)));
-    rollingDates.push(dates[i + WINDOW]);
+    rollingDates.push(dates[i + WINDOW - 1]);
   }
 
-  // Propensity to beat IBOV (rolling quarterly, step 21 days)
+  // Beat IBOV (janela trimestral 63 pregões, passo 21, retornos reais)
   let beats = 0, totalQ = 0;
   for (let i = 0; i <= n - 63; i += 21) {
     let cf = 1, ci = 1;
     for (let j = i; j < i + 63; j++) {
       cf *= (1 + rets[j]);
-      ci *= (1 + ibovDaily);
+      ci *= (1 + ibovDailyRet(dates[j]));
     }
     if (cf > ci) beats++;
     totalQ++;
@@ -7920,7 +7998,7 @@ function renderAdvMetricsTable() {
 
   html += `</tbody></table></div>
   <div style="margin-top:0.6rem;font-family:'Courier New',monospace;font-size:0.57rem;color:var(--muted)">
-    Beta calculado vs. portfólio equal-weight dos ${cnpjs.length} fundos (proxy de mercado do universo). IBOV proxy: CAGR 36M convertido em retorno diário constante.
+    Beta calculado vs. portfólio equal-weight dos ${cnpjs.length} fundos (proxy de mercado do universo). IBOV: retornos diários reais quando disponíveis (armazenados em history.json); fallback ao CAGR 36M como proxy constante.
     Período: ${historyData.commonDates[0].slice(0,7)} → ${historyData.commonDates[historyData.commonDates.length-1].slice(0,7)}.
   </div>`;
 
@@ -7969,8 +8047,8 @@ function renderRollingAlpha() {
   const m = getAdvMetrics(cnpj);
   if (!m || !m.rollingAlpha.length) return;
 
-  if (wrap)  wrap.style.display  = '';
-  if (stats) stats.style.display = '';
+  if (wrap)  wrap.style.display  = 'block';
+  if (stats) stats.style.display = 'block';
   if (empty) empty.style.display = 'none';
 
   // Stats summary
@@ -8013,68 +8091,70 @@ function renderRollingAlpha() {
   const pointColors = data.map(v => v >= 0 ? 'rgba(26,122,82,0.85)' : 'rgba(184,50,50,0.85)');
   const lineColor   = color;
 
-  _rollingChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [
-        // Zero line reference
-        { label: 'IBOV (0%)', data: data.map(() => 0),
-          borderColor: 'rgba(128,128,128,0.3)', borderWidth: 1,
-          borderDash: [4,3], pointRadius: 0, fill: false, tension: 0, order: 2 },
-        // Alpha line
-        { label: 'Alpha 12M rolante',
-          data,
-          borderColor: lineColor, borderWidth: 1.5,
-          backgroundColor: function(ctx2) {
-            const chart = ctx2.chart;
-            const {ctx: c, chartArea} = chart;
-            if (!chartArea) return 'transparent';
-            const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
-            grad.addColorStop(0, 'rgba(26,122,82,0.15)');
-            grad.addColorStop(0.5, 'rgba(128,128,128,0.05)');
-            grad.addColorStop(1, 'rgba(184,50,50,0.12)');
-            return grad;
-          },
-          fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4,
-          pointBackgroundColor: pointColors, order: 1
-        }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(26,25,22,0.92)',
-          titleColor: '#aaa', bodyColor: '#e8e6e0',
-          titleFont: { family: 'Courier New', size: 11 },
-          bodyFont:  { family: 'Courier New', size: 11 },
-          padding: 10,
-          callbacks: {
-            title: items => items[0]?.label || '',
-            label: function(c) {
-              if (c.datasetIndex === 0) return null;
-              const v = c.parsed.y;
-              return `  Alpha 12M: ${v >= 0 ? '+' : ''}${v.toFixed(1)}% vs. IBOV`;
+  setTimeout(function() {
+    _rollingChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          // Zero line reference
+          { label: 'IBOV (0%)', data: data.map(() => 0),
+            borderColor: 'rgba(128,128,128,0.3)', borderWidth: 1,
+            borderDash: [4,3], pointRadius: 0, fill: false, tension: 0, order: 2 },
+          // Alpha line
+          { label: 'Alpha 12M rolante',
+            data,
+            borderColor: lineColor, borderWidth: 1.5,
+            backgroundColor: function(ctx2) {
+              const chart = ctx2.chart;
+              const {ctx: c, chartArea} = chart;
+              if (!chartArea) return 'transparent';
+              const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+              grad.addColorStop(0, 'rgba(26,122,82,0.15)');
+              grad.addColorStop(0.5, 'rgba(128,128,128,0.05)');
+              grad.addColorStop(1, 'rgba(184,50,50,0.12)');
+              return grad;
+            },
+            fill: true, tension: 0.3, pointRadius: 0, pointHoverRadius: 4,
+            pointBackgroundColor: pointColors, order: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(26,25,22,0.92)',
+            titleColor: '#aaa', bodyColor: '#e8e6e0',
+            titleFont: { family: 'Courier New', size: 11 },
+            bodyFont:  { family: 'Courier New', size: 11 },
+            padding: 10,
+            callbacks: {
+              title: items => items[0]?.label || '',
+              label: function(c) {
+                if (c.datasetIndex === 0) return null;
+                const v = c.parsed.y;
+                return `  Alpha 12M: ${v >= 0 ? '+' : ''}${v.toFixed(1)}% vs. IBOV`;
+              }
             }
           }
+        },
+        scales: {
+          x: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
+                         maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
+               grid: { display: false } },
+          y: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
+                         callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%' },
+               grid: { color: 'rgba(128,128,128,0.08)' } }
         }
-      },
-      scales: {
-        x: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
-                       maxRotation: 0, autoSkip: true, maxTicksLimit: 12 },
-             grid: { display: false } },
-        y: { ticks: { font: { family: 'Courier New', size: 9 }, color: '#888',
-                       callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%' },
-             grid: { color: 'rgba(128,128,128,0.08)' } }
       }
-    }
-  });
+    })
+  }, 0);
 
   const nome = (FUND_META[cnpj] || {}).nome || historyData.funds[cnpj].nome;
-  if (note) note.innerHTML = `Alpha 12M rolante de <strong>${nome}</strong> vs. IBOV proxy (cagr36 anualizado diariamente). Cada ponto = retorno anualizado dos últimos 252 pregões do fundo menos o do IBOV.`;
+  if (note) note.innerHTML = `Alpha 12M rolante de <strong>${nome}</strong> vs. IBOV (retornos diários reais; proxy CAGR 36M para datas sem cobertura). Cada ponto = retorno anualizado dos últimos 252 pregões do fundo menos o do IBOV no mesmo período.`;
 }
 
 // ── Render: Efficient Frontier ─────────────────────────────────────────────
@@ -8114,59 +8194,60 @@ function renderEfficientFrontier() {
 
   if (!fundPoints.length) return;
 
-  // Approximate efficient frontier via Monte Carlo of random weights
-  // Sample N random long-only portfolios and identify Pareto frontier
-  const N_FRONTIER = 800;
-  const frontierPts = [];
-  const cov = historyData.correlation;
-  const allC = cnpjs.filter(c => fundPoints.some(p => p.cnpj === c));
+  // Use server-precomputed efficient frontier when available.
+  // Falls back to browser-side Monte Carlo for pre-upgrade history.json.
+  let frontierLine;
+  if (historyData.efficientFrontier && historyData.efficientFrontier.length > 2) {
+    frontierLine = historyData.efficientFrontier;
+  } else {
+    // ── Fallback: Monte Carlo approximation in the browser ─────────────────
+    const N_FRONTIER = 800;
+    const frontierPts = [];
+    const cov = historyData.correlation;
+    const allC = cnpjs.filter(c => fundPoints.some(p => p.cnpj === c));
 
-  for (let sim = 0; sim < N_FRONTIER; sim++) {
-    // Random weights (Dirichlet-like via exponential)
-    const raw = allC.map(() => -Math.log(Math.random() || 1e-10));
-    const sum = raw.reduce((a,b)=>a+b,0);
-    const w = raw.map(r => r/sum);
+    for (let sim = 0; sim < N_FRONTIER; sim++) {
+      const raw = allC.map(() => -Math.log(Math.random() || 1e-10));
+      const sum = raw.reduce((a,b)=>a+b,0);
+      const w = raw.map(r => r/sum);
 
-    // Portfolio return (weighted avg of target returns)
-    const ptRet = allC.reduce((s,c,i) => {
-      const fp = fundPoints.find(p => p.cnpj === c);
-      return s + (fp ? w[i] * fp.y : 0);
-    }, 0);
+      const ptRet = allC.reduce((s,c,i) => {
+        const fp = fundPoints.find(p => p.cnpj === c);
+        return s + (fp ? w[i] * fp.y : 0);
+      }, 0);
 
-    // Portfolio vol via covariance matrix
-    let ptVar = 0;
-    allC.forEach((ca, i) => {
-      const fpA = fundPoints.find(p => p.cnpj === ca);
-      if (!fpA) return;
-      allC.forEach((cb, j) => {
-        const fpB = fundPoints.find(p => p.cnpj === cb);
-        if (!fpB) return;
-        const rho = (ca === cb) ? 1 : (cov[ca]?.[cb] ?? 0);
-        ptVar += w[i] * w[j] * fpA.x * fpB.x * rho;
+      let ptVar = 0;
+      allC.forEach((ca, i) => {
+        const fpA = fundPoints.find(p => p.cnpj === ca);
+        if (!fpA) return;
+        allC.forEach((cb, j) => {
+          const fpB = fundPoints.find(p => p.cnpj === cb);
+          if (!fpB) return;
+          const rho = (ca === cb) ? 1 : (cov[ca]?.[cb] ?? 0);
+          ptVar += w[i] * w[j] * fpA.x * fpB.x * rho;
+        });
       });
-    });
-    const ptVol = Math.sqrt(Math.max(0, ptVar));
-    frontierPts.push({ x: parseFloat(ptVol.toFixed(2)), y: parseFloat(ptRet.toFixed(2)) });
-  }
-
-  // Filter to approximate efficient frontier (Pareto-optimal in vol/ret space)
-  frontierPts.sort((a,b) => a.x - b.x);
-  const frontier = [];
-  let maxRet = -Infinity;
-  for (const pt of frontierPts) {
-    if (pt.y >= maxRet - 0.3) {  // slight tolerance
-      if (pt.y > maxRet) maxRet = pt.y;
-      frontier.push(pt);
+      const ptVol = Math.sqrt(Math.max(0, ptVar));
+      frontierPts.push({ x: parseFloat(ptVol.toFixed(2)), y: parseFloat(ptRet.toFixed(2)) });
     }
+
+    frontierPts.sort((a,b) => a.x - b.x);
+    const frontier = [];
+    let maxRet = -Infinity;
+    for (const pt of frontierPts) {
+      if (pt.y >= maxRet - 0.3) {
+        if (pt.y > maxRet) maxRet = pt.y;
+        frontier.push(pt);
+      }
+    }
+    const binW = 0.5;
+    const bins = {};
+    frontier.forEach(pt => {
+      const bin = Math.round(pt.x / binW) * binW;
+      if (!bins[bin] || pt.y > bins[bin].y) bins[bin] = pt;
+    });
+    frontierLine = Object.values(bins).sort((a,b)=>a.x-b.x);
   }
-  // Keep only the envelope (for each vol bin, keep highest ret)
-  const binW = 0.5;
-  const bins = {};
-  frontier.forEach(pt => {
-    const bin = Math.round(pt.x / binW) * binW;
-    if (!bins[bin] || pt.y > bins[bin].y) bins[bin] = pt;
-  });
-  const frontierLine = Object.values(bins).sort((a,b)=>a.x-b.x);
 
   const maxVol = Math.max(...fundPoints.map(p=>p.x), ...frontierLine.map(p=>p.x)) * 1.1;
   const minRet = Math.min(cdiVal, ...fundPoints.map(p=>p.y)) - 2;
@@ -8277,21 +8358,32 @@ function invalidateAnalysisCharts() {
 // Propriedade chave: Sᵢⱼ ≥ 0 sempre (produto de não-positivos é não-negativo),
 // portanto S é positiva semi-definida e inversível.
 function semiCovMatrix(cnpjs, historyData, cdiAnnual) {
+  // Use server-precomputed semi-covariance matrix when available.
+  // The server computes this with the CDI of the day of generation (updated daily),
+  // which is identical to what this function would use at runtime.
+  if (historyData.semiCovMatrix) {
+    const k = cnpjs.length;
+    const S = Array.from({length: k}, () => new Array(k).fill(0));
+    for (let i = 0; i < k; i++)
+      for (let j = 0; j < k; j++) {
+        const v = historyData.semiCovMatrix[cnpjs[i]]?.[cnpjs[j]];
+        S[i][j] = (v != null) ? v : 0;
+      }
+    return S;
+  }
+  // ── Fallback: compute on-the-fly (pre-upgrade history.json) ──────────────
   const k = cnpjs.length;
   const _commonStart = getCommonStartIndex(cnpjs);
   const rets = cnpjs.map(c => historyData.funds[c].returns);
   const n = rets[0].length;
   const cdiDaily = Math.pow(1 + cdiAnnual / 100, 1 / 252) - 1;
-
-  // Semi-deviações: min(rᵢₜ − CDI_daily, 0)
   const semiDevs = rets.map(ri => ri.map(r => Math.min(r - cdiDaily, 0)));
-
   const S = Array.from({length: k}, () => new Array(k).fill(0));
   for (let i = 0; i < k; i++) {
     for (let j = i; j < k; j++) {
       let s = 0;
       for (let t = 0; t < n; t++) s += semiDevs[i][t] * semiDevs[j][t];
-      S[i][j] = S[j][i] = (s / n) * 252 * 10000;  // %² anualizados
+      S[i][j] = S[j][i] = (s / n) * 252 * 10000;
     }
   }
   return S;
