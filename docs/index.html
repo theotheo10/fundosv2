@@ -802,7 +802,9 @@
   }
 
   /* ── Filter chips ── */
-  .filter-bar { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:1rem; align-items:center; }
+  .filter-bar { display:flex; flex-direction:column; gap:6px; margin-bottom:1rem; }
+  .filter-row { display:flex; gap:5px; align-items:center; flex-wrap:nowrap; }
+  .filter-divider { width:1px; height:14px; background:var(--border); margin:0 4px; flex-shrink:0; }
   .filter-chip {
     font-family:'Courier New',monospace; font-size:0.65rem; padding:3px 10px;
     border-radius:20px; border:0.5px solid var(--border); background:transparent;
@@ -1681,21 +1683,24 @@
 <div id="tab-ranking" class="tab-pane active">
 
 <div class="filter-bar">
-  <span class="filter-label" data-tip="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia:</span>
-  <button class="filter-chip active" data-filter="tipo" data-val="" onclick="setFilter('tipo','',this)">Todos</button>
-  <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
-  <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
-  <button class="filter-chip" data-filter="tipo" data-val="Multimercado" onclick="setFilter('tipo','Multimercado',this)">Multimercado</button>
-  <span class="filter-sep"></span>
-  <span class="filter-label">Mercado:</span>
-  <button class="filter-chip active" data-filter="expo" data-val="" onclick="setFilter('expo','',this)">Todos</button>
-  <button class="filter-chip" data-filter="expo" data-val="Brasil" onclick="setFilter('expo','Brasil',this)">Brasil</button>
-  <button class="filter-chip" data-filter="expo" data-val="Internacional" onclick="setFilter('expo','Internacional',this)">Internacional</button>
-  <span class="filter-sep"></span>
-  <span class="filter-label" data-tip="RV = sem come-cotas, IR só no resgate (melhor para longo prazo). TR = IR antecipado em maio e novembro (come-cotas).">Imposto:</span>
-  <button class="filter-chip active" data-filter="trib" data-val="" onclick="setFilter('trib','',this)">Todos</button>
-  <button class="filter-chip" data-filter="trib" data-val="RV" onclick="setFilter('trib','RV',this)" data-tip="Renda Variável: paga IR apenas no resgate (15%). Sem come-cotas — todo o capital trabalha até você resgatar.">Sem come-cotas (RV)</button>
-  <button class="filter-chip" data-filter="trib" data-val="TR" onclick="setFilter('trib','TR',this)" data-tip="Tabela Regressiva: IR antecipado em maio e novembro. Mais ineficiente para horizontes longos.">Com come-cotas (TR)</button>
+  <div class="filter-row">
+    <span class="filter-label" data-tip="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia</span>
+    <button class="filter-chip active" data-filter="tipo" data-val="" onclick="setFilter('tipo','',this)">Todos</button>
+    <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
+    <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
+    <button class="filter-chip" data-filter="tipo" data-val="Multimercado" onclick="setFilter('tipo','Multimercado',this)">Multimercado</button>
+    <span class="filter-divider"></span>
+    <span class="filter-label">Mercado</span>
+    <button class="filter-chip active" data-filter="expo" data-val="" onclick="setFilter('expo','',this)">Todos</button>
+    <button class="filter-chip" data-filter="expo" data-val="Brasil" onclick="setFilter('expo','Brasil',this)">Brasil</button>
+    <button class="filter-chip" data-filter="expo" data-val="Internacional" onclick="setFilter('expo','Internacional',this)">Internacional</button>
+  </div>
+  <div class="filter-row">
+    <span class="filter-label" data-tip="RV = sem come-cotas, IR só no resgate (melhor para longo prazo). TR = IR antecipado em maio e novembro (come-cotas).">Imposto</span>
+    <button class="filter-chip active" data-filter="trib" data-val="" onclick="setFilter('trib','',this)">Todos</button>
+    <button class="filter-chip" data-filter="trib" data-val="RV" onclick="setFilter('trib','RV',this)" data-tip="Renda Variável: paga IR apenas no resgate (15%). Sem come-cotas — todo o capital trabalha até você resgatar.">Sem come-cotas (RV)</button>
+    <button class="filter-chip" data-filter="trib" data-val="TR" onclick="setFilter('trib','TR',this)" data-tip="Tabela Regressiva: IR antecipado em maio e novembro. Mais ineficiente para horizontes longos.">Com come-cotas (TR)</button>
+  </div>
 </div>
 
 <div class="period-bar" id="periodBarEl">
@@ -1779,6 +1784,8 @@
                 data-tip="Máx. Calmar: maximiza CAGR_portfólio ÷ |máx. drawdown histórico do portfólio|.&#10;O max drawdown é calculado sobre a série temporal real dos retornos ponderados — não é a média dos drawdowns individuais.&#10;Metodologia: pesos candidatos gerados por Sharpe; seleção da combinação pelo Calmar real da série.&#10;Encontra o portfólio com melhor retorno por unidade de 'dor máxima' histórica.&#10;Referência: Young (1991); Steinki &amp; Mohammad (SSRN 2662054).">Máx. Calmar</button>
               <button class="opt-btn mode-advanced" id="optObjIR" onclick="setOptObj('ir')"
                 data-tip="Máx. Information Ratio: maximiza alpha anualizado vs. IBOV ÷ tracking error.&#10;Tracking error = σ(retorno_portfólio − retorno_IBOV) = volatilidade do excesso de retorno.&#10;Implementação: identical ao Máx. Sharpe, mas usando IBOV como taxa livre de risco em vez do CDI.&#10;Diferença: enquanto Sharpe premia superar o CDI (~12,8%), IR premia superar o IBOV (~19,9%) — critério mais exigente.&#10;Encontra o portfólio mais eficiente em gerar alpha sobre o benchmark de referência.&#10;Referência: Grinold &amp; Kahn (1999), Active Portfolio Management.">Máx. IR vs. IBOV</button>
+              <button class="opt-btn mode-advanced" id="optObjStress" onclick="setOptObj('stress')"
+                data-tip="Mín. Stress: minimiza a perda máxima estimada do portfólio nos 5 cenários históricos de crise.&#10;&#10;Para cada combinação de fundos e pesos, calcula o retorno estimado em cada cenário usando o modelo de fator:&#10;R_fundo = β_ibov × R_ibov + β_sp500 × R_sp500(BRL), com exposição líquida reduzida em crise.&#10;&#10;Seleciona o portfólio cujo PIOR cenário é o menos negativo — estratégia minimax.&#10;&#10;Favorece fundos com baixo beta, exposição líquida reduzida em crise e benchmark descorrelacionado.&#10;Diferente do Mín. variância: usa cenários extremos reais (2008, 2013, 2015, 2020, 2022) em vez de volatilidade diária histórica.">Mín. Stress</button>
             </div>
           </div>
           <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
@@ -4597,13 +4604,13 @@ function calcAlpha(f, window) {
 }
 
 function fmtAlpha(v) {
-  if (v == null) return '<span class="cagr-val na" title="Sem dados suficientes para calcular o alpha">N/D</span>';
+  if (v == null) return '<span class="cagr-val na" data-tip="Sem dados suficientes para calcular o alpha">N/D</span>';
   const sign = v >= 0 ? '+' : '';
   const cls  = v >= 0 ? 'pos' : 'neg';
   const tip  = (v >= 0
     ? sign + v.toFixed(1) + 'pp acima do IBOV no período da coluna'
     : v.toFixed(1) + 'pp abaixo do IBOV no período da coluna');
-  return '<span class="cagr-val ' + cls + '" style="font-size:0.78rem" title="' + tip + '">' + sign + v.toFixed(1) + 'pp</span>';
+  return '<span class="cagr-val ' + cls + '" style="font-size:0.78rem" data-tip="' + tip + '">' + sign + v.toFixed(1) + 'pp</span>';
 }
 
 
@@ -6769,7 +6776,7 @@ function renderCCTimeline() {
         return `<div style="flex:1;min-width:60px;padding:0.4rem 0.5rem;background:var(--surface);border:0.5px solid var(--border);border-radius:5px;text-align:center">
           <div style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);margin-bottom:2px">${y}</div>
           <div style="font-family:'Courier New',monospace;font-size:0.7rem;color:var(--red);font-weight:bold">${fmtBRL(v)}</div>
-          ${yearsLeft > 0 ? `<div style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);margin-top:1px" title="Custo de oportunidade: quanto esse capital deixou de crescer">+${fmtBRL(oppCost)} potencial</div>` : ''}
+          ${yearsLeft > 0 ? `<div style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);margin-top:1px" data-tip="Custo de oportunidade: quanto esse capital deixou de crescer">+${fmtBRL(oppCost)} potencial</div>` : ''}
         </div>`;
       }).join('')}
     </div>
@@ -7696,22 +7703,22 @@ function renderRollingAlpha() {
   stats.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem;margin-bottom:0.6rem">
       <div class="metric-card-new">
-        <div class="lbl"><span class="tip-icon" title="Alpha rolante de 12M mais recente: excesso de retorno anualizado vs. IBOV na janela encerrada na última data disponível.">?</span>Alpha atual (12M)</div>
+        <div class="lbl"><span class="tip-icon" data-tip="Alpha rolante de 12M mais recente: excesso de retorno anualizado vs. IBOV na janela encerrada na última data disponível.">?</span>Alpha atual (12M)</div>
         <div class="val" style="color:${raLatCls}">${m.raLatest >= 0 ? '+' : ''}${m.raLatest.toFixed(1)}%</div>
         <div class="sub">vs. IBOV (12M rolante)</div>
       </div>
       <div class="metric-card-new">
-        <div class="lbl"><span class="tip-icon" title="Média de todos os alphas rolantes de 12M ao longo do histórico. Um alpha médio positivo não garante persistência — o range [min,max] é tão importante quanto a média.">?</span>Alpha médio histórico</div>
+        <div class="lbl"><span class="tip-icon" data-tip="Média de todos os alphas rolantes de 12M ao longo do histórico. Um alpha médio positivo não garante persistência — o range [min,max] é tão importante quanto a média.">?</span>Alpha médio histórico</div>
         <div class="val" style="color:${maCls}">${m.raMean >= 0 ? '+' : ''}${m.raMean.toFixed(1)}%</div>
         <div class="sub">${m.rollingAlpha.length} janelas de 12M</div>
       </div>
       <div class="metric-card-new">
-        <div class="lbl"><span class="tip-icon" title="O melhor e o pior alpha de 12M observados no histórico. Um range estreito indica consistência. Um range amplo indica dependência do ciclo de mercado — o fundo performa muito melhor em alguns ambientes do que em outros.">?</span>Range histórico</div>
+        <div class="lbl"><span class="tip-icon" data-tip="O melhor e o pior alpha de 12M observados no histórico. Um range estreito indica consistência. Um range amplo indica dependência do ciclo de mercado — o fundo performa muito melhor em alguns ambientes do que em outros.">?</span>Range histórico</div>
         <div class="val neu" style="font-size:0.85rem">[${m.raMin.toFixed(0)}, ${m.raMax >= 0 ? '+' : ''}${m.raMax.toFixed(0)}]%</div>
         <div class="sub">min / máx do alpha 12M</div>
       </div>
       <div class="metric-card-new">
-        <div class="lbl"><span class="tip-icon" title="Frequência com que o fundo superou o IBOV em janelas de 3 meses (63 pregões), recalculadas mensalmente ao longo de todo o histórico. Acima de 60% indica robustez do processo de geração de alpha.">?</span>Beat IBOV (3M)</div>
+        <div class="lbl"><span class="tip-icon" data-tip="Frequência com que o fundo superou o IBOV em janelas de 3 meses (63 pregões), recalculadas mensalmente ao longo de todo o histórico. Acima de 60% indica robustez do processo de geração de alpha.">?</span>Beat IBOV (3M)</div>
         <div class="val" style="color:${m.propensity >= 55 ? 'var(--green)' : m.propensity >= 45 ? 'var(--amber)' : 'var(--red)'}">${m.propensity.toFixed(0)}%</div>
         <div class="sub">das janelas trimestrais</div>
       </div>
@@ -8100,13 +8107,59 @@ function evalPortfolioAdvanced(w, cnpjs, mus, cdiTarget, ibovProxy, cov, history
   return { w, cnpjs, ret, vol, sharpe, sortino, calmar, ir, semiVol, maxDD: maxDD * 100, cagrHist };
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// OTIMIZADOR — MÍN. STRESS (minimax sobre cenários históricos)
+// ════════════════════════════════════════════════════════════════════════════
+
+// Calcula retorno do portfólio em um cenário de stress usando o modelo de fator
+// Idêntico ao portfolioStressReturn() do stress test — reutiliza STRESS_SCENARIOS e FUND_EXPOSURE
+function portfolioStressReturnOpt(scenario, cnpjs, weights) {
+  function sp500BRL(sp_usd, brl_dep) { return (1 + sp_usd) * (1 + brl_dep) - 1; }
+
+  function fundStress(cnpj, sc) {
+    const betas = fundBetas[cnpj] || {};
+    const expo  = FUND_EXPOSURE[cnpj] || { net_normal:1.0, net_crisis:0.8, primary:'ibov' };
+    let b_ibov = betas.beta_ibov;
+    let b_sp   = betas.beta_sp500;
+    if (b_ibov == null) {
+      if (expo.primary === 'ibov')   { b_ibov = expo.net_normal; b_sp = 0.05; }
+      else if (expo.primary === 'sp500') { b_ibov = 0.05; b_sp = expo.net_normal; }
+      else { b_ibov = expo.net_normal * 0.5; b_sp = expo.net_normal * 0.5; }
+    }
+    // Use crisis exposure (funds reduce net long in severe scenarios)
+    const netAdj = expo.net_crisis / Math.max(expo.net_normal, 0.01);
+    const r_ibov   = sc.ibov_ret;
+    const r_sp_brl = sp500BRL(sc.sp500_usd, sc.brl_dep);
+    let r = netAdj * (b_ibov * r_ibov + b_sp * r_sp_brl);
+    if (Math.abs(sc.ibov_ret) > 0.3) r *= 1.05;
+    const alpha_ann = (betas.alpha_ann || 0) / 100;
+    const alpha_period = Math.pow(1 + alpha_ann, sc.days / 252) - 1;
+    return r + alpha_period * 0.3;
+  }
+
+  let portRet = 0;
+  const total = weights.reduce((s, w) => s + w, 0);
+  cnpjs.forEach((c, i) => { portRet += (weights[i] / total) * fundStress(c, scenario); });
+  return portRet;
+}
+
+// Minimax: retorna o pior retorno entre todos os cenários de stress
+function worstStressReturn(cnpjs, weights) {
+  let worst = Infinity;
+  STRESS_SCENARIOS.forEach(function(sc) {
+    const r = portfolioStressReturnOpt(sc, cnpjs, weights);
+    if (r < worst) worst = r;
+  });
+  return worst;
+}
+
 // ── Patch de setOptObj para incluir novos modos ────────────────────────────
 const _origSetOptObj = setOptObj;
 setOptObj = function(obj) {
   optObj = obj;
   // All 6 button IDs
   ['optObjSharpe','optObjReturn','optObjVol',
-   'optObjSortino','optObjCalmar','optObjIR'].forEach(function(id) {
+   'optObjSortino','optObjCalmar','optObjIR','optObjStress'].forEach(function(id) {
     const el = document.getElementById(id);
     if (el) el.classList.toggle('active', el.id === 'optObj' + obj.charAt(0).toUpperCase() + obj.slice(1));
   });
@@ -8116,7 +8169,7 @@ setOptObj = function(obj) {
 const _origRunOpt = runOptimizer;
 runOptimizer = function() {
   // Only intercept for new modes; fall through to original for classic modes
-  if (!['sortino','calmar','ir'].includes(optObj)) {
+  if (!['sortino','calmar','ir','stress'].includes(optObj)) {
     _origRunOpt();
     return;
   }
@@ -8210,12 +8263,19 @@ runOptimizer = function() {
 
         if (!best) { best = p; continue; }
 
+        // For stress: compute worst scenario return for this portfolio
+        const _ws = optObj === 'stress' ? worstStressReturn(combo, w) : null;
+
         const better =
           optObj === 'sortino' ? p.sortino > best.sortino :
           optObj === 'calmar'  ? p.calmar  > best.calmar  :
+          optObj === 'stress'  ? _ws > (best._worstStress ?? -Infinity) :
           /* ir */               p.ir      > best.ir;
 
-        if (better) best = p;
+        if (better) {
+          best = p;
+          if (optObj === 'stress' && _ws !== null) best._worstStress = _ws;
+        }
       }
 
       if (!best) {
@@ -8315,7 +8375,7 @@ function compRowHTML(col, cnpj, weight) {
     </select>
     <input type="number" value="${weight}" min="0" max="100" step="5" oninput="compChanged()" style="width:52px">
     <span class="comp-fund-label">%</span>
-    <button onclick="this.parentElement.remove();compChanged()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.75rem;padding:0 3px" title="Remover">✕</button>
+    <button onclick="this.parentElement.remove();compChanged()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.75rem;padding:0 3px" >✕</button>
   </div>`;
 }
 
@@ -8699,13 +8759,16 @@ runOptimizer = function() {
         const p = evalPortfolioAdvanced(w, combo, mus, cdiTarget, ibovProxy, cov, historyData);
 
         if (!best) { best = p; continue; }
+        const _wsBA = optObj === 'stress' ? worstStressReturn(combo, w) : null;
         const better =
           optObj === 'sortino' ? p.sortino > best.sortino :
           optObj === 'calmar'  ? p.calmar  > best.calmar  :
           optObj === 'ir'      ? p.ir      > best.ir      :
+          optObj === 'stress'  ? _wsBA > (best._worstStress ?? -Infinity) :
           optObj === 'vol'     ? p.vol     < best.vol     :
           optObj === 'return'  ? p.ret     > best.ret     :
                                  p.sharpe  > best.sharpe;
+        if (better && optObj === 'stress' && _wsBA !== null) best = {...p, _worstStress: _wsBA};
         if (better) best = p;
       }
 
@@ -8715,6 +8778,7 @@ runOptimizer = function() {
       const metricStr = optObj === 'sortino' ? `Sortino ${best.sortino.toFixed(2)}` :
                         optObj === 'calmar'  ? `Calmar ${best.calmar.toFixed(2)}`   :
                         optObj === 'ir'      ? `IR ${best.ir.toFixed(2)}`           :
+                        optObj === 'stress'  ? `Pior cenário ${((best._worstStress||0)*100).toFixed(1)}%` :
                         optObj === 'vol'     ? `vol ${best.vol.toFixed(1)}%`         :
                         optObj === 'return'  ? `retorno ${best.ret.toFixed(1)}%`     :
                                               `Sharpe ${best.sharpe.toFixed(2)}`;
