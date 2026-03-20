@@ -1870,6 +1870,22 @@
           <span class="opt-maxw-val" id="optMaxBetaSpVal">—</span>
           <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5">(sem restrição)</span>
         </div>
+        <div class="opt-constraint-row">
+          <span class="opt-constraint-label">Beta máx. vs. IBOV:</span>
+          <input type="range" class="opt-maxw-slider" id="optMaxBetaIbovSlider"
+            min="0" max="20" value="20" step="1"
+            oninput="onOptMaxBetaSlider('ibov')">
+          <span class="opt-maxw-val" id="optMaxBetaIbovVal">—</span>
+          <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5">(sem restrição)</span>
+        </div>
+        <div class="opt-constraint-row">
+          <span class="opt-constraint-label">Beta máx. vs. S&P:</span>
+          <input type="range" class="opt-maxw-slider" id="optMaxBetaSpSlider"
+            min="0" max="20" value="20" step="1"
+            oninput="onOptMaxBetaSlider('sp')">
+          <span class="opt-maxw-val" id="optMaxBetaSpVal">—</span>
+          <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5">(sem restrição)</span>
+        </div>
         <div class="opt-constraint-warn" id="optConstraintWarn">
           ⚠ restrições incompatíveis para este tamanho de carteira
         </div>
@@ -2313,6 +2329,9 @@ const FUND_META = {
   "47.511.351/0001-20": { nome:"TB", short:"TB", inception:"2022-08-31", initialQuota:100.000000, maxQuota:213.205436, tipo:"Long Only", trib:"RV", expo:"Internacional", banco:"Itaú", obs:"" },
   "52.116.227/0001-09": { nome:"Itaú Janeiro Multimercado", short:"Janeiro", inception:"2023-09-29", initialQuota:1.000000, maxQuota:1.000000, tipo:"Multimercado", trib:"TR", expo:"Majoritariamente Brasil", banco:"Itaú", obs:"" },
   "47.612.105/0001-65": { nome:"Ace Capital Multicenários", short:"Ace", inception:"2022-11-30", initialQuota:1.0, maxQuota:2.17970569, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG", obs:"" },
+  "29.726.133/0001-21": { nome:"Kapitalo K10", short:"K10", inception:"2018-05-16", initialQuota:1.0, maxQuota:2.67793433718, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG", obs:"" },
+  "35.828.684/0001-07": { nome:"Genoa Radar", short:"Radar", inception:"2020-06-30", initialQuota:1.0, maxQuota:2.03416388, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG / Itaú", obs:"" },
+  "16.876.874/0001-47": { nome:"Witpar", short:"Witpar", inception:"2019-01-02", initialQuota:1.0, maxQuota:7.4575602696, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva" };
 
@@ -2707,6 +2726,9 @@ const FUND_EXPOSURE = {
   "47.511.351/0001-20": { net_normal:1.00, net_crisis:0.95, primary:"sp500"  }, // TB
   "52.116.227/0001-09": { net_normal:0.30, net_crisis:0.10, primary:"ibov"   }, // Itaú Janeiro
   "47.612.105/0001-65": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Ace Capital Multicenários
+  "29.726.133/0001-21": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Kapitalo K10
+  "35.828.684/0001-07": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Genoa Radar
+  "16.876.874/0001-47": { net_normal:1.0, net_crisis:0.95, primary:"ibov" }, // Witpar
 };
 
 // Historical stress scenarios
@@ -4163,6 +4185,28 @@ function onOptMaxBetaSlider(which) {
 
 function calcPortfolioBeta(combo, weights, which) {
   // Weighted average beta of the portfolio
+  let beta = 0;
+  combo.forEach((cnpj, i) => {
+    const b = fundBetas[cnpj];
+    if (!b) return;
+    beta += weights[i] * (which === 'ibov' ? (b.beta_ibov || 0) : (b.beta_sp500 || 0));
+  });
+  return beta;
+}
+
+function onOptMaxBetaSlider(which) {
+  const id     = which === 'ibov' ? 'optMaxBetaIbovSlider' : 'optMaxBetaSpSlider';
+  const valId  = which === 'ibov' ? 'optMaxBetaIbovVal'    : 'optMaxBetaSpVal';
+  const noteId = which === 'ibov' ? 'optMaxBetaIbovNote'   : 'optMaxBetaSpNote';
+  const raw    = parseInt(document.getElementById(id).value);
+  const noLimit = raw === 20;
+  if (which === 'ibov') optMaxBetaIbov = noLimit ? null : raw / 10;
+  else                  optMaxBetaSp   = noLimit ? null : raw / 10;
+  document.getElementById(valId).textContent  = noLimit ? '—' : (raw / 10).toFixed(1);
+  document.getElementById(noteId).textContent = noLimit ? '(sem restrição)' : '';
+}
+
+function calcPortfolioBeta(combo, weights, which) {
   let beta = 0;
   combo.forEach((cnpj, i) => {
     const b = fundBetas[cnpj];
