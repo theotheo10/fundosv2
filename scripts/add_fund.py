@@ -306,7 +306,7 @@ def update_fetch_data(funds: list[dict]) -> None:
             continue
         src = src.replace(
             ']\n\nFIRST_MONTHLY_YEAR',
-            f'    {{"name": "{f["nome"]}", "cnpj": "{f["cnpj_digits"]}", "cnpjFmt": "{f["cnpj_fmt"]}"}},\n]\n\nFIRST_MONTHLY_YEAR',
+            f'    {{"name": "{f["nome"]}", "exibicao": "{f["exibicao"]}", "curto": "{f["curto"]}", "cnpj": "{f["cnpj_digits"]}", "cnpjFmt": "{f["cnpj_fmt"]}"}},\n]\n\nFIRST_MONTHLY_YEAR',
             1
         )
         added += 1
