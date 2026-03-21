@@ -2454,62 +2454,58 @@ function cagrInception(f) {
 }
 
 // ── Retorno Alvo ──────────────────────────────────────────────────────────────
-// calcTargetReturn — estimativa do retorno estrutural de um fundo
+// calcTargetReturn — estimativa bayesiana do retorno estrutural de um fundo
 //
-// Metodologia multi-fator:
+// Modelo:
+//   E[R]ᵢ = (1 - λ) × sinalPróprio + λ × prior
 //
-//   E[R] = c × sinalPróprio
-//        + (1-c) × benchmark
-//        + c × alphaDiferencial
+//   sinalPróprio: média √T dos CAGRs disponíveis, com penalidade de
+//     dispersão ciclical e pull de reversão à média (→ 60M).
 //
-//   onde c = (age/5)², benchmark = CDI (multi) ou IBOV (ações).
+//   prior: benchmark do mandato + alphaDiferencial do grupo contemporâneo.
+//     - Multimercado → CDI corrente
+//     - Ações / Long Biased / Long Only → IBOV histórico
 //
-//   1. Pesos √T nas amostras: erro amostral do CAGR decresce com √T.
+//   λ = λ_hist × λ_consist × λ_recente  (produto de três fatores em [0,1])
 //
-//   2. Penalização por dispersão ciclical: σ entre CAGRs de diferentes
-//      períodos indica fundo em pico/vale de ciclo. Desconto ≤ 15%.
+//   λ_hist: qualidade do histórico disponível.
+//     Decresce com anos efetivos de dados independentes.
+//     n_efetivo penaliza sobreposição: 12M/36M de um fundo jovem não são
+//     amostras independentes — o denominador cresce mais devagar que age.
+//     exp(-n_efetivo / 6): 1a→0.85, 3a→0.61, 5a→0.44, 10a→0.19, 15a→0.08
 //
-//   3. Pull de reversão à média (25% → 60M).
+//   λ_consist: qualidade do alpha demonstrado.
+//     Usa IR vs. IBOV e propensity (beat%) do historyData quando disponíveis.
+//     Fundo com IR alto e beat% alto → λ_consist baixo → prior menos relevante.
+//     Sem dados: neutro (0.5).
 //
-//   4. trackConfidence convexo c = (age/5)²:
-//      Fundo jovem → c≈0 → domina o benchmark conservador.
-//      Fundo maduro → c=1 → domina o sinal próprio.
-//      O alpha observado só ganha peso à medida que a idade acumula.
+//   λ_recente: relevância do período recente vs. histórico longo.
+//     Fundo antigo com performance recente fraca (36M << cagrInception):
+//     λ_recente alto → prior ganha peso, histórico longo descontado.
+//     Fundo antigo consistente (36M ≈ cagrInception): neutro.
+//     Fundo acelerando (36M >> cagrInception): λ_recente baixo.
 //
-//   5. Benchmark por mandato (âncora de ignorância):
-//      - Multimercado → CDI corrente
-//      - Ações / Long Biased / Long Only → IBOV histórico
-//      Entra com peso (1-c): máximo quando jovem, zero quando maduro.
-//
-//   6. alphaDiferencial = alphaObservado − alphaGrupoContemporâneo:
-//      Corrige viés de ciclo. Entra como fator de credibilidade (credAlpha),
-//      não como soma aditiva — evita dupla contagem do alpha já embutido
-//      no sinalPróprio via CAGR.
-//      credAlpha = 0.5 + 0.5×tanh(αDiff/10): sigmoide suave em [0,1].
-//      αDiff > 0 → sinal próprio recebe mais crédito.
-//      αDiff < 0 → sinal próprio recebe menos crédito, puxa para benchmark.
-//
-//   7. Teto = cagrInception (universal):
-//      E[R] não pode superar o retorno histórico completo do fundo.
+//   Teto universal: E[R] ≤ cagrInception.
+//   Floor universal: E[R] ≥ CDI corrente.
 function calcTargetReturn(f, globalFunds, globalCdiTarget) {
   const meta = FUND_META[f.cnpjFmt] || {};
   const tipo = (meta.tipo || '').toLowerCase();
   const isMulti = tipo.includes('multimercado');
 
-  // ── 1. Amostras ponderadas por √T ─────────────────────────────────────────
+  // ── Sinal próprio ─────────────────────────────────────────────────────────
+
+  // 1. Amostras ponderadas por √T
   const samples = [];
   if (f.cagr12 != null) samples.push([1.0, f.cagr12]);
   if (f.cagr36 != null) samples.push([3.0, f.cagr36]);
   if (f.cagr60 != null) samples.push([5.0, f.cagr60]);
 
-  if (meta.inception && f.latestDate) {
-    const inceptionYears = (new Date(f.latestDate) - new Date(meta.inception + 'T00:00:00'))
-                           / (365.25 * 86400000);
-    const ci = cagrInception(f);
-    if (ci != null && inceptionYears > 5.5) {
-      samples.push([inceptionYears, ci]);
-    }
-  }
+  const ageYears = (meta.inception && f.latestDate)
+    ? (new Date(f.latestDate) - new Date(meta.inception + 'T00:00:00')) / (365.25 * 86400000)
+    : 10;
+
+  const ci = cagrInception(f) ?? f.cagrInception ?? null;
+  if (ci != null && ageYears > 5.5) samples.push([ageYears, ci]);
 
   if (samples.length === 0) return null;
 
@@ -2517,32 +2513,23 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
   const totalW      = sqrtWeights.reduce((a, b) => a + b, 0);
   const rawAvg      = samples.reduce((s, [, v], i) => s + sqrtWeights[i] * v, 0) / totalW;
 
-  // ── 2. Penalidade de dispersão ciclical ───────────────────────────────────
+  // 2. Penalidade de dispersão ciclical (σ entre períodos)
   const variance = samples.reduce((s, [, v], i) =>
     s + sqrtWeights[i] * (v - rawAvg) ** 2, 0) / totalW;
-  const sigma    = Math.sqrt(variance);
-  const penalty  = Math.min(sigma * 0.30, Math.abs(rawAvg) * 0.15);
+  const sigma   = Math.sqrt(variance);
+  const penalty = Math.min(sigma * 0.30, Math.abs(rawAvg) * 0.15);
   const adjusted = rawAvg >= 0 ? rawAvg - penalty : rawAvg + penalty;
 
-  // ── 3. Pull de reversão à média (25% → 60M) ───────────────────────────────
-  const anchor60 = f.cagr60 ?? f.cagrInception ?? rawAvg;
-  const final    = adjusted * 0.75 + anchor60 * 0.25;
+  // 3. Pull de reversão à média → 60M (âncora de longo prazo)
+  // Pull menor para fundos muito maduros com histórico consistente
+  const anchor60  = f.cagr60 ?? ci ?? rawAvg;
+  const pullForce = Math.max(0.10, 0.25 - Math.max(0, ageYears - 5) * 0.01);
+  const sinalProprio = adjusted * (1 - pullForce) + anchor60 * pullForce;
 
-  // ── 4. trackConfidence convexo: c = (age/5)² ──────────────────────────────
-  const ageYears = (meta.inception && f.latestDate)
-    ? (new Date(f.latestDate) - new Date(meta.inception + 'T00:00:00')) / (365.25 * 86400000)
-    : 10;
-  const c = Math.min(1, Math.pow(ageYears / 5, 2));
+  // ── Prior ─────────────────────────────────────────────────────────────────
 
-  // ── 5. Benchmark conservador por mandato (âncora de ignorância) ──────────
-  // Pergunta: se eu não soubesse nada sobre este fundo além do mandato,
-  // qual retorno esperaria? Essa é a âncora para fundos jovens.
-  // - Multimercado: CDI corrente (custo de oportunidade real da categoria)
-  // - Ações / Long Biased / Long Only: IBOV histórico longo (prêmio de risco
-  //   de mercado, sem alpha atribuído ao gestor)
-  const cdiFloor   = globalCdiTarget ?? 14.75;
-  const ibovLong   = (() => {
-    // Usa cagr36 do IBOV como estimativa de longo prazo; fallback para 12.0%
+  const cdiFloor = globalCdiTarget ?? 14.75;
+  const ibovLong = (() => {
     try {
       if (typeof ibov !== 'undefined' && ibov) {
         const iv = [ibov.cagr60, ibov.cagr36, ibov.cagr12].find(v => v != null);
@@ -2551,24 +2538,15 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
     } catch (_) {}
     return 12.0;
   })();
-
   const benchmark = isMulti ? cdiFloor : ibovLong;
 
-  // ── 6. Signal de alpha observado (entra com peso crescente com a idade) ───
-  // Alpha do fundo vs. benchmark no período disponível.
-  // Confiança neste signal cresce com c — fundos jovens recebem pouco peso,
-  // fundos maduros recebem peso total.
+  // Alpha do fundo vs. benchmark no período disponível
   const alphaObservado = isMulti
     ? (f.alphaVsCdi  ?? 0)
     : (f.alphaVsIbov ?? f.alphaAnn ?? 0);
 
-  // ── 7. Correção de ciclo via grupo contemporâneo ──────────────────────────
-  // Quanto do alpha observado é skill genuíno vs. beta de ciclo?
-  // Fundos maduros do mesmo mandato servem como termômetro do período.
-  // αDiferencial = αFundo − αGrupoNoMesmoPeíodo
-  // Se todos subiram junto com o mercado, o alpha do fundo é menos especial.
-  // Peso deste signal: c × w_group — cresce com idade E com disponibilidade de pares.
-  let alphaDiferencial = alphaObservado;  // default: sem correção de ciclo
+  // Alpha diferencial vs. grupo contemporâneo (corrige viés de ciclo)
+  let alphaDiferencial = alphaObservado;
   if (globalFunds && globalFunds.length > 0) {
     const peers = globalFunds.filter(p => {
       if (p.cnpjFmt === f.cnpjFmt) return false;
@@ -2579,75 +2557,97 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
         : 0;
       return pAge >= 5 && (isMulti ? pTipo.includes('multimercado') : !pTipo.includes('multimercado'));
     });
-
     if (peers.length > 0) {
       const peerAlphas = peers.map(p => {
-        const pCi = cagrInception(p);
+        const pCi = cagrInception(p) ?? p.cagrInception;
         if (pCi == null) return null;
         return isMulti
           ? (p.alphaVsCdi  ?? pCi - (p.cdiCagrInception  ?? cdiFloor))
           : (p.alphaVsIbov ?? p.alphaAnn ?? pCi - (p.ibovCagrInception ?? ibovLong));
       }).filter(v => v != null);
-
       if (peerAlphas.length > 0) {
-        const groupAlpha  = peerAlphas.reduce((a, b) => a + b, 0) / peerAlphas.length;
-        // alphaDiferencial: quanto o fundo se saiu ALÉM do grupo no mesmo ciclo
-        alphaDiferencial  = alphaObservado - groupAlpha;
+        const groupAlpha = peerAlphas.reduce((a, b) => a + b, 0) / peerAlphas.length;
+        alphaDiferencial = alphaObservado - groupAlpha;
       }
     }
   }
 
-  // ── Blending final multi-fator ────────────────────────────────────────────
-  //
-  // E[R] = [ sinalPróprio × credAlpha + benchmark × (1 - credAlpha) ] × c
-  //      +   benchmark × (1 - c)
-  //
-  // onde credAlpha = 0.5 + 0.5 × tanh(alphaDiferencial / 10)
-  //   → alphaDiferencial = 0   → credAlpha = 0.5  (neutro)
-  //   → alphaDiferencial = +5  → credAlpha ≈ 0.74 (favorece sinal próprio)
-  //   → alphaDiferencial = -5  → credAlpha ≈ 0.26 (favorece benchmark)
-  //   → alphaDiferencial = +15 → credAlpha ≈ 0.93 (quase 100% sinal próprio)
-  //
-  // Interpretação:
-  //   • Fundo jovem (c≈0): benchmark domina, credAlpha irrelevante.
-  //   • Fundo maduro com alpha diferencial alto: sinal próprio com plena
-  //     credibilidade. Alpha não é somado em cima — ele decide o peso.
-  //   • Fundo maduro abaixo do grupo (alphaDiferencial < 0): sinal próprio
-  //     recebe menos crédito, puxando em direção ao benchmark.
-  //   • Sem dupla contagem: alpha já está embutido no sinalPróprio via CAGR.
+  // Prior: benchmark + alphaDiferencial (skill líquido de ciclo)
+  // alphaDiferencial entra com desconto de 50%: incerteza sobre a persistência
+  const prior = benchmark + alphaDiferencial * 0.5;
 
-  // credAlpha: [0, 1], função sigmoide suave do alphaDiferencial
-  const credAlpha = 0.5 + 0.5 * Math.tanh(alphaDiferencial / 10);
+  // ── λ tri-fatorial ────────────────────────────────────────────────────────
 
-  // Sinal próprio modulado pela credibilidade
-  const sinalCredenciado = final * credAlpha + benchmark * (1 - credAlpha);
+  // λ_hist: qualidade do histórico disponível
+  // n_efetivo penaliza sobreposição entre períodos curtos
+  const nEfetivo = Math.min(ageYears, 3) * (f.cagr36 != null ? 1 : 0.5)
+                 + Math.min(Math.max(ageYears - 3, 0), 2) * (f.cagr60 != null ? 1 : 0)
+                 + Math.max(ageYears - 5, 0) * 0.5;
+  const lambdaHist = Math.exp(-nEfetivo / 6);
 
-  // Blending por idade: fundo jovem → benchmark; fundo maduro → sinal credenciado
-  const blended = sinalCredenciado * c + benchmark * (1 - c);
+  // λ_consist: qualidade do alpha demonstrado (IR e beat% do historyData)
+  // Tenta puxar métricas do historyData via historyData.funds[cnpj]
+  let irScore   = 0.5;  // neutro se sem dados
+  let beatScore = 0.5;
+  try {
+    const hd = typeof historyData !== 'undefined' && historyData
+      ? historyData.funds?.[f.cnpjFmt]
+      : null;
+    if (hd) {
+      if (hd.ir != null) {
+        // IR: -0.5 → score 0; 0 → 0.33; 0.5 → 0.67; 1.0 → 1.0
+        irScore = Math.min(1, Math.max(0, (hd.ir + 0.5) / 1.5));
+      }
+      if (hd.propensity != null) {
+        // propensity = beat IBOV %: 40% → 0; 60% → 0.5; 80% → 1.0
+        beatScore = Math.min(1, Math.max(0, (hd.propensity - 40) / 40));
+      }
+    }
+  } catch (_) {}
+  const consistScore  = 0.6 * irScore + 0.4 * beatScore;  // [0,1], alto = consistente
+  const lambdaConsist = 1 - consistScore;                   // alto = prior mais relevante
 
-  // Teto: cagrInception é o retorno histórico completo mais longo disponível.
-  // E[R] não pode superar esse valor — seria extrapolar além do que o
-  // histórico real do fundo demonstrou. Aplica universalmente.
-  const ciCap = cagrInception(f) ?? f.cagrInception ?? null;
-  const capped = ciCap != null ? Math.min(blended, ciCap) : blended;
+  // λ_recente: relevância da performance recente vs. histórico longo
+  // Fundo antigo com 36M muito abaixo do cagrInception → prior ganha peso
+  let lambdaRecente = 0.5;  // neutro default
+  if (ci != null && ageYears > 3) {
+    const recente = f.cagr36 ?? f.cagr12 ?? ci;
+    const decay   = (ci - recente) / (Math.abs(ci) + 1);  // normalizado, positivo = decaindo
+    // decay=0 → 0.5; decay=+0.5 → 0.75 (punido); decay=-0.5 → 0.25 (acelerando)
+    lambdaRecente = Math.min(0.9, Math.max(0.1, 0.5 + decay * 0.5));
+  }
 
-  // Floor absoluto: CDI corrente.
+  // λ final: produto dos três fatores
+  // Interpretação: cada fator é uma dimensão independente de incerteza.
+  // Se qualquer dimensão tem alta incerteza (λ_x alto), a prior ganha peso.
+  const lambda = lambdaHist * lambdaConsist * lambdaRecente;
+
+  // ── Blending final ────────────────────────────────────────────────────────
+  const blended = (1 - lambda) * sinalProprio + lambda * prior;
+
+  // Teto: E[R] ≤ cagrInception (histórico completo é o limite superior)
+  const ciCap   = ci;
+  const capped  = ciCap != null ? Math.min(blended, ciCap) : blended;
+
+  // Floor: E[R] ≥ CDI corrente
   const discounted = Math.max(capped, cdiFloor);
 
   return {
-    value:           discounted,
-    raw:             rawAvg,
-    sigma:           sigma,
-    penalty:         penalty,
-    trackYears:      parseFloat(ageYears.toFixed(1)),
-    trackConf:       parseFloat(c.toFixed(2)),
-    benchmark:       parseFloat(benchmark.toFixed(2)),
-    alphaObs:        parseFloat(alphaObservado.toFixed(2)),
-    alphaDiff:       parseFloat(alphaDiferencial.toFixed(2)),
-    credAlpha:       parseFloat(credAlpha.toFixed(2)),
-    ciCap:           ciCap != null ? parseFloat(ciCap.toFixed(2)) : null,
-    isMulti:         isMulti,
-    samples:         samples,
+    value:          discounted,
+    raw:            rawAvg,
+    sigma:          sigma,
+    penalty:        penalty,
+    trackYears:     parseFloat(ageYears.toFixed(1)),
+    lambda:         parseFloat(lambda.toFixed(3)),
+    lambdaHist:     parseFloat(lambdaHist.toFixed(3)),
+    lambdaConsist:  parseFloat(lambdaConsist.toFixed(3)),
+    lambdaRecente:  parseFloat(lambdaRecente.toFixed(3)),
+    benchmark:      parseFloat(benchmark.toFixed(2)),
+    alphaDiff:      parseFloat(alphaDiferencial.toFixed(2)),
+    prior:          parseFloat(prior.toFixed(2)),
+    ciCap:          ciCap != null ? parseFloat(ciCap.toFixed(2)) : null,
+    isMulti:        isMulti,
+    samples:        samples,
   };
 }
 
@@ -3761,7 +3761,7 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
         const sign = v >= 0 ? '+' : '';
         const fmt  = x => (x >= 0 ? '+' : '') + x.toFixed(1) + '%';
 
-        // Amostras numa linha só, separadas por ·
+        // Amostras numa linha
         const tipLines = target.samples
           .sort((a, b) => a[0] - b[0])
           .map(([T, val]) => {
@@ -3769,30 +3769,32 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
             return `${label}: ${fmt(val)}`;
           }).join('  ·  ');
 
-        // Ajustes: só mostra o que mudou o valor
+        // Ajustes ao sinal próprio
         const adjustParts = [];
         if (target.sigma > 2)
           adjustParts.push(`disp. ${target.sigma.toFixed(1)}pp → −${target.penalty.toFixed(1)}pp`);
         if (target.ciCap != null && target.ciCap < target.raw)
           adjustParts.push(`teto: ${fmt(target.ciCap)}`);
 
-        // Confiança: âncora e credibilidade quando relevante
-        const confParts = [];
-        if (target.trackConf < 1)
-          confParts.push(`track ${target.trackYears.toFixed(1)}a (c=${target.trackConf.toFixed(2)})`);
-        if (target.alphaDiff != null && Math.abs(target.alphaDiff) > 0.5)
-          confParts.push(`αdiff ${fmt(target.alphaDiff)} → cred=${target.credAlpha.toFixed(2)}`);
-        if (target.benchmark != null && target.trackConf < 1)
-          confParts.push(`âncora ${target.isMulti ? 'CDI' : 'IBOV'}: ${fmt(target.benchmark)}`);
+        // Fatores λ — só mostra quando relevante (λ > 0.02)
+        const lambdaParts = [];
+        if (target.lambda != null && target.lambda > 0.02) {
+          lambdaParts.push(`λ=${target.lambda.toFixed(2)}`);
+          lambdaParts.push(`hist=${target.lambdaHist.toFixed(2)}`);
+          lambdaParts.push(`consist=${target.lambdaConsist.toFixed(2)}`);
+          lambdaParts.push(`recente=${target.lambdaRecente.toFixed(2)}`);
+          if (target.prior != null)
+            lambdaParts.push(`prior=${fmt(target.prior)}`);
+        }
 
         const adjustLine = adjustParts.length ? `\n↳ ${adjustParts.join('  ·  ')}` : '';
-        const confLine   = confParts.length   ? `\n↳ ${confParts.join('  ·  ')}` : '';
+        const lambdaLine = lambdaParts.length  ? `\n↳ ${lambdaParts.join('  ·  ')}` : '';
         const finalLine  = `\nBruto √T: ${fmt(target.raw)}  →  E[R]: ${sign}${v.toFixed(1)}%`;
 
         targetHtml = `<div class="alloc-target-wrap">
           <span class="port-alloc-target ${cls}">${sign}${v.toFixed(1)}%</span>
           <div class="alloc-target-tip">Retorno alvo estimado
-${tipLines}${adjustLine}${confLine}${finalLine}</div>
+${tipLines}${adjustLine}${lambdaLine}${finalLine}</div>
         </div>`;
       }
 
