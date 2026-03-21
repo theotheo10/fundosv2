@@ -9022,24 +9022,269 @@ function renderFundProfile() {
   const net5yr    = (tgtVal != null) ? calcNetReturn(tgtVal, 5, trib) : null;
   const net10yr   = (tgtVal != null) ? calcNetReturn(tgtVal, 10, trib) : null;
 
-  // ── Stress estimado (fator model) ────────────────────────────────────────
-  const betas   = (typeof fundBetas !== 'undefined' && fundBetas[cnpj]) || {};
-  const exposure = (typeof FUND_EXPOSURE !== 'undefined' && FUND_EXPOSURE[cnpj]) || { net_normal:1, net_crisis:0.8 };
-  const b_ibov  = betas.beta_ibov || 0;
-  const b_sp    = betas.beta_sp500 || 0;
+  // ── Volatilidade histórica do fundo ──────────────────────────────────────
+  // Pega diretamente de historyData.funds[cnpj].metrics.vol (pré-computado pelo servidor)
+  // ou calcula na hora a partir dos retornos diários como fallback.
+  let volAnual = null;
+  if (historyData && historyData.funds[cnpj]) {
+    const fd = historyData.funds[cnpj];
+    if (fd.metrics && fd.metrics.vol != null) {
+      volAnual = fd.metrics.vol;  // já em % a.a.
+    } else if (fd.returns && fd.returns.length > 30) {
+      const rets = fd.returns.filter(r => r !== 0);
+      const n    = rets.length;
+      const mean = rets.reduce((a,b) => a+b, 0) / n;
+      const variance = rets.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
+      volAnual = Math.sqrt(variance * 252) * 100;
+    }
+  }
+
+  // ── Sharpe real: (retorno alvo − CDI) ÷ volatilidade total ───────────────
+  // Usa vol histórica real (não semi-desvio). Se vol não disponível, N/D.
+  const cdiRef   = adv ? (adv.cdiCagr36 || 12) : 12;
+  const sharpeReal = (tgtVal != null && volAnual != null && volAnual > 0)
+    ? (tgtVal - cdiRef) / volAnual
+    : null;
+
+  // ── Betas vs. IBOV e S&P 500 ─────────────────────────────────────────────
+  const betas    = (typeof fundBetas !== 'undefined' && fundBetas[cnpj]) || {};
+  const betaIbov = (betas.n_obs >= 60) ? (betas.beta_ibov ?? null) : null;
+  const betaSp   = (betas.n_obs >= 60) ? (betas.beta_sp500 ?? null) : null;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // STRESS TEST — MODELO COMPLETO DE DOIS COMPONENTES
+  // ══════════════════════════════════════════════════════════════════════════
+  //
+  // R_stress = R_sistemático + R_idiossincrático
+  //
+  // ── COMPONENTE SISTEMÁTICA ────────────────────────────────────────────────
+  //
+  //   R_sist = exp_crise × (β_ibov_crise × R_ibov + β_sp_crise × R_sp_brl)
+  //
+  //   β_crise: regressão OLS dos retornos do fundo apenas nos pregões em que
+  //   o mercado caiu > CRISE_THRESHOLD. Captura a assimetria real dos betas —
+  //   fundos long-only tipicamente têm β_crise > β_normal (panic selling,
+  //   correlações convergindo). Fundos L&S revelam se o hedge sobrevive.
+  //
+  // ── COMPONENTE IDIOSSINCRÁTICA ────────────────────────────────────────────
+  //
+  //   Interpolação entre estimativa empírica (CVaR do resíduo) e piso teórico
+  //   (vol idiossincrática × k_crise empírico), ponderada pela confiança no
+  //   histórico disponível:
+  //
+  //   R_idio = w_emp × CVaR_resíduo_diário × √(T × (1 + 2ρ̄))
+  //          + w_teo × (−vol_idio_crise × √(T × (1 + 2ρ̄)))
+  //
+  //   w_emp = min(1, n_dias_ruins / N_MIN)   — confiança empírica
+  //   w_teo = 1 − w_emp                      — complemento, domina em histórico curto
+  //
+  //   CVaR_resíduo: média dos 10% piores resíduos diários (ε = r_fundo − r_fator).
+  //   Captura o colapso de estratégias específicas (momentum, carry, spreads)
+  //   independente do movimento de mercado. É zero por construção para um fundo
+  //   que genuinamente não tem risco idiossincrático em dias ruins.
+  //
+  //   vol_idio_crise = vol_total × √(1−R²) × k_idio_crise
+  //   √(1−R²): fração idiossincrática da vol total (derivada do R² da regressão)
+  //   k_idio_crise: amplificação empírica = std(ε|mercado_ruim) / std(ε|todos)
+  //
+  //   Scaling √(T × (1 + 2ρ̄)): corrige o √T simples pela autocorrelação dos
+  //   resíduos (ρ̄ = média das autocorrelações lag 1–3). Em crises, retornos
+  //   têm autocorrelação positiva (momentum de queda, margin calls em cascata),
+  //   o que aumenta o scaling vs. processos i.i.d.
+  //
+  //   NOTA DE HONESTIDADE: β_crise é calibrado sobre pregões ruins do histórico
+  //   disponível — para fundos jovens ou com histórico em período benigno, o piso
+  //   teórico (w_teo) assume peso maior. Os números devem ser lidos como ordem
+  //   de grandeza e ranking relativo, não como estimativas pontuais precisas.
+  // ══════════════════════════════════════════════════════════════════════════
+
+  const exposure = (typeof FUND_EXPOSURE !== 'undefined' && FUND_EXPOSURE[cnpj])
+    || { net_normal:1, net_crisis:0.8, primary:'ibov' };
+
+  // ── Dados de retorno do fundo e do IBOV ──────────────────────────────────
+  const fd_hist     = (historyData && historyData.funds[cnpj]) || null;
+  const fundRets    = fd_hist ? fd_hist.returns : [];
+  const dates       = (historyData && historyData.commonDates) || [];
+  const ibovRetsMap = (historyData && historyData.ibovReturns) || {};
+  const ibovProxy   = Math.pow(1 + (ibov && ibov.cagr36 ? ibov.cagr36 : 20) / 100, 1/252) - 1;
+  function ibovDay(d) { const r = ibovRetsMap[d]; return r != null ? r : ibovProxy; }
+
+  // ── Betas normais (já disponíveis de fundBetas) ───────────────────────────
+  const b_ibov_n = betas.beta_ibov  || 0;
+  const b_sp_n   = betas.beta_sp500 || 0;
+
+  // ── Calcular β_crise e estatísticas dos resíduos ─────────────────────────
+  const CRISE_THRESHOLD = -0.015;  // pregões com IBOV < −1.5%
+  const N_MIN           = 40;      // dias ruins mínimos para confiança empírica total
+
+  let b_ibov_crise = b_ibov_n;  // fallback: β_normal
+  let b_sp_crise   = b_sp_n;
+  let cvarResiduo  = null;      // CVaR 10% dos resíduos (decimal diário)
+  let rhoBar       = 0;         // autocorrelação média dos resíduos lag 1–3
+  let kIdioCrise   = 1.5;       // amplificação idiossincrática em crise (fallback)
+  let r2           = 0;         // R² da regressão OLS normal
+  let nDiasRuins   = 0;
+  let w_emp        = 0;
+
+  if (fundRets.length >= 60 && dates.length >= 60) {
+    // 1. Resíduos do modelo normal: ε_t = r_fundo_t − β_ibov_n×r_ibov_t − β_sp_n×r_sp_t
+    //    (Nota: r_sp diário não está disponível diretamente — usamos r_ibov como proxy
+    //     para o componente S&P via correlação implícita no beta_sp já estimado)
+    //    Para fundos com exposição primária ibov, b_sp contribui pouco.
+    //    Para fundos internacionais, b_ibov é pequeno — a aproximação é razoável.
+    const n_all = fundRets.length;
+    const residuos = new Float64Array(n_all);
+    let sumFund = 0, sumIbov = 0, sumFF = 0, sumII = 0, sumFI = 0;
+    let n_valid = 0;
+
+    for (let i = 0; i < n_all; i++) {
+      const rf  = fundRets[i];
+      const ri  = ibovDay(dates[i + 1] || '');  // +1: returns são diffs
+      if (rf === 0 && i < 20) continue;          // pula zeros de pré-inception
+      const r_fator_i = b_ibov_n * ri + b_sp_n * ri * 0.3; // proxy sp via ibov
+      const eps = rf - r_fator_i;
+      residuos[i] = eps;
+      sumFund += rf; sumIbov += ri;
+      sumFF += rf*rf; sumII += ri*ri; sumFI += rf*ri;
+      n_valid++;
+    }
+
+    // R² da regressão
+    if (n_valid > 10) {
+      const mF = sumFund/n_valid, mI = sumIbov/n_valid;
+      const ssRes = Array.from(residuos).filter((_,i)=>fundRets[i]!==0||i>=20)
+                        .reduce((s,e) => s + e*e, 0);
+      const ssTot = Array.from(fundRets).filter((r,i)=>r!==0||i>=20)
+                        .reduce((s,r) => s + (r - mF)**2, 0);
+      r2 = ssTot > 0 ? Math.max(0, 1 - ssRes/ssTot) : 0;
+    }
+
+    // 2. β_crise: regressão apenas nos pregões ruins do IBOV
+    const criseIdx = [];
+    for (let i = 0; i < n_all; i++) {
+      if (fundRets[i] === 0 && i < 20) continue;
+      const ri = ibovDay(dates[i + 1] || '');
+      if (ri < CRISE_THRESHOLD) criseIdx.push(i);
+    }
+    nDiasRuins = criseIdx.length;
+
+    if (nDiasRuins >= 10) {
+      let sXX = 0, sXY = 0, sX = 0, sY = 0, nC = criseIdx.length;
+      for (const i of criseIdx) {
+        const ri = ibovDay(dates[i + 1] || '');
+        const rf = fundRets[i];
+        sXX += ri*ri; sXY += ri*rf; sX += ri; sY += rf;
+      }
+      const denom = nC*sXX - sX*sX;
+      if (Math.abs(denom) > 1e-12) {
+        b_ibov_crise = (nC*sXY - sX*sY) / denom;
+        // Clamp: β_crise não deve ser negativo para long-only, nem > 3
+        if (exposure.primary === 'ibov') b_ibov_crise = Math.max(0, Math.min(3, b_ibov_crise));
+        b_sp_crise = b_ibov_crise * (b_sp_n / (Math.abs(b_ibov_n) + 1e-6));
+      }
+    }
+
+    // 3. CVaR do resíduo (10% piores dias)
+    const epsArray = criseIdx.map(i => residuos[i]).filter(e => isFinite(e));
+    if (epsArray.length >= 5) {
+      epsArray.sort((a,b) => a-b);
+      const p10n = Math.max(1, Math.floor(epsArray.length * 0.10));
+      cvarResiduo = epsArray.slice(0, p10n).reduce((s,v) => s+v, 0) / p10n;
+    }
+
+    // 4. Autocorrelação dos resíduos lag 1–3 (para correção do scaling √T)
+    const eps_all = Array.from(residuos).filter((_,i) => fundRets[i] !== 0 || i >= 20);
+    const n_eps   = eps_all.length;
+    const mu_eps  = eps_all.reduce((s,e) => s+e, 0) / n_eps;
+    const v_eps   = eps_all.reduce((s,e) => s + (e-mu_eps)**2, 0) / n_eps;
+    if (v_eps > 0 && n_eps > 10) {
+      let rhoSum = 0, rhoCount = 0;
+      for (let lag = 1; lag <= 3; lag++) {
+        let cov = 0;
+        for (let i = lag; i < n_eps; i++) cov += (eps_all[i]-mu_eps)*(eps_all[i-lag]-mu_eps);
+        cov /= (n_eps - lag);
+        rhoSum += cov / v_eps;
+        rhoCount++;
+      }
+      rhoBar = rhoCount > 0 ? Math.max(-0.5, Math.min(0.5, rhoSum/rhoCount)) : 0;
+    }
+
+    // 5. k_idio_crise: amplificação empírica da vol idiossincrática em dias ruins
+    if (nDiasRuins >= 5) {
+      const eps_crise  = criseIdx.map(i => residuos[i]).filter(e => isFinite(e));
+      const eps_normal = Array.from(residuos).filter((_,i) => !criseIdx.includes(i) && isFinite(residuos[i]));
+      const stdCrise  = eps_crise.length  > 2 ? Math.sqrt(eps_crise.reduce((s,e)=>s+e*e,0)/eps_crise.length)   : null;
+      const stdNormal = eps_normal.length > 2 ? Math.sqrt(eps_normal.reduce((s,e)=>s+e*e,0)/eps_normal.length) : null;
+      if (stdCrise && stdNormal && stdNormal > 1e-8) {
+        kIdioCrise = Math.max(1.0, Math.min(4.0, stdCrise / stdNormal));
+      }
+    }
+
+    // 6. Peso empírico: confiança cresce com o nº de dias ruins observados
+    w_emp = Math.min(1, nDiasRuins / N_MIN);
+  }
+
+  const w_teo = 1 - w_emp;
+
+  // Vol idiossincrática anualizada
+  const volFrac     = volAnual != null ? volAnual / 100 : 0.12;
+  const volIdioAnu  = volFrac * Math.sqrt(Math.max(0, 1 - r2));   // √(1−R²) × vol_total
+
+  // ── Montar stress rows ────────────────────────────────────────────────────
   const stressRows = (typeof STRESS_SCENARIOS !== 'undefined') ? STRESS_SCENARIOS.map(sc => {
-    const sp_brl  = sc.sp500_usd + sc.brl_dep;
-    const exp_adj = exposure.net_crisis;
-    const r_est   = exp_adj * (b_ibov * sc.ibov_ret + b_sp * sp_brl);
-    return { name: sc.name, ret: r_est * 100, label: sc.label };
+    const sp_brl = sc.sp500_usd + sc.brl_dep;
+
+    // Componente sistemática: usa β_crise
+    const r_sist = exposure.net_crisis * (b_ibov_crise * sc.ibov_ret + b_sp_crise * sp_brl);
+
+    // Scaling corrigido por autocorrelação dos resíduos
+    // √(T × (1 + 2ρ̄)): versão de Newey-West para séries autocorrelacionadas
+    const T_anos    = sc.days / 252;
+    const scaleCorr = Math.sqrt(T_anos * Math.max(0.5, 1 + 2 * rhoBar));
+
+    // Componente idiossincrática empírica: CVaR do resíduo × scaling
+    const r_emp = cvarResiduo != null
+      ? cvarResiduo * scaleCorr * 252  // CVaR é diário → anualize via scaling
+      : -(volIdioAnu * scaleCorr);     // fallback se CVaR não disponível
+
+    // Componente idiossincrática teórica: vol_idio × k_crise × scaling
+    const r_teo = -(volIdioAnu * kIdioCrise * scaleCorr);
+
+    // Interpolação ponderada: w_emp × empírico + w_teo × teórico
+    const r_idio = w_emp * r_emp + w_teo * r_teo;
+
+    const r_total = (r_sist + r_idio) * 100;
+    return {
+      name:    sc.name,
+      ret:     r_total,
+      r_sist:  r_sist  * 100,
+      r_idio:  r_idio  * 100,
+      r_emp:   r_emp   * 100,
+      r_teo:   r_teo   * 100,
+      w_emp,
+      label:   sc.label,
+    };
   }) : [];
 
   const worstStress = stressRows.length ? Math.min(...stressRows.map(s => s.ret)) : null;
 
+  // ── Diagnóstico do modelo (para tooltip) ─────────────────────────────────
+  const modelDiag = {
+    nDiasRuins,
+    w_emp: (w_emp * 100).toFixed(0),
+    w_teo: (w_teo * 100).toFixed(0),
+    betaCriseIbov: b_ibov_crise.toFixed(2),
+    betaNormIbov:  b_ibov_n.toFixed(2),
+    r2: (r2 * 100).toFixed(0),
+    rhoBar: rhoBar.toFixed(2),
+    kIdioCrise: kIdioCrise.toFixed(2),
+    volIdio: (volIdioAnu * 100).toFixed(1),
+  };
+
   // ── Métricas rápidas (info) ───────────────────────────────────────────────
-  const inception = meta.inception ? meta.inception.split('-').reverse().join('/') : '—';
-  const tenure    = (typeof fmtTenure === 'function') ? fmtTenure(cnpj).replace(/<[^>]+>/g, '') : '—';
-  const tribLabel = trib === 'RV' ? 'Renda Variável (RV)' : 'Tabela Regressiva (TR)';
+  const inception   = meta.inception ? meta.inception.split('-').reverse().join('/') : '—';
+  const tenure      = (typeof fmtTenure === 'function') ? fmtTenure(cnpj).replace(/<[^>]+>/g, '') : '—';
+  const tribLabel   = trib === 'RV' ? 'Renda Variável (RV)' : 'Tabela Regressiva (TR)';
   const tribExplain = trib === 'RV' ? 'IR 15% no resgate · Sem come-cotas' : 'Come-cotas semestral · IR 15% no resgate (LP)';
 
   // ── HTML ──────────────────────────────────────────────────────────────────
@@ -9070,9 +9315,7 @@ function renderFundProfile() {
     </div>`;
 
   // — Retorno —
-  html += `<div class="fp-section-title">Retorno</div>
-    <div class="fp-grid">`;
-
+  html += `<div class="fp-section-title">Retorno</div><div class="fp-grid">`;
   if (fData) {
     html += `
       <div class="fp-metric">
@@ -9113,54 +9356,74 @@ function renderFundProfile() {
   }
   html += `</div>`;
 
-  // — Risco —
-  html += `<div class="fp-section-title">Risco e eficiência</div>
-    <div class="fp-grid">`;
-
+  // — Risco e eficiência —
+  html += `<div class="fp-section-title">Risco e eficiência</div><div class="fp-grid">`;
   if (adv) {
-    const vol = (adv.ddDev != null) ? null : null; // vol não está em adv, usamos mddPct
+    const ddStr = adv.mddPct != null
+      ? `<span class="fp-metric-val neg">${adv.mddPct.toFixed(1)}%</span>`
+      : '<span class="fp-metric-val neu">N/D</span>';
+
+    // Beta IBOV
+    const betaIbovStr = betaIbov != null
+      ? `<span class="fp-metric-val">${betaIbov.toFixed(2)}</span>`
+      : '<span class="fp-metric-val neu">N/D</span>';
+    // Beta S&P
+    const betaSpStr = betaSp != null
+      ? `<span class="fp-metric-val">${betaSp.toFixed(2)}</span>`
+      : '<span class="fp-metric-val neu">N/D</span>';
+
     html += `
-      <div class="fp-metric" data-tip="Sortino: (retorno − CDI) ÷ semi-desvio descendente. Penaliza apenas volatilidade para baixo.">
+      <div class="fp-metric" data-tip="Sharpe: (retorno alvo − CDI) ÷ volatilidade histórica total anualizada. Usa a vol real do fundo (não semi-desvio). Acima de 0,5 é razoável para ações brasileiras; acima de 1,0 é excelente.">
+        <div class="fp-metric-label">Sharpe</div>
+        ${neutral(sharpeReal)}
+        <div class="fp-metric-sub">ret. alvo vs. CDI ÷ vol histórica</div>
+      </div>
+      <div class="fp-metric" data-tip="Sortino: (retorno − CDI) ÷ semi-desvio descendente. Penaliza apenas volatilidade para baixo — superior ao Sharpe para fundos com assimetria positiva.">
         <div class="fp-metric-label">Sortino</div>
         ${neutral(adv.sortino)}
         <div class="fp-metric-sub">&gt; 1,0 excelente · &gt; 0,7 razoável</div>
       </div>
-      <div class="fp-metric" data-tip="Calmar: CAGR ÷ |drawdown máximo histórico|. Retorno por unidade de dor máxima.">
+      <div class="fp-metric" data-tip="Calmar: CAGR ÷ |drawdown máximo histórico|. Retorno por unidade de dor máxima. Acima de 1,0 significa que o CAGR supera o próprio max DD em módulo.">
         <div class="fp-metric-label">Calmar</div>
         ${neutral(adv.calmar)}
         <div class="fp-metric-sub">&gt; 1,0 = CAGR supera o max DD</div>
       </div>
-      <div class="fp-metric" data-tip="Information Ratio: alpha anualizado vs. IBOV ÷ tracking error.">
+      <div class="fp-metric" data-tip="Information Ratio: alpha anualizado vs. IBOV ÷ tracking error. Mede consistência do alpha — não só se gerou, mas se gerou com regularidade. IR > 0,5 bom; > 0,75 excelente.">
         <div class="fp-metric-label">Information Ratio</div>
         ${neutral(adv.ir)}
         <div class="fp-metric-sub">&gt; 0,5 bom · &gt; 0,75 excelente</div>
       </div>
-      <div class="fp-metric" data-tip="Sharpe estimado: (retorno alvo − CDI) ÷ semi-desvio. Proxy usando retorno alvo.">
-        <div class="fp-metric-label">Sharpe (estimado)</div>
-        ${neutral(tgtVal != null && adv.ddDev ? (tgtVal - (adv.cdiCagr36 || 12)) / adv.ddDev : null)}
-        <div class="fp-metric-sub">usando retorno alvo estimado</div>
+      <div class="fp-metric" data-tip="Volatilidade histórica anualizada: desvio padrão dos retornos diários × √252. Mede a oscilação total do fundo — para cima e para baixo.">
+        <div class="fp-metric-label">Volatilidade histórica</div>
+        ${neutral(volAnual, 1, '% a.a.')}
+        <div class="fp-metric-sub">desvio padrão diário × √252</div>
       </div>
-      <div class="fp-metric" data-tip="Beta vs. benchmark natural: IBOV para fundos Brasil, S&P 500 (BRL) para internacionais.">
-        <div class="fp-metric-label">Beta vs. ${adv.betaBenchmark || 'benchmark'}</div>
-        ${neutral(adv.beta)}
-        <div class="fp-metric-sub">1,0 = move igual ao benchmark</div>
+      <div class="fp-metric" data-tip="Beta vs. IBOV: sensibilidade do fundo ao Ibovespa. Beta 1,0 = move igual ao IBOV. Beta 0,5 = metade da oscilação. Valores negativos = movimento contrário.">
+        <div class="fp-metric-label">Beta vs. IBOV</div>
+        ${betaIbovStr}
+        <div class="fp-metric-sub">sensibilidade ao Ibovespa</div>
       </div>
-      <div class="fp-metric" data-tip="Frequência com que o fundo superou o IBOV em janelas de 3 meses.">
+      <div class="fp-metric" data-tip="Beta vs. S&P 500 (em BRL): sensibilidade ao índice americano convertido em reais. Inclui o efeito cambial — quando o dólar sobe em crise, este beta amplifica retornos para fundos internacionais.">
+        <div class="fp-metric-label">Beta vs. S&P 500 (BRL)</div>
+        ${betaSpStr}
+        <div class="fp-metric-sub">sensibilidade ao S&P em reais</div>
+      </div>
+      <div class="fp-metric" data-tip="Frequência com que o fundo superou o IBOV em janelas de 3 meses (63 pregões), recalculadas mensalmente. Acima de 60% indica processo de geração de alpha robusto.">
         <div class="fp-metric-label">Beat IBOV (3M)</div>
         ${neutral(adv.propensity, 0, '%')}
         <div class="fp-metric-sub">% dos trimestres acima do IBOV</div>
       </div>
-      <div class="fp-metric" data-tip="Drawdown máximo histórico: maior queda do pico ao vale em todo o histórico disponível.">
+      <div class="fp-metric" data-tip="Drawdown máximo histórico: maior queda pico→vale em todo o histórico disponível do fundo.">
         <div class="fp-metric-label">Drawdown máx. histórico</div>
-        <span class="fp-metric-val neg">${adv.mddPct != null ? adv.mddPct.toFixed(1) + '%' : 'N/D'}</span>
+        ${ddStr}
         <div class="fp-metric-sub">pior queda pico→vale</div>
       </div>
-      <div class="fp-metric" data-tip="Alpha rolante 12M mais recente vs. IBOV.">
+      <div class="fp-metric" data-tip="Alpha rolante de 12M mais recente vs. IBOV: excesso de retorno anualizado na janela encerrada na última data.">
         <div class="fp-metric-label">Alpha atual (12M)</div>
         ${pct(adv.raLatest, 1)}
         <div class="fp-metric-sub">excesso vs. IBOV no último ano</div>
       </div>
-      <div class="fp-metric" data-tip="Intervalo [mín, máx] do alpha rolante de 12M ao longo de todo o histórico.">
+      <div class="fp-metric" data-tip="Intervalo [mínimo, máximo] do alpha rolante de 12M ao longo de todo o histórico. Intervalo estreito = consistência. Intervalo amplo = dependência do ciclo de mercado.">
         <div class="fp-metric-label">Range do alpha rolante</div>
         <span class="fp-metric-val" style="font-size:0.78rem">${adv.raMin != null ? (adv.raMin >= 0 ? '+' : '') + adv.raMin.toFixed(0) : '?'} / ${adv.raMax != null ? (adv.raMax >= 0 ? '+' : '') + adv.raMax.toFixed(0) : '?'}%</span>
         <div class="fp-metric-sub">mínimo / máximo histórico</div>
@@ -9168,7 +9431,7 @@ function renderFundProfile() {
     if (fData) {
       const dd = typeof calcDrawdown === 'function' ? calcDrawdown(fData) : null;
       html += `
-      <div class="fp-metric" data-tip="Drawdown atual: distância do pico máximo histórico de cota até o valor mais recente.">
+      <div class="fp-metric" data-tip="Drawdown atual: distância entre o pico máximo histórico de cota e o valor mais recente.">
         <div class="fp-metric-label">Drawdown atual (vs. pico)</div>
         ${dd === 0 ? '<span class="fp-metric-val pos">No pico ✓</span>' : `<span class="fp-metric-val neg">${dd != null ? dd.toFixed(1) + '%' : 'N/D'}</span>`}
         <div class="fp-metric-sub">queda desde o pico de cota</div>
@@ -9181,20 +9444,40 @@ function renderFundProfile() {
 
   // — Stress estimado por cenário —
   if (stressRows.length) {
-    html += `<div class="fp-section-title" data-tip="Performance estimada usando modelo de fator: R ≈ β_ibov × R_ibov + β_sp500 × R_sp500(BRL), com exposição líquida reduzida em crise. Estimativa — não reflete alpha do gestor em crises.">Comportamento estimado em crises históricas</div>
+    const diagTip = `Modelo calibrado empiricamente (${modelDiag.nDiasRuins} pregões ruins disponíveis)\n`
+      + `Peso empírico: ${modelDiag.w_emp}% · Peso teórico: ${modelDiag.w_teo}%\n`
+      + `β IBOV normal: ${modelDiag.betaNormIbov} → β crise: ${modelDiag.betaCriseIbov}\n`
+      + `R² do modelo de fator: ${modelDiag.r2}% · Vol idiossincrática: ${modelDiag.volIdio}% a.a.\n`
+      + `k ampliação idio em crise: ${modelDiag.kIdioCrise}× · Autocorr. resíduos ρ̄: ${modelDiag.rhoBar}\n\n`
+      + `ATENÇÃO: leia como ranking relativo e ordem de grandeza.\n`
+      + `Estimativas pontuais têm incerteza alta — crises futuras não replicam crises passadas.`;
+
+    html += `<div class="fp-section-title" data-tip="${diagTip}">Comportamento estimado em crises históricas ⓘ</div>
     <div class="fp-stress-grid">`;
+
     stressRows.forEach(s => {
-      const cls = s.ret >= 0 ? 'var(--green)' : s.ret >= -15 ? 'var(--amber,#e07800)' : 'var(--red)';
-      html += `<div class="fp-stress-item">
+      const cls = s.ret >= 0 ? 'var(--green)' : s.ret >= -10 ? 'var(--amber,#e07800)' : 'var(--red)';
+      const tipText = `${s.name}\n`
+        + `─────────────────────────────\n`
+        + `Total estimado:    ${s.ret >= 0 ? '+' : ''}${s.ret.toFixed(1)}%\n\n`
+        + `Componente β (sistemática):  ${s.r_sist >= 0 ? '+' : ''}${s.r_sist.toFixed(1)}%\n`
+        + `  β_crise=${modelDiag.betaCriseIbov} (normal: ${modelDiag.betaNormIbov})\n\n`
+        + `Componente idiossincrática:  ${s.r_idio >= 0 ? '+' : ''}${s.r_idio.toFixed(1)}%\n`
+        + `  CVaR resíduo (emp ${s.w_emp.toFixed(0)}%): ${s.r_emp >= 0 ? '+' : ''}${s.r_emp.toFixed(1)}%\n`
+        + `  Piso teórico (teo ${(100-s.w_emp).toFixed(0)}%):  ${s.r_teo.toFixed(1)}%\n`
+        + `  Vol idio: ${modelDiag.volIdio}% a.a. · k=${modelDiag.kIdioCrise}× · ρ̄=${modelDiag.rhoBar}`;
+      html += `<div class="fp-stress-item" data-tip="${tipText}">
         <div class="fp-stress-name" title="${s.label}">${s.name}</div>
         <div class="fp-stress-val" style="color:${cls}">${s.ret >= 0 ? '+' : ''}${s.ret.toFixed(1)}%</div>
       </div>`;
     });
+
     html += `</div>`;
     if (worstStress != null) {
-      html += `<div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-top:0.3rem">
+      html += `<div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-top:0.4rem;line-height:1.8">
         Pior cenário estimado: <strong style="color:var(--red)">${worstStress.toFixed(1)}%</strong> ·
-        Modelo: R ≈ β × R_benchmark × exposição em crise · Não inclui alpha do gestor
+        ${modelDiag.nDiasRuins} pregões ruins observados · peso empírico ${modelDiag.w_emp}% · β crise ${modelDiag.betaCriseIbov} (normal ${modelDiag.betaNormIbov}) ·
+        Passe o mouse em cada cenário para ver a decomposição completa
       </div>`;
     }
   }
