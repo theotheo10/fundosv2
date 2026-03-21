@@ -2482,14 +2482,15 @@ function cagrInception(f) {
 //      Entra com peso (1-c): máximo quando jovem, zero quando maduro.
 //
 //   6. alphaDiferencial = alphaObservado − alphaGrupoContemporâneo:
-//      Corrige viés de ciclo — desconta o alpha que os pares maduros
-//      também geraram no mesmo período. Entra com peso c: zero quando
-//      jovem (alpha curto não é confiável), pleno quando maduro.
+//      Corrige viés de ciclo. Entra como fator de credibilidade (credAlpha),
+//      não como soma aditiva — evita dupla contagem do alpha já embutido
+//      no sinalPróprio via CAGR.
+//      credAlpha = 0.5 + 0.5×tanh(αDiff/10): sigmoide suave em [0,1].
+//      αDiff > 0 → sinal próprio recebe mais crédito.
+//      αDiff < 0 → sinal próprio recebe menos crédito, puxa para benchmark.
 //
 //   7. Teto = cagrInception (universal):
 //      E[R] não pode superar o retorno histórico completo do fundo.
-//      Extrapolar além do que o histórico real demonstrou não tem
-//      justificativa — aplica a fundos jovens e maduros igualmente.
 function calcTargetReturn(f, globalFunds, globalCdiTarget) {
   const meta = FUND_META[f.cnpjFmt] || {};
   const tipo = (meta.tipo || '').toLowerCase();
@@ -2598,37 +2599,39 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
 
   // ── Blending final multi-fator ────────────────────────────────────────────
   //
-  // E[R] = c  × sinalPróprio              (histórico observado, ponderado por √T)
-  //      + (1-c) × benchmark               (âncora de ignorância por mandato)
-  //      + c × alphaDiferencial            (skill líquido de ciclo, ganha peso com idade)
+  // E[R] = [ sinalPróprio × credAlpha + benchmark × (1 - credAlpha) ] × c
+  //      +   benchmark × (1 - c)
+  //
+  // onde credAlpha = 0.5 + 0.5 × tanh(alphaDiferencial / 10)
+  //   → alphaDiferencial = 0   → credAlpha = 0.5  (neutro)
+  //   → alphaDiferencial = +5  → credAlpha ≈ 0.74 (favorece sinal próprio)
+  //   → alphaDiferencial = -5  → credAlpha ≈ 0.26 (favorece benchmark)
+  //   → alphaDiferencial = +15 → credAlpha ≈ 0.93 (quase 100% sinal próprio)
   //
   // Interpretação:
-  //   • Fundo novíssimo (c≈0): quase tudo vai para o benchmark conservador.
-  //     O alpha observado entra com peso ≈0, independentemente de quão alto seja.
-  //   • Fundo maduro (c=1): sinal próprio domina + alpha diferencial completo.
-  //     Benchmark some do blending.
-  //   • Entre 0 e 1: transição suave. O alpha só ganha peso à medida que
-  //     o histórico acumula e o signal de grupo pode relativizá-lo.
-  //
-  // Nota: alphaDiferencial pode ser negativo (fundo abaixo do grupo) — isso
-  // penaliza adicionalmente fundos jovens que parecem bons mas ficaram abaixo
-  // dos pares no mesmo ciclo.
+  //   • Fundo jovem (c≈0): benchmark domina, credAlpha irrelevante.
+  //   • Fundo maduro com alpha diferencial alto: sinal próprio com plena
+  //     credibilidade. Alpha não é somado em cima — ele decide o peso.
+  //   • Fundo maduro abaixo do grupo (alphaDiferencial < 0): sinal próprio
+  //     recebe menos crédito, puxando em direção ao benchmark.
+  //   • Sem dupla contagem: alpha já está embutido no sinalPróprio via CAGR.
 
-  const blended = final * c
-                + benchmark * (1 - c)
-                + alphaDiferencial * c;
+  // credAlpha: [0, 1], função sigmoide suave do alphaDiferencial
+  const credAlpha = 0.5 + 0.5 * Math.tanh(alphaDiferencial / 10);
+
+  // Sinal próprio modulado pela credibilidade
+  const sinalCredenciado = final * credAlpha + benchmark * (1 - credAlpha);
+
+  // Blending por idade: fundo jovem → benchmark; fundo maduro → sinal credenciado
+  const blended = sinalCredenciado * c + benchmark * (1 - c);
 
   // Teto: cagrInception é o retorno histórico completo mais longo disponível.
   // E[R] não pode superar esse valor — seria extrapolar além do que o
-  // histórico real do fundo demonstrou. Aplica universalmente: fundo jovem
-  // ou maduro, qualquer mandato.
-  // Usa f.cagrInception do data.json (calculado em process_fund);
-  // cagrInception() recalcula dinamicamente a partir da cota — prefere este
-  // por ser mais atualizado.
+  // histórico real do fundo demonstrou. Aplica universalmente.
   const ciCap = cagrInception(f) ?? f.cagrInception ?? null;
   const capped = ciCap != null ? Math.min(blended, ciCap) : blended;
 
-  // Floor absoluto: CDI corrente. Nenhum fundo entra no otimizador com E[R] < CDI.
+  // Floor absoluto: CDI corrente.
   const discounted = Math.max(capped, cdiFloor);
 
   return {
@@ -2641,6 +2644,7 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
     benchmark:       parseFloat(benchmark.toFixed(2)),
     alphaObs:        parseFloat(alphaObservado.toFixed(2)),
     alphaDiff:       parseFloat(alphaDiferencial.toFixed(2)),
+    credAlpha:       parseFloat(credAlpha.toFixed(2)),
     ciCap:           ciCap != null ? parseFloat(ciCap.toFixed(2)) : null,
     isMulti:         isMulti,
     samples:         samples,
@@ -3755,25 +3759,40 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
         const v    = target.value;
         const cls  = v >= 0 ? 'pos' : 'neg';
         const sign = v >= 0 ? '+' : '';
+        const fmt  = x => (x >= 0 ? '+' : '') + x.toFixed(1) + '%';
+
+        // Amostras numa linha só, separadas por ·
         const tipLines = target.samples
           .sort((a, b) => a[0] - b[0])
           .map(([T, val]) => {
             const label = T < 1.5 ? '12M' : T < 3.5 ? '36M' : T < 5.5 ? '60M' : `${T.toFixed(0)}A`;
-            return `${label}: ${val >= 0 ? '+' : ''}${val.toFixed(1)}%`;
-          }).join('\n');
-        const dispNote = target.sigma > 2
-          ? `\nDisp. entre períodos: ${target.sigma.toFixed(1)}pp → ajuste −${target.penalty.toFixed(1)}pp`
-          : '';
-        const rawNote = (Math.abs(target.raw - target.value) > 0.05)
-          ? `\nBruto (pesos √T): ${target.raw >= 0 ? '+' : ''}${target.raw.toFixed(1)}%  →  final: ${sign}${v.toFixed(1)}%`
-          : '';
-        const trackNote = (target.trackYears != null && target.trackYears < 5)
-          ? `\nHistórico: ${target.trackYears.toFixed(1)} anos → desconto de confiança aplicado`
-          : '';
+            return `${label}: ${fmt(val)}`;
+          }).join('  ·  ');
+
+        // Ajustes: só mostra o que mudou o valor
+        const adjustParts = [];
+        if (target.sigma > 2)
+          adjustParts.push(`disp. ${target.sigma.toFixed(1)}pp → −${target.penalty.toFixed(1)}pp`);
+        if (target.ciCap != null && target.ciCap < target.raw)
+          adjustParts.push(`teto: ${fmt(target.ciCap)}`);
+
+        // Confiança: âncora e credibilidade quando relevante
+        const confParts = [];
+        if (target.trackConf < 1)
+          confParts.push(`track ${target.trackYears.toFixed(1)}a (c=${target.trackConf.toFixed(2)})`);
+        if (target.alphaDiff != null && Math.abs(target.alphaDiff) > 0.5)
+          confParts.push(`αdiff ${fmt(target.alphaDiff)} → cred=${target.credAlpha.toFixed(2)}`);
+        if (target.benchmark != null && target.trackConf < 1)
+          confParts.push(`âncora ${target.isMulti ? 'CDI' : 'IBOV'}: ${fmt(target.benchmark)}`);
+
+        const adjustLine = adjustParts.length ? `\n↳ ${adjustParts.join('  ·  ')}` : '';
+        const confLine   = confParts.length   ? `\n↳ ${confParts.join('  ·  ')}` : '';
+        const finalLine  = `\nBruto √T: ${fmt(target.raw)}  →  E[R]: ${sign}${v.toFixed(1)}%`;
+
         targetHtml = `<div class="alloc-target-wrap">
           <span class="port-alloc-target ${cls}">${sign}${v.toFixed(1)}%</span>
-          <div class="alloc-target-tip">Ret. alvo (pesos √período + ajustes)
-${tipLines}${dispNote}${rawNote}</div>
+          <div class="alloc-target-tip">Retorno alvo estimado
+${tipLines}${adjustLine}${confLine}${finalLine}</div>
         </div>`;
       }
 
