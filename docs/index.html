@@ -675,6 +675,22 @@
     font-family: 'Courier New', monospace; font-size: 0.7rem;
     font-weight: bold; color: var(--text); min-width: 36px;
   }
+  /* Editable number input that replaces the static span */
+  .opt-val-input {
+    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    font-weight: bold; color: var(--text);
+    background: transparent; border: none;
+    border-bottom: 1px dashed var(--muted);
+    width: 46px; text-align: right; padding: 0;
+    cursor: text; outline: none;
+  }
+  .opt-val-input:focus {
+    border-bottom-color: var(--accent);
+    color: var(--accent);
+  }
+  .opt-val-input::-webkit-inner-spin-button,
+  .opt-val-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  .opt-val-input[type=number] { -moz-appearance: textfield; }
   .opt-constraint-warn {
     font-family: 'Courier New', monospace; font-size: 0.58rem;
     color: var(--red); margin-top: 0.25rem; display: none;
@@ -1893,7 +1909,10 @@
           <input type="range" class="opt-maxw-slider" id="optMaxWSlider"
             min="10" max="100" value="100" step="5"
             oninput="onOptMaxWSlider()">
-          <span class="opt-maxw-val" id="optMaxWVal">100%</span>
+          <input type="number" class="opt-val-input" id="optMaxWVal"
+            value="100" min="10" max="100" step="5"
+            onchange="onOptMaxWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
           <span class="opt-constraint-label" id="optMaxWNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-row">
@@ -1901,7 +1920,10 @@
           <input type="range" class="opt-minw-slider" id="optMinWSlider"
             min="10" max="300" value="10" step="1"
             oninput="onOptMinWSlider()">
-          <span class="opt-minw-val" id="optMinWVal">1.0%</span>
+          <input type="number" class="opt-val-input" id="optMinWVal"
+            value="1.0" min="1.0" max="30.0" step="0.1"
+            onchange="onOptMinWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
           <span class="opt-constraint-label" id="optMinWNote" style="opacity:0.5">(padrão)</span>
         </div>
         <div class="opt-constraint-row">
@@ -1909,7 +1931,9 @@
           <input type="range" class="opt-maxw-slider" id="optMaxBetaIbovSlider"
             min="0" max="20" value="20" step="1"
             oninput="onOptMaxBetaSlider('ibov')">
-          <span class="opt-maxw-val" id="optMaxBetaIbovVal">—</span>
+          <input type="number" class="opt-val-input" id="optMaxBetaIbovVal"
+            value="" min="0.0" max="2.0" step="0.1" placeholder="—"
+            onchange="onOptMaxBetaInput('ibov', this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-row">
@@ -1917,7 +1941,9 @@
           <input type="range" class="opt-maxw-slider" id="optMaxBetaSpSlider"
             min="0" max="20" value="20" step="1"
             oninput="onOptMaxBetaSlider('sp')">
-          <span class="opt-maxw-val" id="optMaxBetaSpVal">—</span>
+          <input type="number" class="opt-val-input" id="optMaxBetaSpVal"
+            value="" min="0.0" max="2.0" step="0.1" placeholder="—"
+            onchange="onOptMaxBetaInput('sp', this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-row">
@@ -1925,7 +1951,10 @@
           <input type="range" class="opt-maxw-slider" id="optMaxStressLossSlider"
             min="0" max="60" value="60" step="1"
             oninput="onOptMaxStressLossSlider()">
-          <span class="opt-maxw-val" id="optMaxStressLossVal">—</span>
+          <input type="number" class="opt-val-input" id="optMaxStressLossVal"
+            value="" min="0" max="60" step="1" placeholder="—"
+            onchange="onOptMaxStressLossInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMaxStressLossPct"></span>
           <span class="opt-constraint-label" id="optMaxStressLossNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-warn" id="optConstraintWarn">
@@ -4398,50 +4427,115 @@ function setOptObj(obj) {
 function onOptMaxWSlider() {
   const v = parseInt(document.getElementById('optMaxWSlider').value);
   optMaxW = v / 100;
-  document.getElementById('optMaxWVal').textContent = v + '%';
+  document.getElementById('optMaxWVal').value = v;
+  document.getElementById('optMaxWNote').textContent = v === 100 ? '(sem restrição)' : '';
+  validateOptConstraints();
+  updateOptSummary();
+}
+function onOptMaxWInput(el) {
+  let v = Math.round(Math.min(100, Math.max(10, parseFloat(el.value) || 100)) / 5) * 5;
+  el.value = v;
+  document.getElementById('optMaxWSlider').value = v;
+  optMaxW = v / 100;
   document.getElementById('optMaxWNote').textContent = v === 100 ? '(sem restrição)' : '';
   validateOptConstraints();
   updateOptSummary();
 }
 
 function onOptMinWSlider() {
-  // Slider range 10–300 maps to 1.0%–30.0% in steps of 0.1%
   const raw  = parseInt(document.getElementById('optMinWSlider').value);
-  const pct  = raw / 10;               // e.g. 10→1.0%, 35→3.5%, 300→30.0%
+  const pct  = raw / 10;
   optMinW    = pct / 100;
-  document.getElementById('optMinWVal').textContent = pct.toFixed(1) + '%';
+  document.getElementById('optMinWVal').value = pct.toFixed(1);
+  document.getElementById('optMinWNote').textContent = pct === 1.0 ? '(padrão)' : '';
+  validateOptConstraints();
+  updateOptSummary();
+}
+function onOptMinWInput(el) {
+  let pct = Math.min(30, Math.max(1, parseFloat(el.value) || 1));
+  pct = Math.round(pct * 10) / 10;
+  el.value = pct.toFixed(1);
+  document.getElementById('optMinWSlider').value = Math.round(pct * 10);
+  optMinW = pct / 100;
   document.getElementById('optMinWNote').textContent = pct === 1.0 ? '(padrão)' : '';
   validateOptConstraints();
   updateOptSummary();
 }
 
 function onOptMaxBetaSlider(which) {
-  const id     = which === 'ibov' ? 'optMaxBetaIbovSlider' : 'optMaxBetaSpSlider';
-  const valId  = which === 'ibov' ? 'optMaxBetaIbovVal'    : 'optMaxBetaSpVal';
-  const noteId = which === 'ibov' ? 'optMaxBetaIbovNote'   : 'optMaxBetaSpNote';
-  const raw    = parseInt(document.getElementById(id).value);
+  const id      = which === 'ibov' ? 'optMaxBetaIbovSlider' : 'optMaxBetaSpSlider';
+  const valId   = which === 'ibov' ? 'optMaxBetaIbovVal'    : 'optMaxBetaSpVal';
+  const noteId  = which === 'ibov' ? 'optMaxBetaIbovNote'   : 'optMaxBetaSpNote';
+  const raw     = parseInt(document.getElementById(id).value);
   const noLimit = raw >= 20;
   if (which === 'ibov') optMaxBetaIbov = noLimit ? null : raw / 10;
   else                  optMaxBetaSp   = noLimit ? null : raw / 10;
-  document.getElementById(valId).textContent     = noLimit ? '—' : (raw / 10).toFixed(1);
-  document.getElementById(noteId).style.opacity  = noLimit ? '0.5' : '1';
-  document.getElementById(noteId).textContent    = noLimit ? '(sem restrição)' : '';
+  const inp = document.getElementById(valId);
+  inp.value       = noLimit ? '' : (raw / 10).toFixed(1);
+  inp.placeholder = noLimit ? '—' : '';
+  document.getElementById(noteId).style.opacity = noLimit ? '0.5' : '1';
+  document.getElementById(noteId).textContent   = noLimit ? '(sem restrição)' : '';
+  updateOptSummary();
+}
+function onOptMaxBetaInput(which, el) {
+  const valStr   = el.value.trim();
+  const noLimit  = valStr === '' || valStr === '—';
+  const noteId   = which === 'ibov' ? 'optMaxBetaIbovNote'    : 'optMaxBetaSpNote';
+  const sliderId = which === 'ibov' ? 'optMaxBetaIbovSlider'  : 'optMaxBetaSpSlider';
+  if (noLimit) {
+    if (which === 'ibov') optMaxBetaIbov = null; else optMaxBetaSp = null;
+    el.value = ''; el.placeholder = '—';
+    document.getElementById(sliderId).value = 20;
+  } else {
+    let v = Math.min(2.0, Math.max(0, parseFloat(valStr) || 0));
+    v = Math.round(v * 10) / 10;
+    el.value = v.toFixed(1);
+    document.getElementById(sliderId).value = Math.round(v * 10);
+    if (which === 'ibov') optMaxBetaIbov = v; else optMaxBetaSp = v;
+  }
+  document.getElementById(noteId).style.opacity = noLimit ? '0.5' : '1';
+  document.getElementById(noteId).textContent   = noLimit ? '(sem restrição)' : '';
   updateOptSummary();
 }
 
 function onOptMaxStressLossSlider() {
   const slider  = document.getElementById('optMaxStressLossSlider');
   const valEl   = document.getElementById('optMaxStressLossVal');
+  const pctEl   = document.getElementById('optMaxStressLossPct');
   const noteEl  = document.getElementById('optMaxStressLossNote');
-  const raw     = parseInt(slider.value);  // 0–60: perda máxima permitida em %
+  const raw     = parseInt(slider.value);
   const noLimit = raw >= 60;
-  // Armazenado como fração negativa: raw=10 → -0.10 (pior retorno permitido = -10%)
-  optMaxStressLoss = noLimit ? null : -(raw / 100);
-  valEl.textContent         = noLimit ? '—' : `-${raw}%`;
-  noteEl.style.opacity      = noLimit ? '0.5' : '1';
-  noteEl.textContent        = noLimit ? '(sem restrição)' : 'pior cenário';
+  optMaxStressLoss      = noLimit ? null : -(raw / 100);
+  valEl.value           = noLimit ? '' : raw;
+  valEl.placeholder     = noLimit ? '—' : '';
+  pctEl.textContent     = noLimit ? '' : '%';
+  noteEl.style.opacity  = noLimit ? '0.5' : '1';
+  noteEl.textContent    = noLimit ? '(sem restrição)' : 'pior cenário';
   updateOptSummary();
 }
+function onOptMaxStressLossInput(el) {
+  const valStr  = el.value.trim();
+  const noLimit = valStr === '' || valStr === '—';
+  const pctEl   = document.getElementById('optMaxStressLossPct');
+  const noteEl  = document.getElementById('optMaxStressLossNote');
+  if (noLimit) {
+    optMaxStressLoss = null;
+    el.value = ''; el.placeholder = '—';
+    document.getElementById('optMaxStressLossSlider').value = 60;
+    pctEl.textContent = '';
+  } else {
+    let v = Math.min(60, Math.max(0, parseInt(valStr) || 0));
+    el.value = v;
+    document.getElementById('optMaxStressLossSlider').value = v;
+    optMaxStressLoss = -(v / 100);
+    pctEl.textContent = '%';
+  }
+  noteEl.style.opacity = noLimit ? '0.5' : '1';
+  noteEl.textContent   = noLimit ? '(sem restrição)' : 'pior cenário';
+  updateOptSummary();
+}
+
+
 
 function calcPortfolioBeta(combo, weights, which) {
   let beta = 0;
