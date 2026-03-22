@@ -2794,6 +2794,9 @@ const FUND_META = {
   "29.726.133/0001-21": { nome:"Kapitalo K10", short:"K10", inception:"2018-05-16", initialQuota:1.0, maxQuota:2.67793433718, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG", obs:"" },
   "35.828.684/0001-07": { nome:"Genoa Radar", short:"Radar", inception:"2020-06-30", initialQuota:1.0, maxQuota:2.03416388, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG / Itaú", obs:"" },
   "16.876.874/0001-47": { nome:"Witpar", short:"Witpar", inception:"2019-01-02", initialQuota:1.0, maxQuota:7.4575602696, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
+  "52.239.457/0001-57": { nome:"Itaú Janeiro RF", short:"Janeiro RF", inception:"2023-09-29", initialQuota:1.0, maxQuota:1.395262, tipo:"Renda Fixa - Crédito Privado", trib:"TR", expo:"Brasil", banco:"Itaú", grossUp:false, obs:"" },
+  "51.253.495/0001-00": { nome:"Mapfre Confianza", short:"Mapfre", inception:"2023-08-01", initialQuota:1.0, maxQuota:1.40946058, tipo:"Renda Fixa - Pós-fixado", trib:"TR", expo:"Brasil", banco:"BNY Mellon", grossUp:false, obs:"" },
+  "52.969.671/0001-69": { nome:"Artax Infra", short:"Artax Infra", inception:"2023-11-30", initialQuota:1.0, maxQuota:1.377942, tipo:"Renda Fixa - Debêntures Incentivadas", trib:"Isento", expo:"Brasil", banco:"Itaú", grossUp:true, obs:"Isento de IR (Lei 12.431) · Debêntures de infraestrutura" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva", Isento:"Isento de IR" };
 
@@ -3369,6 +3372,9 @@ const FUND_EXPOSURE = {
   "29.726.133/0001-21": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Kapitalo K10
   "35.828.684/0001-07": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Genoa Radar
   "16.876.874/0001-47": { net_normal:1.0, net_crisis:0.95, primary:"ibov" }, // Witpar
+  "52.239.457/0001-57": { net_normal:0.0, net_crisis:0.0, primary:"cdi" }, // Itaú Janeiro RF
+  "51.253.495/0001-00": { net_normal:0.0, net_crisis:0.0, primary:"cdi" }, // Mapfre Confianza
+  "52.969.671/0001-69": { net_normal:0.0, net_crisis:0.0, primary:"cdi" }, // Artax Infra
 };
 
 // Historical stress scenarios
