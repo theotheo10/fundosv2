@@ -494,6 +494,133 @@
 
   /* Correlação */
   .port-corr-panel { padding: 1rem 1.4rem; flex: 1; overflow: auto; }
+  /* ── Salvar/Comparar cenários ────────────────────────────────────────── */
+  .port-scenario-bar {
+    display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
+    padding: 0.6rem 1.4rem 0;
+  }
+  .btn-save-scenario {
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 4px 12px; border-radius: 4px; cursor: pointer;
+    border: 0.5px solid var(--accent); background: transparent; color: var(--accent);
+    transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
+  }
+  .btn-save-scenario:hover { background: var(--accent); color: #fff; }
+  .btn-save-scenario.saved {
+    border-color: var(--green); color: var(--green);
+  }
+  .btn-save-scenario.saved:hover { background: var(--green); color: #fff; }
+  .btn-reset-scenario {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    padding: 3px 9px; border-radius: 4px; cursor: pointer;
+    border: 0.5px solid var(--border); background: transparent; color: var(--muted);
+    transition: border-color 0.12s, color 0.12s;
+  }
+  .btn-reset-scenario:hover { border-color: var(--red); color: var(--red); }
+  .scenario-saved-label {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    color: var(--muted); white-space: nowrap;
+  }
+  /* ── Painel de comparação ─────────────────────────────────────────────── */
+  #portComparePanel {
+    display: none;
+    margin: 0.8rem 1.4rem;
+    border: 0.5px solid var(--accent);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  #portComparePanel.visible { display: block; }
+  .compare-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.6rem 1rem;
+    background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+    border-bottom: 0.5px solid var(--accent);
+  }
+  .compare-title {
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent);
+  }
+  .compare-close {
+    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    cursor: pointer; color: var(--muted); background: none; border: none; padding: 2px 6px;
+  }
+  .compare-close:hover { color: var(--red); }
+  .compare-cols {
+    display: grid; grid-template-columns: 1fr 1fr;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .compare-col-header {
+    padding: 0.5rem 1rem;
+    font-family: 'Courier New', monospace; font-size: 0.6rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .compare-col-header:first-child {
+    border-right: 0.5px solid var(--border);
+    color: var(--blue);
+  }
+  .compare-col-header:last-child { color: var(--green); }
+  .compare-body { display: grid; grid-template-columns: 1fr 1fr; }
+  .compare-section { padding: 0.7rem 1rem; }
+  .compare-section:first-child { border-right: 0.5px solid var(--border); }
+  .compare-metric-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 0.22rem 0; border-bottom: 0.5px solid var(--border);
+    gap: 0.5rem;
+  }
+  .compare-metric-row:last-child { border-bottom: none; }
+  .compare-metric-label {
+    font-family: 'Courier New', monospace; font-size: 0.54rem;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    flex-shrink: 0;
+  }
+  .compare-metric-val {
+    font-family: 'Courier New', monospace; font-size: 0.78rem; font-weight: bold;
+  }
+  .compare-metric-val.pos { color: var(--green); }
+  .compare-metric-val.neg { color: var(--red); }
+  .compare-metric-val.neu { color: var(--text); }
+  .compare-funds {
+    padding: 0.6rem 1rem 0.2rem;
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    color: var(--muted); line-height: 1.8;
+  }
+  .compare-fund-chip {
+    display: inline-block; padding: 1px 6px; margin: 1px 2px;
+    border-radius: 3px; border: 0.5px solid var(--border);
+    background: var(--bg); font-size: 0.58rem;
+  }
+  .compare-fund-chip.added   { border-color: var(--green); color: var(--green); }
+  .compare-fund-chip.removed { border-color: var(--red);   color: var(--red); text-decoration: line-through; }
+  .compare-fund-chip.same    { color: var(--text); }
+  .compare-delta {
+    font-family: 'Courier New', monospace; font-size: 0.6rem; font-weight: bold;
+    padding: 0 4px; border-radius: 3px;
+  }
+  .compare-delta.better { color: var(--green); }
+  .compare-delta.worse  { color: var(--red); }
+  .compare-stress-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.3rem; padding: 0.5rem 1rem 0.8rem;
+    border-top: 0.5px solid var(--border);
+  }
+  .compare-stress-item {
+    padding: 0.3rem 0.5rem;
+    border: 0.5px solid var(--border); border-radius: 4px;
+    background: var(--bg);
+  }
+  .compare-stress-name {
+    font-family: 'Courier New', monospace; font-size: 0.5rem;
+    color: var(--muted); margin-bottom: 0.2rem;
+  }
+  .compare-stress-vals {
+    display: flex; gap: 0.5rem; align-items: baseline;
+  }
+  .compare-stress-val {
+    font-family: 'Courier New', monospace; font-size: 0.7rem; font-weight: bold;
+  }
   .corr-table-wrap { overflow-x: auto; }
   .corr-table {
     width: 100%; border-collapse: collapse;
@@ -738,6 +865,68 @@
   .opt-constraint-warn {
     font-family: 'Courier New', monospace; font-size: 0.58rem;
     color: var(--red); margin-top: 0.25rem; display: none;
+  }
+  /* ── Restrições por classe de ativo ─────────────────────────────────── */
+  .opt-class-section {
+    margin-top: 0.6rem;
+    padding: 0.65rem 0.8rem 0.7rem;
+    border: 0.5px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+  }
+  .opt-class-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.55rem; gap: 0.5rem; flex-wrap: wrap;
+  }
+  .opt-class-presets {
+    display: flex; gap: 0.3rem; flex-wrap: wrap;
+  }
+  .opt-class-preset-btn {
+    font-family: 'Courier New', monospace; font-size: 0.56rem;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    padding: 2px 8px; border-radius: 3px; cursor: pointer;
+    border: 0.5px solid var(--border);
+    background: transparent; color: var(--muted);
+    transition: background 0.12s, color 0.12s;
+  }
+  .opt-class-preset-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .opt-class-preset-clear { color: var(--red); border-color: var(--red); }
+  .opt-class-preset-clear:hover { background: var(--red); }
+  .opt-class-grid { display: flex; flex-direction: column; gap: 0.35rem; }
+  .opt-class-row {
+    display: flex; align-items: center; gap: 0.35rem;
+  }
+  .opt-class-label {
+    font-family: 'Courier New', monospace; font-size: 0.62rem; font-weight: bold;
+    min-width: 28px; text-align: center; padding: 1px 5px; border-radius: 3px;
+    letter-spacing: 0.04em;
+  }
+  .opt-class-rf { background: color-mix(in srgb, var(--blue) 15%, transparent); color: var(--blue); }
+  .opt-class-rv { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
+  .opt-class-mm { background: color-mix(in srgb, var(--amber,#e07800) 15%, transparent); color: var(--amber,#e07800); }
+  .opt-class-sub {
+    font-family: 'Courier New', monospace; font-size: 0.54rem;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+    min-width: 20px;
+  }
+  .opt-class-input {
+    font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: bold;
+    width: 38px; text-align: center; padding: 2px 4px;
+    border: 0.5px solid var(--border); border-radius: 3px;
+    background: var(--bg2,var(--bg)); color: var(--text);
+    outline: none;
+  }
+  .opt-class-input:focus { border-color: var(--accent); }
+  .opt-class-input::-webkit-inner-spin-button,
+  .opt-class-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .opt-class-input[type=number] { -moz-appearance: textfield; }
+  .opt-class-pct {
+    font-family: 'Courier New', monospace; font-size: 0.65rem;
+    color: var(--muted); margin-right: 0.25rem;
+  }
+  .opt-class-note {
+    font-family: 'Courier New', monospace; font-size: 0.54rem;
+    color: var(--accent); margin-left: 0.2rem;
   }
   /* ── Tablet (≤900px) ─────────────────────────────────────────────── */
   @media (max-width: 900px) {
@@ -2368,6 +2557,57 @@
             <span style="display:none" id="optNetRetYearsLabel">5 anos</span>
           </div>
         </div>
+        <!-- ── Restrições por classe de ativo ─────────────────────────────── -->
+        <div class="opt-class-section">
+          <div class="opt-class-header">
+            <span class="opt-constraint-label" style="text-transform:uppercase;letter-spacing:0.1em" data-tip="Define a faixa de alocação por classe de ativo (Renda Fixa, Ações/Long Biased, Multimercado). Qualquer portfólio que viole os limites é descartado. Deixe os campos em branco para sem restrição.">Limites por classe</span>
+            <div class="opt-class-presets">
+              <button class="opt-class-preset-btn" onclick="applyClassPreset('conservador')" data-tip="RF 40-70% · MM 20-40% · RV 0-30%">Conservador</button>
+              <button class="opt-class-preset-btn" onclick="applyClassPreset('moderado')"    data-tip="RF 20-50% · MM 20-40% · RV 20-40%">Moderado</button>
+              <button class="opt-class-preset-btn" onclick="applyClassPreset('arrojado')"    data-tip="RF 0-30% · MM 10-30% · RV 40-80%">Arrojado</button>
+              <button class="opt-class-preset-btn opt-class-preset-clear" onclick="applyClassPreset('livre')" data-tip="Remove todos os limites por classe">Livre</button>
+            </div>
+          </div>
+          <div class="opt-class-grid">
+            <div class="opt-class-row">
+              <span class="opt-class-label opt-class-rf">RF</span>
+              <span class="opt-class-sub">mín</span>
+              <input type="number" class="opt-class-input" id="optClassRFMin" min="0" max="100" step="5" placeholder="—"
+                     oninput="onClassConstraintInput('rf','min',this)" onchange="onClassConstraintInput('rf','min',this)">
+              <span class="opt-class-pct">%</span>
+              <span class="opt-class-sub">máx</span>
+              <input type="number" class="opt-class-input" id="optClassRFMax" min="0" max="100" step="5" placeholder="—"
+                     oninput="onClassConstraintInput('rf','max',this)" onchange="onClassConstraintInput('rf','max',this)">
+              <span class="opt-class-pct">%</span>
+              <span class="opt-class-note" id="optClassRFNote"></span>
+            </div>
+            <div class="opt-class-row">
+              <span class="opt-class-label opt-class-rv">RV</span>
+              <span class="opt-class-sub">mín</span>
+              <input type="number" class="opt-class-input" id="optClassRVMin" min="0" max="100" step="5" placeholder="—"
+                     oninput="onClassConstraintInput('rv','min',this)" onchange="onClassConstraintInput('rv','min',this)">
+              <span class="opt-class-pct">%</span>
+              <span class="opt-class-sub">máx</span>
+              <input type="number" class="opt-class-input" id="optClassRVMax" min="0" max="100" step="5" placeholder="—"
+                     oninput="onClassConstraintInput('rv','max',this)" onchange="onClassConstraintInput('rv','max',this)">
+              <span class="opt-class-pct">%</span>
+              <span class="opt-class-note" id="optClassRVNote"></span>
+            </div>
+            <div class="opt-class-row">
+              <span class="opt-class-label opt-class-mm">MM</span>
+              <span class="opt-class-sub">mín</span>
+              <input type="number" class="opt-class-input" id="optClassMMMin" min="0" max="100" step="5" placeholder="—"
+                     oninput="onClassConstraintInput('mm','min',this)" onchange="onClassConstraintInput('mm','min',this)">
+              <span class="opt-class-pct">%</span>
+              <span class="opt-class-sub">máx</span>
+              <input type="number" class="opt-class-input" id="optClassMMMax" min="0" max="100" step="5" placeholder="—"
+                     oninput="onClassConstraintInput('mm','max',this)" onchange="onClassConstraintInput('mm','max',this)">
+              <span class="opt-class-pct">%</span>
+              <span class="opt-class-note" id="optClassMMNote"></span>
+            </div>
+          </div>
+        </div>
+
         <div class="opt-constraint-warn" id="optConstraintWarn">
           ⚠ restrições incompatíveis para este tamanho de carteira
         </div>
@@ -2393,6 +2633,19 @@
           <span class="port-horizon-suffix" id="portHorizonSuffix">anos</span>
           <span class="port-horizon-floor" id="portHorizonFloor"></span>
         </div>
+      </div>
+
+      <!-- ── Barra de salvar/comparar cenários ── -->
+      <div class="port-scenario-bar" id="portScenarioBar" style="display:none">
+        <button class="btn-save-scenario" id="btnSaveScenario" onclick="onSaveScenario()"
+                data-tip="Salva o portfólio atual como cenário A. Depois de fazer mudanças, compare os dois cenários lado a lado.">
+          💾 Salvar cenário
+        </button>
+        <button class="btn-reset-scenario" id="btnResetScenario" onclick="onResetScenario()"
+                style="display:none" data-tip="Descarta o cenário salvo e fecha o painel de comparação.">
+          ↺ Resetar
+        </button>
+        <span class="scenario-saved-label" id="scenarioSavedLabel"></span>
       </div>
 
       <div class="port-metrics-panel">
@@ -2422,6 +2675,14 @@
         <div id="portCorr" class="port-empty" style="overflow-x:auto;-webkit-overflow-scrolling:touch">Selecione ao menos 2 fundos</div>
         <div id="concAlert"></div>
         <div id="portStressContainer"></div>
+        <!-- ── Painel de comparação de cenários ── -->
+        <div id="portComparePanel">
+          <div class="compare-header">
+            <span class="compare-title">Comparação de cenários</span>
+            <button class="compare-close" onclick="onResetScenario()" data-tip="Fechar comparação">✕</button>
+          </div>
+          <div id="portCompareBody"></div>
+        </div>
       </div>
     </div>
 
@@ -4404,6 +4665,8 @@ function updatePortfolio() {
     document.getElementById('portCorr').innerHTML    = '<div class="port-empty">Selecione ao menos 2 fundos</div>';
     const hp = document.getElementById('portHorizonPanel');
     if (hp) hp.classList.remove('visible');
+    const sb = document.getElementById('portScenarioBar');
+    if (sb) sb.style.display = 'none';
     return;
   }
   if (!historyData) return;
@@ -4510,6 +4773,17 @@ function updatePortfolio() {
   }
 
   const brlAlocado = patrimonio * total / 100;
+
+  // Show/hide the scenario bar (always visible when portfolio has funds)
+  const scenarioBar = document.getElementById('portScenarioBar');
+  if (scenarioBar) scenarioBar.style.display = 'flex';
+  _updateScenarioUI();
+
+  // If compare panel is open, refresh B side automatically
+  if (_scenarioA && document.getElementById('portComparePanel')?.classList.contains('visible')) {
+    const snapB = _snapshotPortfolio();
+    if (snapB) _renderCompare(_scenarioA, snapB);
+  }
 
   // Retorno alvo do portfólio
   // ── Slider de horizonte: mostrar só se houver fundo RF na carteira ────────
@@ -4979,6 +5253,263 @@ function getPortHorizonte() {
 }
 
 // Chamado pelo slider — atualiza label e re-renderiza métricas do portfólio.
+// ═══════════════════════════════════════════════════════════════════════════
+// SALVAR / COMPARAR CENÁRIOS DE PORTFÓLIO
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// Estado: dois snapshots em memória. Nenhum lookahead — snapshot captura
+// tudo no momento do clique (deep-copy), incluindo stressRows calculados.
+//
+let _scenarioA = null;  // cenário salvo (baseline)
+
+// Cria um snapshot completo do portfólio atual.
+function _snapshotPortfolio() {
+  const weights  = getWeights();
+  const total    = Object.values(weights).reduce((a,b) => a+b, 0);
+  const selected = Object.keys(weights);
+  if (!selected.length || total === 0) return null;
+
+  const wNorm = Object.fromEntries(selected.map(c => [c, weights[c] / total]));
+  const portHorizonte = (() => {
+    const hasRF = selected.some(c => (FUND_META[c]?.tipo||'').toLowerCase().includes('renda fixa'));
+    return hasRF ? getPortHorizonte() : undefined;
+  })();
+
+  // Retorno alvo do portfólio
+  const portTarget = historyData
+    ? calcPortfolioTargetReturn(selected, wNorm, historyData, portHorizonte)
+    : null;
+
+  // Stress rows (5 cenários)
+  const stressRows = (typeof STRESS_SCENARIOS !== 'undefined' && historyData)
+    ? STRESS_SCENARIOS.map(sc => {
+        let portRet = 0;
+        for (const cnpj of selected) {
+          const w = wNorm[cnpj] || 0;
+          if (!w) continue;
+          const expo  = FUND_EXPOSURE[cnpj] || { net_normal:1.0, net_crisis:0.8, primary:'ibov' };
+          const betas = (typeof fundBetas !== 'undefined' && fundBetas[cnpj]) || {};
+          if (expo.primary === 'cdi') {
+            const creditDur  = expo.credit_duration || 0;
+            const rateDur    = expo.rate_duration   || 0;
+            const fxExposure = expo.fx_exposure     || 0;
+            const cdiAnnRate = (cdi?.cagr12 ?? 12.75) / 100;
+            const cdiCarry   = sc.cdi_acc_period ?? (Math.pow(1 + cdiAnnRate, sc.days / 365) - 1);
+            const creditLoss = ((sc.credit_spread_shock || 0) / 100) * creditDur;
+            const durLoss    = ((sc.real_rate_shock    || 0) / 100) * rateDur;
+            const fxLoss     = fxExposure * Math.abs(sc.brl_dep) * -0.3;
+            const alpha_ann  = (betas.alpha_ann || 0) / 100;
+            const alpha_p    = Math.pow(1 + alpha_ann, sc.days / 252) - 1;
+            portRet += w * (cdiCarry - creditLoss - durLoss + fxLoss + alpha_p * 0.3);
+          } else {
+            let b_ibov = betas.beta_ibov, b_sp = betas.beta_sp500;
+            if (b_ibov == null) {
+              if (expo.primary === 'ibov')       { b_ibov = expo.net_normal; b_sp = 0.05; }
+              else if (expo.primary === 'sp500') { b_ibov = 0.05; b_sp = expo.net_normal; }
+              else { b_ibov = expo.net_normal * 0.5; b_sp = expo.net_normal * 0.5; }
+            }
+            const netAdj   = expo.net_crisis / Math.max(expo.net_normal, 0.01);
+            const r_sp_brl = (1 + sc.sp500_usd) * (1 + sc.brl_dep) - 1;
+            let r = netAdj * (b_ibov * sc.ibov_ret + b_sp * r_sp_brl);
+            if (Math.abs(sc.ibov_ret) > 0.3) r *= 1.05;
+            const alpha_ann = (betas.alpha_ann || 0) / 100;
+            const alpha_p   = Math.pow(1 + alpha_ann, sc.days / 252) - 1;
+            portRet += w * (r + alpha_p * 0.3);
+          }
+        }
+        return { name: sc.name, label: sc.label, ret: portRet * 100 };
+      })
+    : [];
+
+  // Vol histórica do portfólio
+  let vol = null;
+  if (historyData && selected.length > 0) {
+    const n = historyData.funds[selected[0]]?.returns?.length;
+    if (n) {
+      const portRets = new Float64Array(n);
+      for (const cnpj of selected) {
+        const rets = historyData.funds[cnpj]?.returns;
+        const w    = wNorm[cnpj] || 0;
+        if (rets) for (let i = 0; i < n; i++) portRets[i] += (rets[i] || 0) * w;
+      }
+      const mean = portRets.reduce((a,b) => a+b, 0) / n;
+      const var_ = portRets.reduce((a,r) => a + (r-mean)**2, 0) / (n-1);
+      vol = Math.sqrt(var_ * 252) * 100;
+    }
+  }
+
+  return {
+    timestamp: Date.now(),
+    selected:  [...selected],
+    weights:   { ...weights },
+    wNorm:     { ...wNorm },
+    horizonte: portHorizonte,
+    expReturn: portTarget?.expReturn ?? null,
+    sharpe:    portTarget?.sharpe    ?? null,
+    cdiTarget: portTarget?.cdiTarget ?? null,
+    vol,
+    stressRows,
+  };
+}
+
+function onSaveScenario() {
+  const snap = _snapshotPortfolio();
+  if (!snap) return;
+
+  if (!_scenarioA) {
+    // Primeira vez: salva cenário A
+    _scenarioA = snap;
+    _updateScenarioUI();
+  } else {
+    // Já tem cenário A: compara com o estado atual
+    const snapB = _snapshotPortfolio();
+    _renderCompare(_scenarioA, snapB);
+    document.getElementById('portComparePanel').classList.add('visible');
+    document.getElementById('portComparePanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function onResetScenario() {
+  _scenarioA = null;
+  document.getElementById('portComparePanel').classList.remove('visible');
+  document.getElementById('portCompareBody').innerHTML = '';
+  _updateScenarioUI();
+}
+
+function _updateScenarioUI() {
+  const bar     = document.getElementById('portScenarioBar');
+  const btn     = document.getElementById('btnSaveScenario');
+  const resetBtn = document.getElementById('btnResetScenario');
+  const label   = document.getElementById('scenarioSavedLabel');
+  if (!bar || !btn) return;
+
+  if (!_scenarioA) {
+    btn.textContent = '💾 Salvar cenário';
+    btn.classList.remove('saved');
+    resetBtn.style.display = 'none';
+    label.textContent = '';
+  } else {
+    btn.textContent = '📊 Comparar com novo cenário';
+    btn.classList.add('saved');
+    resetBtn.style.display = '';
+    const t = new Date(_scenarioA.timestamp);
+    const hm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+    const names = _scenarioA.selected
+      .map(c => (FUND_META[c]?.short || FUND_META[c]?.nome?.split(' ')[0] || c))
+      .join(', ');
+    label.textContent = `Cenário A salvo às ${hm} · ${names}`;
+  }
+}
+
+function _renderCompare(A, B) {
+  const fmtPct = (v, decimals=1) => v == null ? '—'
+    : `${v >= 0 ? '+' : ''}${v.toFixed(decimals)}%`;
+  const fmtVal = (v, suffix='') => v == null ? '—' : `${v.toFixed(2)}${suffix}`;
+
+  // Delta: B - A, positive = B better for return/sharpe, negative = B worse
+  function delta(vA, vB, higherIsBetter=true) {
+    if (vA == null || vB == null) return '';
+    const d = vB - vA;
+    if (Math.abs(d) < 0.05) return '';
+    const better = higherIsBetter ? d > 0 : d < 0;
+    const sign = d > 0 ? '+' : '';
+    return `<span class="compare-delta ${better ? 'better' : 'worse'}">${sign}${d.toFixed(1)}</span>`;
+  }
+
+  // Fund chips: highlight added/removed/same
+  function fundChips(snap, other) {
+    const setOther = new Set(other.selected);
+    return snap.selected.map(c => {
+      const nome = FUND_META[c]?.short || FUND_META[c]?.nome?.split(' ')[0] || c;
+      const pct  = Math.round((snap.wNorm[c] || 0) * 100);
+      const cls  = setOther.has(c) ? 'same' : (snap === A ? 'removed' : 'added');
+      return `<span class="compare-fund-chip ${cls}">${nome} ${pct}%</span>`;
+    }).join('');
+  }
+
+  // Stress comparison
+  const stressHtml = (() => {
+    if (!A.stressRows.length && !B.stressRows.length) return '';
+    const allNames = [...new Set([...A.stressRows.map(s=>s.name), ...B.stressRows.map(s=>s.name)])];
+    const items = allNames.map(name => {
+      const sA = A.stressRows.find(s => s.name === name);
+      const sB = B.stressRows.find(s => s.name === name);
+      const rA = sA?.ret;
+      const rB = sB?.ret;
+      const clsA = rA == null ? 'neu' : rA >= 0 ? 'pos' : rA >= -10 ? '' : 'neg';
+      const clsB = rB == null ? 'neu' : rB >= 0 ? 'pos' : rB >= -10 ? '' : 'neg';
+      const d = rA != null && rB != null
+        ? (() => {
+            const diff = rB - rA;
+            if (Math.abs(diff) < 0.3) return '';
+            const better = diff > 0;
+            return `<span class="compare-delta ${better?'better':'worse'}" style="font-size:0.54rem">${diff>0?'+':''}${diff.toFixed(1)}</span>`;
+          })()
+        : '';
+      return `<div class="compare-stress-item">
+        <div class="compare-stress-name">${name}</div>
+        <div class="compare-stress-vals">
+          <span class="compare-stress-val ${clsA}" style="color:var(--blue)">${fmtPct(rA)}</span>
+          <span style="font-family:'Courier New',monospace;font-size:0.6rem;color:var(--muted)">→</span>
+          <span class="compare-stress-val ${clsB}" style="color:var(--green)">${fmtPct(rB)}</span>
+          ${d}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="padding:0.5rem 1rem 0.3rem;font-family:'Courier New',monospace;font-size:0.54rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Stress test por cenário (azul=A · verde=B)</div>
+    <div class="compare-stress-grid">${items}</div>`;
+  })();
+
+  function metricBlock(snap) {
+    const h = snap.horizonte ? `${snap.horizonte}a` : '—';
+    return `
+      <div class="compare-funds">${fundChips(snap, snap === A ? B : A)}</div>
+      <div class="compare-section">
+        <div class="compare-metric-row">
+          <span class="compare-metric-label">Retorno alvo</span>
+          <span class="compare-metric-val ${snap.expReturn >= 0 ? 'pos' : 'neg'}">${fmtPct(snap.expReturn)}</span>
+        </div>
+        <div class="compare-metric-row">
+          <span class="compare-metric-label">Volatilidade</span>
+          <span class="compare-metric-val neu">${snap.vol != null ? snap.vol.toFixed(1)+'%' : '—'}</span>
+        </div>
+        <div class="compare-metric-row">
+          <span class="compare-metric-label">Sharpe</span>
+          <span class="compare-metric-val neu">${fmtVal(snap.sharpe)}</span>
+        </div>
+        <div class="compare-metric-row">
+          <span class="compare-metric-label">Horizonte RF</span>
+          <span class="compare-metric-val neu">${h}</span>
+        </div>
+        <div class="compare-metric-row">
+          <span class="compare-metric-label">Pior stress</span>
+          ${(() => {
+            const worst = snap.stressRows.length ? Math.min(...snap.stressRows.map(s=>s.ret)) : null;
+            return `<span class="compare-metric-val ${worst != null && worst < 0 ? 'neg' : 'pos'}">${fmtPct(worst)}</span>`;
+          })()}
+        </div>
+      </div>`;
+  }
+
+  const html = `
+    <div class="compare-cols">
+      <div class="compare-col-header">Cenário A — baseline</div>
+      <div class="compare-col-header">Cenário B — atual</div>
+    </div>
+    <div class="compare-body">
+      <div>${metricBlock(A)}</div>
+      <div>${metricBlock(B)}</div>
+    </div>
+    <div style="padding:0.4rem 1rem 0.3rem;font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);border-top:0.5px solid var(--border)">
+      Retorno: ${fmtPct(A.expReturn)} → ${fmtPct(B.expReturn)} ${delta(A.expReturn, B.expReturn)} ·
+      Sharpe: ${fmtVal(A.sharpe)} → ${fmtVal(B.sharpe)} ${delta(A.sharpe, B.sharpe)} ·
+      Stress (pior): ${fmtPct(A.stressRows.length?Math.min(...A.stressRows.map(s=>s.ret)):null)} → ${fmtPct(B.stressRows.length?Math.min(...B.stressRows.map(s=>s.ret)):null)} ${delta(A.stressRows.length?Math.min(...A.stressRows.map(s=>s.ret)):null, B.stressRows.length?Math.min(...B.stressRows.map(s=>s.ret)):null)}
+    </div>
+    ${stressHtml}`;
+
+  document.getElementById('portCompareBody').innerHTML = html;
+}
+
 function onPortHorizonSlider() {
   const h    = getPortHorizonte();
   const valEl = document.getElementById('portHorizonVal');
@@ -5357,6 +5888,10 @@ let optMaxStressLoss    = null;  // null = sem restrição; valor em fração ne
 let optMinTargetRet     = null;  // null = sem restrição; valor em % (ex: 20 = 20%)
 let optMinNetRet        = null;  // null = sem restrição; valor em % líquido
 let optNetRetYears      = 5;     // prazo estimado para cálculo do IR (anos)
+// Constraints de alocação por classe (min/max como fração 0-1; null = sem restrição)
+let optClassRF  = { min: null, max: null };  // Renda Fixa
+let optClassRV  = { min: null, max: null };  // Renda Variável (ações/long biased)
+let optClassMM  = { min: null, max: null };  // Multimercado
 
 // ── Universe filter state ─────────────────────────────────────────────────────
 // Set of CNPJs manually toggled OFF by the user (starts empty = all active)
@@ -5686,6 +6221,8 @@ function updateOptSummary() {
   if (optMaxStressLoss !== null) constraints.push(`stress≥${(optMaxStressLoss*100).toFixed(0)}%`);
   if (optMinTargetRet !== null) constraints.push(`ret≥${optMinTargetRet}%`);
   if (optMinNetRet    !== null) constraints.push(`ret_líq≥${optMinNetRet}%(${optNetRetYears}a)`);
+  const classLabel = _classConstraintsLabel();
+  if (classLabel) constraints.push(classLabel);
 
   el.textContent = `${nLabel}f · ${obj}` + (constraints.length ? ' · ' + constraints.join(' · ') : '');
 }
@@ -6256,6 +6793,85 @@ function cancelOptimizer() {
   document.getElementById('optStatus').textContent = 'Cancelado.';
 }
 
+// ── Restrições por classe de ativo ────────────────────────────────────────────
+//
+// Classifica um CNPJ em 'rf' | 'rv' | 'mm' com base em FUND_META.tipo.
+function _fundClass(cnpj) {
+  const tipo = ((FUND_META[cnpj] || {}).tipo || '').toLowerCase();
+  if (tipo.includes('renda fixa'))   return 'rf';
+  if (tipo.includes('multimercado')) return 'mm';
+  if (tipo.includes('ações') || tipo.includes('acoes') ||
+      tipo.includes('long')  || tipo.includes('fia'))   return 'rv';
+  return null;
+}
+
+function _classWeights(combo, w) {
+  const out = { rf: 0, rv: 0, mm: 0 };
+  combo.forEach((cnpj, i) => { const c = _fundClass(cnpj); if (c) out[c] += w[i]; });
+  return out;
+}
+
+// Retorna true se a combo passa nos constraints de classe.
+function _passesClassConstraints(combo, w) {
+  if (!optClassRF.min && !optClassRF.max && !optClassRV.min && !optClassRV.max &&
+      !optClassMM.min && !optClassMM.max) return true; // nada configurado — skip check
+  const cw = _classWeights(combo, w);
+  for (const [cls, con] of [['rf', optClassRF], ['rv', optClassRV], ['mm', optClassMM]]) {
+    const hasClass = combo.some(c => _fundClass(c) === cls);
+    if (con.min !== null) {
+      if (!hasClass && con.min > 0.001) return false;
+      if ( hasClass && cw[cls] < con.min - 1e-9) return false;
+    }
+    if (con.max !== null && cw[cls] > con.max + 1e-9) return false;
+  }
+  return true;
+}
+
+function onClassConstraintInput(cls, bound, el) {
+  const raw = el.value.trim();
+  const v   = raw === '' ? null : Math.min(100, Math.max(0, parseFloat(raw)));
+  const map = { rf: optClassRF, rv: optClassRV, mm: optClassMM };
+  map[cls][bound] = v === null ? null : v / 100;
+  const noteEl = document.getElementById(`optClass${cls.toUpperCase()}Note`);
+  if (noteEl) {
+    const c = map[cls];
+    if (c.min !== null && c.max !== null && c.min > c.max + 1e-9) {
+      noteEl.textContent = 'mín > máx'; noteEl.style.color = 'var(--red)';
+    } else if (c.min !== null || c.max !== null) {
+      const parts = [];
+      if (c.min !== null) parts.push(`≥${Math.round(c.min*100)}%`);
+      if (c.max !== null) parts.push(`≤${Math.round(c.max*100)}%`);
+      noteEl.textContent = parts.join(' '); noteEl.style.color = 'var(--accent)';
+    } else { noteEl.textContent = ''; }
+  }
+}
+
+function applyClassPreset(preset) {
+  const P = {
+    conservador: { rf:[40,70], rv:[0,30],  mm:[20,40] },
+    moderado:    { rf:[20,50], rv:[20,40], mm:[20,40] },
+    arrojado:    { rf:[0,30],  rv:[40,80], mm:[10,30] },
+    livre:       { rf:[null,null], rv:[null,null], mm:[null,null] },
+  }[preset];
+  if (!P) return;
+  for (const [cls,[mn,mx]] of Object.entries(P)) {
+    const CLS = cls.toUpperCase();
+    const minEl = document.getElementById(`optClass${CLS}Min`);
+    const maxEl = document.getElementById(`optClass${CLS}Max`);
+    if (minEl) { minEl.value = mn ?? ''; onClassConstraintInput(cls, 'min', minEl); }
+    if (maxEl) { maxEl.value = mx ?? ''; onClassConstraintInput(cls, 'max', maxEl); }
+  }
+}
+
+function _classConstraintsLabel() {
+  const parts = [];
+  for (const [cls,c] of [['RF',optClassRF],['RV',optClassRV],['MM',optClassMM]]) {
+    if (c.min !== null || c.max !== null)
+      parts.push(`${cls}:${c.min!=null?Math.round(c.min*100)+'%':'0%'}–${c.max!=null?Math.round(c.max*100)+'%':'100%'}`);
+  }
+  return parts.join(' · ');
+}
+
 function _applyWeightConstraints(w, k) {
   const feasible = (optMinW * k <= 1.0 + 1e-9)
                 && (optMaxW * k >= 1.0 - 1e-9)
@@ -6429,7 +7045,8 @@ function runOptimizer() {
         w = _applyWeightConstraints(w, k);
         if (!w) continue;
 
-        // Beta constraints: reject portfolio if weighted beta exceeds user limit
+        // Class allocation constraints: reject if class weights violate min/max
+        if (!_passesClassConstraints(combo, w)) continue;
         if (optMaxBetaIbov !== null) {
           const bIbov = calcPortfolioBeta(combo, w, 'ibov');
           if (bIbov > optMaxBetaIbov + 1e-9) continue;
@@ -10743,6 +11360,130 @@ function renderFundProfile() {
         Passe o mouse em cada cenário para ver a decomposição completa
       </div>`;
     }
+  }
+
+  // ── Evolução histórica das métricas ──────────────────────────────────────
+  // Mostra como o retorno alvo, retorno líquido e max drawdown estimado
+  // evoluíram ao longo dos últimos 12 meses, calculados com dados disponíveis
+  // em cada data (sem lookahead).
+  const metricsHist = historyData?.metricsHistory?.[cnpj];
+  if (metricsHist && Object.keys(metricsHist).length >= 2) {
+    const sortedDates = Object.keys(metricsHist).sort();
+    const labels      = sortedDates.map(d => { const [y,m] = d.split('-'); return `${m}/${y.slice(2)}`; });
+    const tgtData     = sortedDates.map(d => metricsHist[d].targetReturn  ?? null);
+    const net5Data    = sortedDates.map(d => metricsHist[d].netReturn5    ?? null);
+    const net10Data   = sortedDates.map(d => metricsHist[d].netReturn10   ?? null);
+    const cdiData     = sortedDates.map(d => metricsHist[d].cdiWeighted   ?? null);
+    const floorData   = sortedDates.map(d => metricsHist[d].cdiFloor      ?? null);
+    const ddData      = sortedDates.map(d => metricsHist[d].maxDD         ?? null);
+    const ntnbData    = sortedDates.map(d => metricsHist[d].ntnbLong      ?? null);
+
+    const canvasId = `metricsHistChart_${cnpj.replace(/\D/g,'')}_${Date.now()}`;
+    html += `
+      <div class="fp-section-title" style="margin-top:1.4rem" data-tip="Evolução retroativa das métricas-chave do fundo nos últimos 12 meses.&#10;Cada ponto representa o que o modelo estimaria naquela data, usando apenas os dados disponíveis até ali (sem lookahead).&#10;Eixo esquerdo: retorno alvo bruto, líquido (IR) e CDI/floor. Eixo direito: NTN-B longa (taxa real %).">Evolução histórica das métricas ⓘ</div>
+      <div style="position:relative;height:180px;margin-bottom:0.6rem">
+        <canvas id="${canvasId}"></canvas>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem 1.2rem;font-family:'Courier New',monospace;font-size:0.54rem;color:var(--muted);margin-bottom:0.5rem">
+        <span><span style="display:inline-block;width:20px;height:2px;background:var(--accent);vertical-align:middle;margin-right:4px"></span>Retorno alvo</span>
+        <span><span style="display:inline-block;width:20px;height:2px;background:var(--green);vertical-align:middle;margin-right:4px;border-bottom:2px dashed var(--green)"></span>Líquido 5a</span>
+        <span><span style="display:inline-block;width:20px;height:2px;background:var(--blue);vertical-align:middle;margin-right:4px;opacity:0.6"></span>CDI pond.</span>
+        <span><span style="display:inline-block;width:20px;height:2px;background:var(--amber,#e07800);vertical-align:middle;margin-right:4px;opacity:0.7;border-bottom:2px dotted var(--amber,#e07800)"></span>Floor RF</span>
+        <span><span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;vertical-align:middle;margin-right:4px;opacity:0.4"></span>NTN-B real (eixo dir.)</span>
+      </div>`;
+
+    // Deferred chart render after innerHTML is set
+    setTimeout(function() {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx || typeof Chart === 'undefined') return;
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      const textColor = isDark ? '#888' : '#aaa';
+      const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2563eb';
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Retorno alvo',
+              data: tgtData,
+              borderColor: accentColor, borderWidth: 2,
+              pointRadius: 3, pointHoverRadius: 5,
+              tension: 0.35, fill: false, yAxisID: 'y',
+            },
+            {
+              label: 'Líquido 5a',
+              data: net5Data,
+              borderColor: '#16a34a', borderWidth: 1.5,
+              borderDash: [4, 3],
+              pointRadius: 0, tension: 0.35, fill: false, yAxisID: 'y',
+            },
+            {
+              label: 'CDI pond.',
+              data: cdiData,
+              borderColor: '#3b82f6', borderWidth: 1, opacity: 0.5,
+              pointRadius: 0, tension: 0.2, fill: false, yAxisID: 'y',
+            },
+            {
+              label: 'Floor RF',
+              data: floorData,
+              borderColor: '#e07800', borderWidth: 1,
+              borderDash: [2, 3],
+              pointRadius: 0, tension: 0.2, fill: false, yAxisID: 'y',
+            },
+            {
+              label: 'NTN-B longa (real)',
+              data: ntnbData,
+              borderColor: '#ef4444', borderWidth: 1,
+              pointRadius: 2, pointStyle: 'circle',
+              tension: 0.2, fill: false, yAxisID: 'y2',
+            },
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: isDark ? '#1e293b' : '#fff',
+              borderColor: isDark ? '#334155' : '#e2e8f0',
+              borderWidth: 1,
+              titleColor: textColor,
+              bodyColor: isDark ? '#94a3b8' : '#64748b',
+              bodyFont: { family: 'Courier New', size: 11 },
+              callbacks: {
+                label: ctx => {
+                  const v = ctx.parsed.y;
+                  return v != null ? `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : null;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              ticks: { font: { family: 'Courier New', size: 9 }, color: textColor, maxRotation: 0 },
+              grid:  { color: gridColor },
+            },
+            y: {
+              position: 'left',
+              ticks: { font: { family: 'Courier New', size: 9 }, color: textColor,
+                       callback: v => `${v.toFixed(0)}%` },
+              grid:  { color: gridColor },
+              title: { display: false },
+            },
+            y2: {
+              position: 'right',
+              ticks: { font: { family: 'Courier New', size: 9 }, color: '#ef4444',
+                       callback: v => `${v.toFixed(1)}%r` },
+              grid: { drawOnChartArea: false },
+              title: { display: false },
+            },
+          },
+        },
+      });
+    }, 50);
   }
 
   content.innerHTML = html;
