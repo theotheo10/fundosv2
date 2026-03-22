@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-22T02:11:21.709891+00:00",
+  "generatedAt": "2026-03-22T23:17:10.053783+00:00",
   "anchorDate": "2026-03-19",
   "ibov": {
     "cagr12": 36.07405691629566,
@@ -15,6 +15,19 @@
     "cagr12": 7.999275608999534,
     "cagr36": 19.27931375246017,
     "cagr60": 9.832967717581532
+  },
+  "ntnb": {
+    "ntnb_rate_long": 7.05,
+    "ntnb_rate_mid": 6.9,
+    "ntnb_fetched_at": null,
+    "ntnb_titles": [],
+    "ntnb_source": "fallback"
+  },
+  "ipca_focus": {
+    "ipca_12m": 4.8,
+    "ipca_longo_prazo": 4.0,
+    "ipca_fetched_at": null,
+    "ipca_source": "fallback"
   },
   "fund_betas": {
     "22.232.927/0001-90": {
