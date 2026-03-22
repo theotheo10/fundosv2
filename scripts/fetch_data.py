@@ -2238,7 +2238,9 @@ def main() -> None:
             backfill_months = 12,
         )
     except Exception as _mh:
+        import traceback
         print(f"  ⚠ metricsHistory falhou: {_mh}")
+        traceback.print_exc()
 
     delayed = [r for r in results if not r.get("error") and r.get("isDelayed")]
     if delayed:
