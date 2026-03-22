@@ -1240,6 +1240,366 @@ def compute_efficient_frontier(mu_map: dict, cov_out: dict, corr: dict) -> list:
     return sorted([{"x": v, "y": r} for v, r in bins.items()], key=lambda p: p["x"])
 
 
+def fetch_ntnb_historico() -> dict[str, float]:
+    """
+    Busca o histórico de taxas NTN-B longa do Tesouro Direto (arquivo CSV histórico).
+
+    Retorna dict {data_iso: taxa_real_media_longa} onde taxa é em % ao ano.
+    Dados disponíveis desde ~2002; atualizado diariamente pelo Tesouro.
+
+    URL: CSV público com preços e taxas históricas de todos os títulos.
+    Formato: Tipo Titulo;Vencimento do Titulo;Data Base;Taxa Compra Manha;...
+    """
+    url = ("https://www.tesourodireto.com.br/json/br/com/b3/tesourodireto/pte/"
+           "rest/api/v1/TesouroDireto_HistoricoPrecosTaxas.csv")
+    print("  Buscando histórico NTN-B do Tesouro Direto…")
+    try:
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "text/csv,*/*",
+            "Referer": "https://www.tesourodireto.com.br/",
+        })
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            raw = resp.read().decode("latin-1", errors="replace")
+
+        # Parse CSV: separador ;, cabeçalho na linha 1 ou 2
+        lines = [l.strip() for l in raw.splitlines() if l.strip()]
+        # Encontrar linha de cabeçalho (contém "Tipo Titulo" ou "Data Base")
+        header_idx = next((i for i, l in enumerate(lines)
+                           if "Tipo Titulo" in l or "Data Base" in l), 0)
+        header = [h.strip().strip('"') for h in lines[header_idx].split(";")]
+
+        def col(name: str) -> int:
+            for i, h in enumerate(header):
+                if name.lower() in h.lower():
+                    return i
+            return -1
+
+        c_tipo = col("Tipo Titulo")
+        c_date = col("Data Base")
+        c_taxa = col("Taxa Compra Manha")
+        c_venc = col("Vencimento")
+        if c_date < 0 or c_taxa < 0:
+            print("  ✗ NTN-B histórico: colunas não encontradas no CSV")
+            return {}
+
+        today = datetime.date.today()
+        # NTN-B "longa": vencimento >= 8 anos a partir da data base
+        by_date: dict[str, list[float]] = {}
+        for line in lines[header_idx + 1:]:
+            cols = line.split(";")
+            if len(cols) <= max(c_tipo, c_date, c_taxa):
+                continue
+            tipo = cols[c_tipo].strip().strip('"').upper() if c_tipo >= 0 else ""
+            if "IPCA" not in tipo and "NTN-B" not in tipo:
+                continue
+            date_raw = cols[c_date].strip().strip('"')
+            taxa_raw = cols[c_taxa].strip().strip('"').replace(",", ".")
+            try:
+                # Data pode ser DD/MM/AAAA ou AAAA-MM-DD
+                if "/" in date_raw:
+                    d, m, y = date_raw.split("/")
+                    date_iso = f"{y.zfill(4)}-{m.zfill(2)}-{d.zfill(2)}"
+                else:
+                    date_iso = date_raw[:10]
+                taxa_val = float(taxa_raw)
+                if taxa_val <= 0:
+                    continue
+                # Filtro de vencimento longo (>= 8 anos a partir da data base)
+                if c_venc >= 0:
+                    venc_raw = cols[c_venc].strip().strip('"')
+                    if "/" in venc_raw:
+                        dv, mv, yv = venc_raw.split("/")
+                        venc_iso = f"{yv.zfill(4)}-{mv.zfill(2)}-{dv.zfill(2)}"
+                    else:
+                        venc_iso = venc_raw[:10]
+                    base_year = int(date_iso[:4])
+                    venc_year = int(venc_iso[:4])
+                    if venc_year - base_year < 8:
+                        continue
+                by_date.setdefault(date_iso, []).append(taxa_val)
+            except (ValueError, IndexError):
+                continue
+
+        # Média das longas por data
+        result = {d: round(sum(v) / len(v), 4) for d, v in by_date.items() if v}
+        print(f"  ✓ NTN-B histórico: {len(result)} datas com taxa longa")
+        return result
+
+    except Exception as e:
+        print(f"  ✗ NTN-B histórico falhou: {e}")
+        return {}
+
+
+def compute_metrics_history(
+    hist_path: Path,
+    cdi_price_map: dict[str, float],
+    ntnb_hist: dict[str, float],
+    anchor: datetime.date,
+    backfill_months: int = 12,
+) -> None:
+    """
+    Calcula e persiste o histórico de métricas por fundo no history.json.
+
+    Para cada fundo e para cada 'data de referência' nos últimos backfill_months,
+    reconstrói o que o modelo teria estimado naquela data com os dados então
+    disponíveis — sem lookahead.
+
+    Métricas calculadas por data:
+      targetReturn:    retorno alvo bruto estimado (%)
+      netReturn5:      retorno alvo líquido IR a 5 anos (%)
+      netReturn10:     retorno alvo líquido IR a 10 anos (%)
+      cdiFloor:        floor do modelo (%) com horizonte 5 anos
+      ntnbLong:        taxa NTN-B longa usada naquela data (%)
+      cdiWeighted:     CDI ponderado (12M×1+36M×3+60M×5)/9 naquela data (%)
+      maxDD:           max drawdown histórico até a data (%)
+
+    Schema adicionado ao history.json:
+      metricsHistory: {
+        "22.232.927/0001-90": {
+          "2024-03-01": { targetReturn, netReturn5, ... },
+          ...
+        },
+        ...
+      }
+
+    Datas de referência: última data útil de cada mês nos últimos backfill_months.
+    """
+    if not hist_path.exists():
+        print("  ⚠ compute_metrics_history: history.json não encontrado")
+        return
+
+    try:
+        hist = json.loads(hist_path.read_text())
+    except Exception as e:
+        print(f"  ⚠ compute_metrics_history: falha ao ler history.json: {e}")
+        return
+
+    common_dates = hist.get("commonDates", [])
+    funds_hist   = hist.get("funds", {})
+    if not common_dates or not funds_hist:
+        print("  ⚠ compute_metrics_history: history.json vazio ou sem commonDates")
+        return
+
+    # Datas de referência: última data de cada mês nos últimos backfill_months
+    ref_dates: list[datetime.date] = []
+    for months_back in range(backfill_months, 0, -1):
+        y, m = anchor.year, anchor.month - months_back
+        while m <= 0:
+            m += 12; y -= 1
+        last_day = calendar.monthrange(y, m)[1]
+        ref_dates.append(datetime.date(y, m, last_day))
+    ref_dates.append(anchor)  # inclui hoje
+
+    # Monta CDI acumulado por data a partir do cdi_price_map
+    # cdi_price_map: {iso_date: fator_acumulado} a partir de uma data base
+    cdi_dates = sorted(cdi_price_map.keys())
+
+    def cdi_cagr_between(d_start_iso: str, d_end_iso: str) -> float | None:
+        """CAGR do CDI entre duas datas usando o price_map do fetch_cdi."""
+        ps = cdi_price_map.get(d_start_iso)
+        pe = cdi_price_map.get(d_end_iso)
+        if not ps or not pe or ps <= 0:
+            return None
+        yrs = years_apart(d_start_iso, d_end_iso)
+        return cagr(ps, pe, yrs)
+
+    def best_cdi_date(target: datetime.date) -> str | None:
+        target_iso = target.isoformat()
+        if target_iso in cdi_price_map:
+            return target_iso
+        # Busca o mais próximo anterior
+        for d in reversed(cdi_dates):
+            if d <= target_iso:
+                return d
+        return None
+
+    # Parâmetros do modelo de floor (mesmos do JavaScript)
+    NTNB_HAIRCUT  = 0.35
+    TAU_ANOS      = 10.0
+    META_CMN      = 3.0
+    W_META        = 0.30
+    W_5A          = 0.50
+    W_12M         = 0.20
+    # IPCA Focus longo prazo (valor único — em produção viria do Focus histórico;
+    # aqui usamos 4.0% como proxy estável para o backfill)
+    IPCA_FOCUS_5A = 4.0
+    IPCA_FOCUS_12M = 4.8
+    # Calcular floor para um dado CDI observado e NTN-B longa
+    def calc_floor_rf(cdi_obs: float, ntnb_long: float, horizonte: float = 5.0) -> float:
+        ipca_estr    = W_META * META_CMN + W_5A * IPCA_FOCUS_5A + W_12M * IPCA_FOCUS_12M
+        neutro_real  = ntnb_long * (1 - NTNB_HAIRCUT)
+        neutral_nom  = ((1 + neutro_real / 100) * (1 + ipca_estr / 100) - 1) * 100
+        w_cdi        = math.exp(-horizonte / TAU_ANOS)
+        return w_cdi * cdi_obs + (1 - w_cdi) * neutral_nom
+
+    # IR simplificado para retorno líquido (regressiva TR, 5 e 10 anos)
+    IR_RATES = {5: 0.15, 10: 0.15}   # simplificação: tabela regressiva ≈ 15% LP
+    def net_return(gross_pct: float, years: int, trib: str) -> float:
+        """Retorno líquido de IR: simplificado para o backfill."""
+        if trib == "Isento":
+            return gross_pct
+        ir = IR_RATES.get(years, 0.15)
+        # Aproximação: (1+r)^n líquido = (1+r*0.85)^n após come-cotas
+        # Para TR: 15% sobre ganho acumulado menos efeito do come-cotas semestral
+        # Aqui usamos a aproximação de compounding com alíquota efetiva
+        g = gross_pct / 100
+        net_ann = (1 + g) ** years
+        gain = net_ann - 1
+        net_with_ir = 1 + gain * (1 - ir)
+        return (net_with_ir ** (1 / years) - 1) * 100
+
+    # Mapeamento CNPJ → trib (precisa ler do FUND_META — indisponível aqui, usa fallback)
+    # Codificamos os tipos diretamente para os CNPJs conhecidos
+    TRIB_MAP = {
+        "52.239.457/0001-57": "TR",   # Janeiro RF
+        "51.253.495/0001-00": "TR",   # Mapfre
+        "52.969.671/0001-69": "Isento",  # Artax Infra
+    }
+    def get_trib(cnpj: str, fund_info: dict) -> str:
+        return TRIB_MAP.get(cnpj, "RV")  # ações/multi → RV
+
+    # Carrega histórico existente para não recalcular datas já presentes
+    existing = hist.get("metricsHistory", {})
+    new_entries: dict[str, dict[str, dict]] = {cnpj: {} for cnpj in funds_hist}
+
+    total_computed = 0
+    for ref_date in ref_dates:
+        ref_iso = ref_date.isoformat()
+        # Encontra o índice da data de referência em commonDates
+        if ref_iso not in common_dates:
+            # Encontra a data mais próxima anterior
+            ref_iso_eff = next((d for d in reversed(common_dates) if d <= ref_iso), None)
+            if not ref_iso_eff:
+                continue
+        else:
+            ref_iso_eff = ref_iso
+
+        ref_idx = common_dates.index(ref_iso_eff)
+
+        # CDI nas janelas 12M, 36M, 60M até ref_date
+        def subtract_months_date(d: datetime.date, n: int) -> datetime.date:
+            y, m = d.year, d.month - n
+            while m <= 0: m += 12; y -= 1
+            last = calendar.monthrange(y, m)[1]
+            return datetime.date(y, m, min(d.day, last))
+
+        d12 = subtract_months_date(ref_date, 12)
+        d36 = subtract_months_date(ref_date, 36)
+        d60 = subtract_months_date(ref_date, 60)
+
+        cdi12 = cdi_cagr_between(best_cdi_date(d12) or ref_iso_eff, best_cdi_date(ref_date) or ref_iso_eff)
+        cdi36 = cdi_cagr_between(best_cdi_date(d36) or ref_iso_eff, best_cdi_date(ref_date) or ref_iso_eff)
+        cdi60 = cdi_cagr_between(best_cdi_date(d60) or ref_iso_eff, best_cdi_date(ref_date) or ref_iso_eff)
+
+        pts = [(T, v) for T, v in [(1, cdi12), (3, cdi36), (5, cdi60)] if v is not None]
+        if not pts:
+            continue
+        cdi_weighted = sum(T * v for T, v in pts) / sum(T for T, _ in pts)
+
+        # NTN-B longa na data (ou fallback)
+        ntnb_long = ntnb_hist.get(ref_iso_eff)
+        if ntnb_long is None:
+            # Procura a mais próxima anterior
+            ntnb_long = next((ntnb_hist[d] for d in sorted(ntnb_hist.keys(), reverse=True)
+                              if d <= ref_iso_eff), 7.05)
+
+        cdi_floor_5a = calc_floor_rf(cdi_weighted, ntnb_long, horizonte=5.0)
+
+        for cnpj, fd in funds_hist.items():
+            # Skip se já calculado
+            if ref_iso in existing.get(cnpj, {}):
+                continue
+
+            dates_fund = fd.get("dates", [])
+            quotas     = fd.get("quotas", [])
+            returns    = fd.get("returns", [])
+            if not dates_fund or len(quotas) < 2:
+                continue
+
+            # Apenas datas até ref_date (sem lookahead)
+            valid_idx = [i for i, d in enumerate(common_dates) if d <= ref_iso_eff and i < len(returns)]
+            if len(valid_idx) < 20:
+                continue
+
+            # Retornos do fundo até ref_date
+            rets_to_ref = [returns[i] for i in valid_idx if returns[i] is not None]
+            if len(rets_to_ref) < 20:
+                continue
+
+            # CAGR nas janelas disponíveis até ref_date
+            def fund_cagr_window(months: int) -> float | None:
+                target_start = subtract_months_date(ref_date, months)
+                start_iso = target_start.isoformat()
+                # Encontra índice de início
+                start_idx = next((i for i, d in enumerate(common_dates)
+                                  if d >= start_iso and i in set(valid_idx)), None)
+                if start_idx is None or start_idx >= ref_idx:
+                    return None
+                rets_slice = [returns[i] for i in range(start_idx, ref_idx + 1)
+                              if i < len(returns) and returns[i] is not None]
+                if len(rets_slice) < 5:
+                    return None
+                cum = 1.0
+                for r in rets_slice:
+                    cum *= (1 + r)
+                yrs = months / 12
+                return (cum ** (1 / yrs) - 1) * 100 if yrs > 0 else None
+
+            c12 = fund_cagr_window(12)
+            c36 = fund_cagr_window(36)
+            c60 = fund_cagr_window(60)
+
+            samples = [(T, v) for T, v in [(1.0, c12), (3.0, c36), (5.0, c60)] if v is not None]
+            if not samples:
+                continue
+
+            # Estimativa de retorno alvo (versão simplificada do modelo bayesiano)
+            # — usa apenas a média ponderada por √T sem o prior completo (sem FUND_META disponível aqui)
+            sqrt_w = [math.sqrt(T) for T, _ in samples]
+            total_w = sum(sqrt_w)
+            raw_avg = sum(sqrt_w[i] * v for i, (_, v) in enumerate(samples)) / total_w
+
+            # Floor RF simples (sem isRF check — aplica a todos conservadoramente)
+            # O frontend filtra por tipo de fundo
+            target = max(raw_avg, cdi_floor_5a)
+
+            # Max drawdown histórico até ref_date
+            cum = 1.0
+            peak = 1.0
+            max_dd = 0.0
+            for r in rets_to_ref:
+                cum *= (1 + r)
+                if cum > peak:
+                    peak = cum
+                dd = (cum - peak) / peak
+                if dd < max_dd:
+                    max_dd = dd
+
+            trib = get_trib(cnpj, fd)
+            entry = {
+                "targetReturn": round(target, 2),
+                "netReturn5":   round(net_return(target, 5,  trib), 2),
+                "netReturn10":  round(net_return(target, 10, trib), 2),
+                "cdiFloor":     round(cdi_floor_5a, 2),
+                "ntnbLong":     round(ntnb_long, 2),
+                "cdiWeighted":  round(cdi_weighted, 2),
+                "maxDD":        round(max_dd * 100, 2),
+            }
+            new_entries[cnpj][ref_iso] = entry
+            total_computed += 1
+
+    # Merge com existente e escreve
+    merged = {**existing}
+    for cnpj, dates_dict in new_entries.items():
+        if dates_dict:
+            merged.setdefault(cnpj, {}).update(dates_dict)
+
+    hist["metricsHistory"] = merged
+    hist_path.write_text(json.dumps(hist, ensure_ascii=False, separators=(",", ":")))
+    print(f"  ✓ metricsHistory: {total_computed} novas entradas · {len(merged)} fundos")
+
+
 def patch_history_frontier(hist_path: Path, frontier: list) -> None:
     """
     Adiciona/atualiza o campo 'efficientFrontier' no history.json existente.
@@ -1603,6 +1963,23 @@ def main() -> None:
         print(f"  {len(_frontier)} pontos na fronteira eficiente")
     except Exception as _fe:
         print(f"  ⚠ fronteira eficiente falhou: {_fe}")
+
+    # ── Histórico de métricas por fundo ──────────────────────────────────────────
+    # Recalcula retroativamente os últimos 12 meses (com dados disponíveis na data).
+    # NTN-B histórica carregada uma vez do Tesouro Direto CSV público.
+    # Execuções subsequentes pulam datas já calculadas (incremental).
+    print(f"\n── Histórico de métricas (backfill 12M)")
+    try:
+        ntnb_hist = fetch_ntnb_historico()
+        compute_metrics_history(
+            hist_path      = hist_path,
+            cdi_price_map  = cdi_price_map,
+            ntnb_hist      = ntnb_hist,
+            anchor         = anchor,
+            backfill_months = 12,
+        )
+    except Exception as _mh:
+        print(f"  ⚠ metricsHistory falhou: {_mh}")
 
     delayed = [r for r in results if not r.get("error") and r.get("isDelayed")]
     if delayed:
