@@ -2794,8 +2794,8 @@ const FUND_META = {
   "29.726.133/0001-21": { nome:"Kapitalo K10", short:"K10", inception:"2018-05-16", initialQuota:1.0, maxQuota:2.67793433718, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG", obs:"" },
   "35.828.684/0001-07": { nome:"Genoa Radar", short:"Radar", inception:"2020-06-30", initialQuota:1.0, maxQuota:2.03416388, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG / Itaú", obs:"" },
   "16.876.874/0001-47": { nome:"Witpar", short:"Witpar", inception:"2019-01-02", initialQuota:1.0, maxQuota:7.4575602696, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
-  "52.239.457/0001-57": { nome:"Itaú Janeiro RF", short:"Janeiro RF", inception:"2023-09-29", initialQuota:1.0, maxQuota:1.395262, tipo:"Renda Fixa - Crédito Privado", trib:"TR", expo:"Brasil", banco:"Itaú", grossUp:false, obs:"" },
-  "51.253.495/0001-00": { nome:"Mapfre Confianza", short:"Mapfre", inception:"2023-08-01", initialQuota:1.0, maxQuota:1.40946058, tipo:"Renda Fixa - Pós-fixado", trib:"TR", expo:"Brasil", banco:"BNY Mellon", grossUp:false, obs:"" },
+  "52.239.457/0001-57": { nome:"Itaú Janeiro RF", short:"Janeiro RF", inception:"2023-09-29", initialQuota:1.0, maxQuota:1.395262, tipo:"Renda Fixa - Pós-fixado Global", trib:"TR", expo:"Brasil e Internacional", banco:"Itaú", grossUp:false, obs:"Pós-fixado diversificado em juros e moedas de múltiplos países" },
+  "51.253.495/0001-00": { nome:"Mapfre Confianza", short:"Mapfre", inception:"2023-08-01", initialQuota:1.0, maxQuota:1.40946058, tipo:"Renda Fixa - Crédito Privado", trib:"TR", expo:"Brasil", banco:"Itaú / BTG", grossUp:false, obs:"Crédito privado DI+spread — disponível no Itaú e BTG Pactual" },
   "52.969.671/0001-69": { nome:"Artax Infra", short:"Artax Infra", inception:"2023-11-30", initialQuota:1.0, maxQuota:1.377942, tipo:"Renda Fixa - Debêntures Incentivadas", trib:"Isento", expo:"Brasil", banco:"Itaú", grossUp:true, obs:"Isento de IR (Lei 12.431) · Debêntures de infraestrutura" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva", Isento:"Isento de IR" };
@@ -2822,8 +2822,16 @@ function toggleTheme() {
 let funds        = [];
 let ibov         = { cagr12: null, cagr36: null, cagr60: null };
 let fundBetas    = {};
-let sp500         = { cagr12: null, cagr36: null, cagr60: null };
+let sp500        = { cagr12: null, cagr36: null, cagr60: null };
 let cdi          = { cagr12: null, cagr36: null, cagr60: null };
+// NTN-B: taxa real das NTN-B longas (Tesouro IPCA+) — âncora de juro real estrutural.
+// Atualizado automaticamente pelo fetch_data.py a cada execução do workflow.
+// Fallback: ~7.05% (média NTN-B 2035/2040/2050 em mar/2026).
+let ntnb         = { ntnb_rate_long: 7.05, ntnb_rate_mid: 6.90, ntnb_source: "fallback", ntnb_titles: [] };
+// Focus IPCA: expectativa de mercado para inflação de longo prazo (BCB Olinda, semanal).
+// Separado da NTN-B para evitar distorção por prêmios de risco nos títulos.
+// ipca_12m: projeção para os próximos 12 meses. ipca_longo_prazo: projeção para 5 anos.
+let ipcaFocus    = { ipca_12m: 4.8, ipca_longo_prazo: 4.0, ipca_source: "fallback" };
 let currentSort  = 'cagr36';
 let sortDir      = 1;
 const expandedCnpjs = new Set();
@@ -2896,6 +2904,97 @@ function cagrInception(f) {
   return (Math.pow(latestQuota / inceptionQuota, 1 / years) - 1) * 100;
 }
 
+// ── Floor estrutural de Renda Fixa ────────────────────────────────────────────
+//
+// calcFloorRF(horizonte, cdiObservado) → floor em % ao ano
+//
+// Combina dois componentes com blend que varia com o horizonte de investimento:
+//
+//   floor = (1 − w_cdi) × neutralNominal + w_cdi × cdiObservado
+//
+// onde w_cdi = exp(−horizonte / TAU_ANOS), decaindo de 1 (curto prazo, CDI domina)
+// até 0 (longo prazo, neutro domina) com meia-vida de TAU_ANOS.
+//
+// Intuição econômica:
+//   - Curto prazo (1–2a): a Selic atual é quase certa. O CDI observado é o melhor preditor.
+//   - Médio prazo (5–7a): incerteza crescente sobre ciclo de juros. Blend equilibrado.
+//   - Longo prazo (10–15a): a Selic média converge para o juro neutro estrutural
+//     (mean-reversion de Vasicek/CIR). O CDI atual perde relevância preditiva.
+//
+// Parâmetros globais (atualizados via data.json):
+//   ntnb.ntnb_rate_long:      taxa NTN-B longa de mercado (inclui prêmio fiscal)
+//   ipcaFocus.ipca_longo_prazo: expectativa Focus de inflação para 5 anos (BCB Olinda)
+//   NTNB_HAIRCUT:             desconto do prêmio de risco para chegar ao juro neutro real
+//   TAU_ANOS:                 meia-vida da convergência ao neutro (anos)
+//
+// w_cdi por horizonte com TAU=10:
+//   1a → 0.90  |  3a → 0.74  |  5a → 0.61  |  7a → 0.50  |  10a → 0.37  |  15a → 0.22
+//
+function calcFloorRF(horizonte, cdiObservado) {
+  // ── Parâmetros estruturais ─────────────────────────────────────────────────
+  const NTNB_HAIRCUT = 0.35;  // desconto de prêmio fiscal/eleitoral sobre NTN-B de mercado
+  const TAU_ANOS     = 10;    // meia-vida da convergência ao juro neutro (anos)
+  //
+  // Intuição do TAU: em ~10 anos, um ciclo de política monetária completo terá
+  // ocorrido. O CDI atual carrega informação relevante para 1-3 anos, mas para
+  // um horizonte de 10-20 anos o que importa é o juro real neutro estrutural.
+
+  // ── Âncora NTN-B (atualizada diariamente via fetch_data.py) ───────────────
+  const ntnbLong = (typeof ntnb !== 'undefined' && ntnb?.ntnb_rate_long)
+    ? ntnb.ntnb_rate_long : 7.05;
+
+  // ── IPCA esperado: blend de três horizontes (não break-even de títulos) ───
+  //
+  // Por que três camadas e não só Focus 12M?
+  //   Focus 12M: fortemente influenciado pelo ciclo atual. Hoje ~5.5% por causa
+  //   do choque de câmbio/fiscal — não reflete o regime de longo prazo.
+  //   Focus 5a:  mediana das projeções dos economistas para inflação em 5 anos.
+  //              Mais estável que 12M, mas ainda contém prêmio de risco.
+  //   Meta CMN:  a âncora regulatória de longo prazo. Hoje 3.0% para 2026+.
+  //              O BCB opera para fazer inflação convergir para ela.
+  //              É o piso estrutural de longo prazo — sem prêmio de ciclo.
+  //
+  // Pesos: mais peso na meta CMN e Focus 5a (longo prazo), pouco no 12M.
+  const META_CMN     = 3.0;   // % — meta de inflação CMN para 2026+ (atualizar se CMN mudar)
+  const W_META_CMN   = 0.30;
+  const W_FOCUS_5A   = 0.50;
+  const W_FOCUS_12M  = 0.20;
+
+  const focus12m = (typeof ipcaFocus !== 'undefined' && ipcaFocus?.ipca_12m)
+    ? ipcaFocus.ipca_12m : 4.8;
+  const focus5a  = (typeof ipcaFocus !== 'undefined' && ipcaFocus?.ipca_longo_prazo)
+    ? ipcaFocus.ipca_longo_prazo : 4.0;
+
+  const ipcaEstr = W_META_CMN * META_CMN + W_FOCUS_5A * focus5a + W_FOCUS_12M * focus12m;
+  // Exemplo com dados de mar/2026: 0.30×3.0 + 0.50×4.0 + 0.20×4.8 = 3.86%
+  // (ajusta automaticamente quando Focus muda — via data.json)
+
+  // ── Juro real neutro e nominal neutro ──────────────────────────────────────
+  // NTN-B de mercado inclui prêmio de risco fiscal (~2-3pp hoje).
+  // haircut retira esse prêmio para chegar ao juro real de equilíbrio.
+  // Hoje: 7.05 × (1-0.35) = 4.58% real + 3.86% IPCA → nominal ≈ 8.64%
+  const neutroReal     = ntnbLong * (1 - NTNB_HAIRCUT);
+  const neutralNominal = ((1 + neutroReal / 100) * (1 + ipcaEstr / 100) - 1) * 100;
+
+  // ── Blend dinâmico por horizonte ──────────────────────────────────────────
+  // w_cdi = exp(−h / TAU): peso do CDI observado decai exponencialmente.
+  // horizonte=0 → w_cdi=1.0 (tudo CDI atual)
+  // horizonte=TAU → w_cdi=0.37 (blend equilibrado)
+  // horizonte→∞ → w_cdi→0.0 (tudo neutro estrutural)
+  const h     = Math.max(0.5, horizonte ?? 5);  // mínimo 0.5 anos; default 5a
+  const w_cdi = Math.exp(-h / TAU_ANOS);
+
+  const floor = w_cdi * cdiObservado + (1 - w_cdi) * neutralNominal;
+
+  return {
+    floor, neutralNominal, ntnbLong, ipcaEstr, focus12m, focus5a,
+    w_cdi, horizonte: h,
+    // debug: componentes individuais
+    neutroReal: parseFloat(neutroReal.toFixed(2)),
+    ipcaEstrBreakdown: `${W_META_CMN}×${META_CMN}+${W_FOCUS_5A}×${focus5a}+${W_FOCUS_12M}×${focus12m}`,
+  };
+}
+
 // ── Retorno Alvo ──────────────────────────────────────────────────────────────
 // calcTargetReturn — estimativa bayesiana do retorno estrutural de um fundo
 //
@@ -2929,8 +3028,9 @@ function cagrInception(f) {
 //     Fundo acelerando (36M >> cagrInception): λ_recente baixo.
 //
 //   Teto universal: E[R] ≤ cagrInception.
-//   Floor universal: E[R] ≥ CDI corrente.
-function calcTargetReturn(f, globalFunds, globalCdiTarget) {
+//   Floor (RF):     E[R] ≥ 35% × juro_neutro_nominal(NTN-B) + 65% × CDI_observado
+//   Floor (equity): E[R] ≥ CDI_observado  (comportamento original)
+function calcTargetReturn(f, globalFunds, globalCdiTarget, horizonte) {
   const meta = FUND_META[f.cnpjFmt] || {};
   const tipo = (meta.tipo || '').toLowerCase();
   const isMulti = tipo.includes('multimercado');
@@ -2971,8 +3071,20 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
   const sinalProprio = adjusted * (1 - pullForce) + anchor60 * pullForce;
 
   // ── Prior ─────────────────────────────────────────────────────────────────
+  //
+  // O prior serve como âncora bayesiana: para fundos jovens com pouco histórico,
+  // o prior domina o blend. Para fundos maduros com alpha consistente, o sinalPróprio
+  // domina. O prior é: benchmark do mandato + alphaDiferencial × 0.5.
+  //
+  // O benchmark do prior usa o CDI observado ponderado (12M/36M/60M) — correto,
+  // porque reflete o custo de oportunidade real que o fundo enfrentou no seu período
+  // de vida. Não deve ser substituído pelo juro neutro aqui.
+  //
+  // O FLOOR (aplicado no final) sim usa o juro real neutro derivado da NTN-B,
+  // com um blend que ancora a estimativa em regime de longo prazo sem destruir
+  // a informação do CDI observado recente. Lógica separada abaixo.
 
-  const cdiFloor = globalCdiTarget ?? 14.75;
+  const cdiObservado = globalCdiTarget ?? 14.75;
   const ibovLong = (() => {
     try {
       if (typeof ibov !== 'undefined' && ibov) {
@@ -2982,7 +3094,7 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
     } catch (_) {}
     return 12.0;
   })();
-  const benchmark = (isMulti || isRF) ? cdiFloor : ibovLong;
+  const benchmark = (isMulti || isRF) ? cdiObservado : ibovLong;
 
   // Alpha do fundo vs. benchmark no período disponível
   const alphaObservado = (isMulti || isRF)
@@ -3006,7 +3118,7 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
         const pCi = cagrInception(p) ?? p.cagrInception;
         if (pCi == null) return null;
         return (isMulti || isRF)
-          ? (p.alphaVsCdi  ?? pCi - (p.cdiCagrInception  ?? cdiFloor))
+          ? (p.alphaVsCdi  ?? pCi - (p.cdiCagrInception  ?? cdiObservado))
           : (p.alphaVsIbov ?? p.alphaAnn ?? pCi - (p.ibovCagrInception ?? ibovLong));
       }).filter(v => v != null);
       if (peerAlphas.length > 0) {
@@ -3070,45 +3182,83 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
   const blended = (1 - lambda) * sinalProprio + lambda * prior;
 
   // Teto: E[R] ≤ cagrInception (histórico completo é o limite superior)
-  const ciCap   = ci;
-  const capped  = ciCap != null ? Math.min(blended, ciCap) : blended;
+  const ciCap  = ci;
+  const capped = ciCap != null ? Math.min(blended, ciCap) : blended;
 
-  // Floor: E[R] ≥ CDI corrente
+  // ── Floor estrutural com âncora NTN-B e horizonte dinâmico ────────────────
+  //
+  // Para RF: calcFloorRF() blenda CDI observado e juro real neutro com peso
+  // que varia exponencialmente com o horizonte de investimento.
+  //   Horizonte curto (1-2a): CDI observado domina (Selic atual é relevante)
+  //   Horizonte longo (10-20a): juro neutro estrutural domina (Selic vai ciclar)
+  //
+  // O horizonte usado aqui:
+  //   - Quando chamado do MC/otimizador: horizonte explícito do usuário
+  //   - Quando chamado da tabela/ranking: usa ageYears como proxy
+  //     (fundo jovem → prior domina → menor horizonte implícito; fundo maduro → maior)
+  //   - Default: 5 anos (ponto de equilíbrio do blend para carteiras típicas)
+  //
+  // Para equity/multi: floor = CDI observado (comportamento original).
+  let cdiFloor, floorInfo;
+  if (isRF) {
+    const h = horizonte ?? Math.min(Math.max(ageYears, 2), 10);
+    floorInfo = calcFloorRF(h, cdiObservado);
+    cdiFloor  = floorInfo.floor;
+  } else {
+    cdiFloor  = cdiObservado;
+    floorInfo = null;
+  }
+
+  // Floor aplicado: E[R] ≥ cdiFloor
   const discounted = Math.max(capped, cdiFloor);
 
   return {
-    value:          discounted,
-    raw:            rawAvg,
-    sigma:          sigma,
-    penalty:        penalty,
-    trackYears:     parseFloat(ageYears.toFixed(1)),
-    lambda:         parseFloat(lambda.toFixed(3)),
-    lambdaHist:     parseFloat(lambdaHist.toFixed(3)),
-    lambdaConsist:  parseFloat(lambdaConsist.toFixed(3)),
-    lambdaRecente:  parseFloat(lambdaRecente.toFixed(3)),
-    benchmark:      parseFloat(benchmark.toFixed(2)),
-    alphaDiff:      parseFloat(alphaDiferencial.toFixed(2)),
-    prior:          parseFloat(prior.toFixed(2)),
-    ciCap:          ciCap != null ? parseFloat(ciCap.toFixed(2)) : null,
-    isMulti:        isMulti,
-    isRF:           isRF,
-    samples:        samples,
+    value:           discounted,
+    raw:             rawAvg,
+    sigma:           sigma,
+    penalty:         penalty,
+    trackYears:      parseFloat(ageYears.toFixed(1)),
+    lambda:          parseFloat(lambda.toFixed(3)),
+    lambdaHist:      parseFloat(lambdaHist.toFixed(3)),
+    lambdaConsist:   parseFloat(lambdaConsist.toFixed(3)),
+    lambdaRecente:   parseFloat(lambdaRecente.toFixed(3)),
+    benchmark:       parseFloat(benchmark.toFixed(2)),
+    alphaDiff:       parseFloat(alphaDiferencial.toFixed(2)),
+    prior:           parseFloat(prior.toFixed(2)),
+    ciCap:           ciCap != null ? parseFloat(ciCap.toFixed(2)) : null,
+    // Floor info (RF only)
+    neutralNominal:  floorInfo ? parseFloat(floorInfo.neutralNominal.toFixed(2)) : null,
+    cdiFloor:        parseFloat(cdiFloor.toFixed(2)),
+    ntnbLong:        floorInfo ? parseFloat(floorInfo.ntnbLong.toFixed(2)) : null,
+    ipcaEstr:        floorInfo ? parseFloat(floorInfo.ipcaEstr.toFixed(2)) : null,
+    floorWCdi:       floorInfo ? parseFloat(floorInfo.w_cdi.toFixed(3)) : null,
+    floorHorizonte:  floorInfo ? parseFloat(floorInfo.horizonte.toFixed(1)) : null,
+    isMulti:         isMulti,
+    isRF:            isRF,
+    samples:         samples,
   };
 }
 
-// Wrapper: injeta globalFunds e cdiTarget automaticamente em todos os call sites.
-// Todos os pontos do código que chamam calcTargetReturn(fData) continuam
-// funcionando sem alteração — o wrapper resolve os parâmetros novos.
+// Wrapper: injeta globalFunds e globalCdiTarget automaticamente em todos os call sites.
+// globalCdiTarget = média ponderada do CDI observado (12M×1 + 36M×3 + 60M×5) / 9
+// Este valor entra como PRIOR/BENCHMARK do mandato — não como floor.
+// O floor é calculado internamente por calcFloorRF() com blend CDI+NTN-B por horizonte.
+//
+// Assinatura pública:
+//   calcTargetReturn(f)                        — tabela: horizonte = ageYears (clamped 2-10)
+//   calcTargetReturn(f, undefined, undefined, horizonte) — MC/otimizador: horizonte explícito
+//   calcTargetReturn(f, gFunds, gCdi, horizonte)          — chamada completa interna
 {
   const _calcTargetReturnFull = calcTargetReturn;
-  calcTargetReturn = function(f, globalFunds, globalCdiTarget) {
-    // Se chamado com os três parâmetros explicitamente, usa direto.
+  calcTargetReturn = function(f, globalFunds, globalCdiTarget, horizonte) {
+    // Se chamado com globalFunds explícito, usa direto (call site interno completo).
     if (globalFunds !== undefined) {
-      return _calcTargetReturnFull(f, globalFunds, globalCdiTarget);
+      return _calcTargetReturnFull(f, globalFunds, globalCdiTarget, horizonte);
     }
-    // Call sites legados (apenas f): resolve globals do escopo de dados carregados.
+    // Call sites legados ou com horizonte opcional: resolve globals.
     const gFunds = typeof funds !== 'undefined' ? funds : [];
-    let gCdi = 14.75;
+    // CDI observado ponderado: 12M peso 1, 36M peso 3, 60M peso 5
+    let gCdi = 14.75; // fallback se BCB falhar
     try {
       if (typeof cdi !== 'undefined' && cdi) {
         const cs = [
@@ -3119,7 +3269,8 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
         if (cs.length) gCdi = cs.reduce((s, [T, v]) => s + T * v, 0) / cs.reduce((s, [T]) => s + T, 0);
       }
     } catch (_) {}
-    return _calcTargetReturnFull(f, gFunds, gCdi);
+    // horizonte: undefined → calcTargetReturn usa ageYears internamente como default
+    return _calcTargetReturnFull(f, gFunds, gCdi, horizonte);
   };
 }
 
@@ -3128,12 +3279,12 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
 // Sharpe = (E[R_p] - CDI_alvo) / σ_p
 // CDI_alvo: média ponderada dos CAGRs do CDI pelos mesmos períodos (pesos 1, 3, 5)
 // σ_p = √(wᵀ Σ w) usando matriz de covariância histórica dos retornos diários
-function calcPortfolioTargetReturn(selected, wNorm, historyData) {
+function calcPortfolioTargetReturn(selected, wNorm, historyData, horizonte) {
   const targets = {};
   for (const cnpj of selected) {
     const fData = funds.find(f => f.cnpjFmt === cnpj);
     if (!fData) continue;
-    const t = calcTargetReturn(fData);
+    const t = calcTargetReturn(fData, undefined, undefined, horizonte);
     if (t) targets[cnpj] = t.value;
   }
   if (Object.keys(targets).length === 0) return null;
@@ -3352,7 +3503,14 @@ function buildDetailPanel(f, isExp) {
 // ── Fund exposure profile for stress testing ─────────────────────────────
 // net_normal: typical net long exposure (0=market neutral, 1=fully long)
 // net_crisis: estimated exposure in severe crisis (most LB funds reduce)
-// primary: "ibov" | "sp500" | "mixed"
+// primary: "ibov" | "sp500" | "mixed" | "cdi"
+// --- RF-specific fields (only used when primary === "cdi") ---
+// rf_subtype: "pos_fixado" | "credito_privado" | "debentures_infra"
+//   pos_fixado:       Fundo DI puro — sem risco de spread nem de duration
+//   credito_privado:  Crédito DI+spread — risco de abertura de spread
+//   debentures_infra: IPCA+spread, duration longa — risco de spread + duration de taxa real
+// credit_duration:  duration média dos papéis de crédito privado (em anos) — sensibilidade a Δspread
+// rate_duration:    duration de taxa de juro real (em anos) — sensibilidade a Δjuro_real (só IPCA+)
 const FUND_EXPOSURE = {
   "22.232.927/0001-90": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Tarpon
   "17.400.251/0001-66": { net_normal:1.00, net_crisis:0.95, primary:"ibov"   }, // Organon
@@ -3376,22 +3534,118 @@ const FUND_EXPOSURE = {
   "29.726.133/0001-21": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Kapitalo K10
   "35.828.684/0001-07": { net_normal:0.3, net_crisis:0.1, primary:"mixed" }, // Genoa Radar
   "16.876.874/0001-47": { net_normal:1.0, net_crisis:0.95, primary:"ibov" }, // Witpar
-  "52.239.457/0001-57": { net_normal:0.0, net_crisis:0.0, primary:"cdi" }, // Itaú Janeiro RF
-  "51.253.495/0001-00": { net_normal:0.0, net_crisis:0.0, primary:"cdi" }, // Mapfre Confianza
-  "52.969.671/0001-69": { net_normal:0.0, net_crisis:0.0, primary:"cdi" }, // Artax Infra
+  "52.239.457/0001-57": { net_normal:0.0, net_crisis:0.0, primary:"cdi",
+    rf_subtype:"pos_fixado_global",  // Pós-fixado diversificado em múltiplas moedas/juros
+    credit_duration:0.5,             // Risco de spread mínimo (alguma exposição a crédito global)
+    rate_duration:0.5,               // Duration de taxa baixa (pós-fixado, mas com algum FX)
+    fx_exposure:0.15,                // ~15% exposição cambial hedgeada — risco residual em crise
+  }, // Itaú Janeiro RF
+  "51.253.495/0001-00": { net_normal:0.0, net_crisis:0.0, primary:"cdi",
+    rf_subtype:"credito_privado",    // Crédito DI+spread — risco de abertura de spread em crise
+    credit_duration:2.0,             // Duration média ~2 anos (carteira de crédito curto/médio)
+    rate_duration:0,                 // Sem risco de taxa real (pós-fixado DI)
+    fx_exposure:0,
+  }, // Mapfre Confianza
+  "52.969.671/0001-69": { net_normal:0.0, net_crisis:0.0, primary:"cdi",
+    rf_subtype:"debentures_infra",   // IPCA+spread, duration longa — duplo risco em crise
+    credit_duration:4.5,             // Duration crédito (spread de infra vs. NTN-B)
+    rate_duration:6.5,               // Duration taxa real (NTN-B longa) — alto risco de marcação
+    fx_exposure:0,
+  }, // Artax Infra
 };
 
 // Historical stress scenarios
-// ibov_ret: IBOV total return during crisis (decimal)
-// sp500_usd: S&P500 USD return
-// brl_depreciation: BRL depreciation vs USD (positive = BRL weakens)
-// duration_days: approximate duration
+// ibov_ret:            IBOV total return during crisis (decimal, negative = queda)
+// sp500_usd:           S&P500 retorno em USD
+// brl_dep:             Depreciação do BRL vs USD (positivo = BRL enfraquece)
+// days:                Duração do cenário em dias corridos
+//
+// ── Campos específicos de Renda Fixa ──────────────────────────────────────────
+// credit_spread_shock: Abertura de spread de crédito privado (DI+) em pp
+//   Calibração: IDA-DI (ANBIMA) — diferença entre spread pré/pós-crise nos picos
+//   2008: spread DI+1% → DI+5%+ (iliquidez total, sem formador de preço)
+//   2015: spread DI+1% → DI+3%  (crise fiscal, rating Brasil rebaixado, Petrobras)
+//   2020: spread DI+1,3% → DI+4,8% (IDA-DI -8,5% em 15 dias, depois recuperou)
+//   2022: spread DI+1% → DI+2,2% (abertura moderada, sem iliquidez sistêmica)
+//   2013: spread DI+0,8% → DI+1,8% (taper tantrum, mercados emergentes)
+//
+// real_rate_shock:     Alta no juro real longo (NTN-B 2035+) em pp
+//   Calibração: IMA-B 5+ (ANBIMA) — variação da taxa real nos picos de crise
+//   2008: NTN-B abriu ~350bps (de IPCA+7% para IPCA+10%+, iliquidez extrema)
+//   2015: NTN-B abriu ~280bps (de IPCA+5,5% para IPCA+8,3% em dez/2015)
+//   2020: NTN-B abriu ~350bps em março (de IPCA+3,5% para IPCA+6,8%), reverteu rápido
+//   2022: NTN-B abriu ~300bps globalmente (Fed+Copom, de IPCA+4,5% para IPCA+7,5%)
+//   2013: NTN-B abriu ~200bps (de IPCA+3% para IPCA+5%, saída de fluxo estrangeiro)
+//
+// cdi_acc_period:      Fator de acúmulo do CDI no período (sem anualizar)
+//   Para pós-fixados: quanto o CDI rende de carry durante a crise (não zero!)
+//   Usa Selic vigente no período como proxy. CDI sobe em crises domésticas.
+//
+// Nota sobre timing do choque de duration:
+//   O impacto de ΔSpread × Duration e ΔRate × Duration é um choque instantâneo de PU
+//   (precificação a mercado), não uma perda linear no tempo. Por isso não é pro-ratado
+//   pelos `days` — acontece independente da duração do cenário.
+//   O carry (cdi_acc_period) sim é pro-rateado pela duração.
 const STRESS_SCENARIOS = [
-  { name:"Crise financeira (2008)",ibov_ret:-0.600, sp500_usd:-0.565, brl_dep:+0.350, days:365, label:"crise sistêmica global" },
-  { name:"Taper tantrum (2013)",   ibov_ret:-0.280, sp500_usd:+0.000, brl_dep:+0.150, days:180, label:"risco emergentes" },
-  { name:"Dilma/Petrolão (2015)",  ibov_ret:-0.410, sp500_usd:-0.120, brl_dep:+0.500, days:365, label:"crise doméstica severa" },
-  { name:"Covid (mar/2020)",       ibov_ret:-0.449, sp500_usd:-0.340, brl_dep:+0.300, days:30,  label:"pior mês histórico recente" },
-  { name:"Crise Brasil (jun/2022)",ibov_ret:-0.280, sp500_usd:-0.240, brl_dep:+0.080, days:90,  label:"crise inflação/juros" },
+  {
+    // 2008: crise sistêmica global — Lehman Brothers, colapso de liquidez
+    // Brasil: câmbio disparou (BRL/USD de 1,60 para 2,50+), IBOV -60% no ano
+    // RF: mercado de crédito privado travou completamente. Spreads explodiram.
+    // NTN-B: abriu de IPCA+7% para IPCA+10%+ nos meses mais agudos.
+    // Duração: 365 dias (a crise se arrastou de set/2008 até meados de 2009)
+    name:"Crise financeira (2008)", days:365, label:"crise sistêmica global",
+    ibov_ret:-0.600, sp500_usd:-0.565, brl_dep:+0.350,
+    credit_spread_shock: 4.0,   // IDA-DI: spread DI+1% → DI+5%+ (choque de 4pp)
+    real_rate_shock:     3.5,   // NTN-B: IPCA+7% → IPCA+10,5% (choque de 3,5pp)
+    cdi_acc_period:      0.133, // CDI ~13,3% em 2008 (Selic subiu para 13,75%)
+  },
+  {
+    // 2013: taper tantrum — Fed sinaliza fim do QE, saída de capital de emergentes
+    // Brasil: real desvalorizou ~15%, IBOV -25% no período de mai-ago/2013
+    // RF: spreads abriram moderadamente. NTN-B sofreu marcação relevante.
+    // Duração: 180 dias (pico da crise de mai a nov/2013)
+    name:"Taper tantrum (2013)", days:180, label:"risco emergentes",
+    ibov_ret:-0.280, sp500_usd:+0.000, brl_dep:+0.150,
+    credit_spread_shock: 1.0,   // IDA-DI: abertura moderada ~1pp (DI+0,8% → DI+1,8%)
+    real_rate_shock:     2.0,   // NTN-B: IPCA+3% → IPCA+5% (~200bps)
+    cdi_acc_period:      0.054, // CDI ~10,8% ao ano × 180/365 ≈ 5,4%
+  },
+  {
+    // 2015: crise doméstica severa — fiscal, Petrobras, rebaixamento rating soberano
+    // Brasil: recessão profunda (-3,8% PIB), inflação >10%, Selic subiu a 14,25%
+    // RF: IDA-DI sofreu abertura significativa de spreads. Crédito corporativo travou.
+    // NTN-B 2035: abriu de IPCA+5,5% em jan/2015 para IPCA+8,3% em dez/2015.
+    // Duração: 365 dias (2015 inteiro foi de deterioração progressiva)
+    name:"Dilma/Petrolão (2015)", days:365, label:"crise doméstica severa",
+    ibov_ret:-0.410, sp500_usd:-0.120, brl_dep:+0.500,
+    credit_spread_shock: 2.0,   // IDA-DI: spread DI+1% → DI+3% (~200bps)
+    real_rate_shock:     2.8,   // NTN-B: IPCA+5,5% → IPCA+8,3% (~280bps)
+    cdi_acc_period:      0.133, // CDI ~13,3% em 2015 (Selic 14,25%)
+  },
+  {
+    // 2020: Covid — choque externo abrupto, 30 dias de queda livre
+    // Brasil: IBOV -45% em março, BRL/USD de 4,2 para 5,7+ no pior momento
+    // RF crédito: IDA-DI -8,5% em 15 dias. Spread DI+1,3% → DI+4,8% (abertura +3,5pp)
+    // NTN-B: juro real abriu ~350bps em março (de IPCA+3,5% para IPCA+6,8%)
+    // Duração: 30 dias (o choque agudo foi concentrado em março de 2020)
+    // Importante: o Copom cortou a Selic em emergência → CDI CAIU neste cenário
+    name:"Covid (mar/2020)", days:30, label:"pior mês histórico recente",
+    ibov_ret:-0.449, sp500_usd:-0.340, brl_dep:+0.300,
+    credit_spread_shock: 3.5,   // IDA-DI: DI+1,3% → DI+4,8% (abertura de 3,5pp)
+    real_rate_shock:     3.5,   // NTN-B: IPCA+3,5% → IPCA+6,8% (pico intraday ~350bps)
+    cdi_acc_period:      0.011, // CDI ~4,4% ao ano em mar/2020 (cortado para 3,75%) × 30/365
+  },
+  {
+    // 2022: crise de inflação/juros — Fed hawkish + fiscal Brasil + Copom agressivo
+    // Brasil: Copom subiu de 9,25% para 13,75% em 2022. NTN-B abriu ~300bps.
+    // RF crédito: spreads abriram moderadamente (~120bps). Sem iliquidez sistêmica.
+    // Duração: 90 dias (aceleração de jan a mar/2022, pico de abertura de taxas)
+    name:"Crise Brasil (jun/2022)", days:90, label:"crise inflação/juros",
+    ibov_ret:-0.280, sp500_usd:-0.240, brl_dep:+0.080,
+    credit_spread_shock: 1.2,   // IDA-DI: abertura moderada ~120bps (sem iliquidez)
+    real_rate_shock:     3.0,   // NTN-B: IPCA+4,5% → IPCA+7,5% (~300bps em 2022)
+    cdi_acc_period:      0.030, // CDI ~12% ao ano × 90/365 ≈ 3,0% (Selic subindo)
+  },
 ];
 
 function render() {
@@ -3583,10 +3837,12 @@ async function load() {
       dateEl.textContent += ` · gerado ${pad(gen.getUTCDate())}/${pad(gen.getUTCMonth()+1)} às ${pad(gen.getUTCHours())}:${pad(gen.getUTCMinutes())} UTC`;
     }
 
-    if (data.ibov)       ibov      = data.ibov;
-    if (data.cdi)        cdi       = data.cdi;
-    if (data.sp500)      sp500     = data.sp500;
-    if (data.fund_betas) fundBetas = data.fund_betas;
+    if (data.ibov)        ibov       = data.ibov;
+    if (data.cdi)         cdi        = data.cdi;
+    if (data.sp500)       sp500      = data.sp500;
+    if (data.ntnb)        ntnb       = data.ntnb;
+    if (data.ipca_focus)  ipcaFocus  = data.ipca_focus;
+    if (data.fund_betas)  fundBetas  = data.fund_betas;
     updateHeaders();
     render();
     initMCSelect();
@@ -3852,6 +4108,92 @@ function renderPortfolioStress(selected, wNorm) {
     const betas = fundBetas[cnpj] || {};
     const expo  = FUND_EXPOSURE[cnpj] || { net_normal:1.0, net_crisis:0.8, primary:"ibov" };
 
+    // Alpha residual: alpha_ann vem da regressão OLS (em %). Contribui parcialmente
+    // em crise — gestão ativa não escala 1:1, 30% é conservador mas razoável.
+    const alpha_ann    = (betas.alpha_ann || 0) / 100;
+    const alpha_period = Math.pow(1 + alpha_ann, scenario.days / 252) - 1;
+
+    // ── Branch Renda Fixa (primary === "cdi") ────────────────────────────────
+    // Modelo completamente diferente do modelo de beta equity:
+    // fundos RF não têm exposição ao mercado acionário, mas têm dois riscos
+    // próprios em crise que o modelo beta nunca captura:
+    //   1. Risco de spread de crédito (abertura de DI+ em pbs)
+    //   2. Risco de taxa real / duration (marcação de PU em NTN-B / IPCA+)
+    //
+    // Fórmula central para PU de um título de renda fixa:
+    //   ΔPU/PU ≈ −Δyield × ModifiedDuration
+    //
+    // O choque de spread e o choque de taxa real são INSTANTÂNEOS (marcação a mercado)
+    // e não pro-rateados pelos `days` do cenário — acontecem independente da duração.
+    // O carry do CDI SIM é pro-rateado (o fundo acumula CDI ao longo dos dias).
+    //
+    if (expo.primary === "cdi") {
+      const subtype       = expo.rf_subtype || "pos_fixado";
+      const creditDur     = expo.credit_duration || 0;   // anos de duration de crédito
+      const rateDur       = expo.rate_duration    || 0;   // anos de duration de taxa real
+      const fxExposure    = expo.fx_exposure      || 0;   // exposição cambial residual
+
+      // Carry do CDI no período — quanto o fundo acumula de CDI como "amortecedor"
+      // Usamos cdi_acc_period do cenário (reflete a Selic vigente em cada crise).
+      // Para cenários sem cdi_acc_period calibrado, estimamos via cdi.cagr12.
+      const cdiAnnRate = (typeof cdi !== 'undefined' && cdi?.cagr12)
+        ? cdi.cagr12 / 100
+        : 0.1275;
+      const cdiCarry = scenario.cdi_acc_period
+        ?? (Math.pow(1 + cdiAnnRate, scenario.days / 365) - 1);
+
+      // Choque de spread de crédito: ΔSpread × CreditDuration
+      // Representa abertura de spread do crédito privado em relação ao DI.
+      // É uma perda de marcação a mercado — instantânea, não dilui com o tempo.
+      const spreadShock   = (scenario.credit_spread_shock || 0) / 100;
+      const creditLoss    = spreadShock * creditDur;
+
+      // Choque de taxa real: ΔJuroReal × RateDuration
+      // Representa alta no juro real longo (NTN-B) que deprecia o PU dos títulos IPCA+.
+      // Também instantâneo — fundos de debêntures incentivadas de duration 6-7 anos
+      // perdem ~6-7% de PU para cada 100bps de abertura na curva real.
+      const realRateShock = (scenario.real_rate_shock || 0) / 100;
+      const durationLoss  = realRateShock * rateDur;
+
+      // Impacto cambial residual: crises com BRL forte depreciação penalizam
+      // fundos com exposição FX não totalmente hedgeada (ex: Janeiro RF global)
+      const fxLoss = fxExposure * scenario.brl_dep * -0.5;
+      // (-0.5 porque o hedge cobre ~50% do risco residual; e depreciação do BRL
+      // normalmente beneficia quem tem ativos em moeda forte, mas crises de BRL
+      // podem causar margem call nos hedges → sinal ambíguo, usamos 50% do bruto)
+
+      if (subtype === "pos_fixado" || subtype === "pos_fixado_global") {
+        // Pós-fixado puro / global: CDI continua acumulando normalmente.
+        // Risco de crédito mínimo, risco de duration baixo, risco FX residual.
+        // O Copom em crises domésticas sobe a Selic → CDI ACELERA (efeito benéfico).
+        // Em crises externas (Covid), o Copom pode cortar → cdi_acc_period reflete isso.
+        return cdiCarry + fxLoss - creditLoss + alpha_period * 0.3;
+      }
+
+      if (subtype === "credito_privado") {
+        // Crédito privado DI+spread: perde pela abertura de spread (marcação).
+        // O CDI continua como carry. Sem risco de taxa real (pós-fixado).
+        // O impacto do spread é assimétrico: abertura é rápida, fechamento é lento.
+        // Em cenários mais longos (2015: 365 dias), o spread fica aberto e o fundo
+        // não recupera pela marcação durante o período do stress test.
+        return cdiCarry - creditLoss + alpha_period * 0.3;
+      }
+
+      if (subtype === "debentures_infra") {
+        // Debêntures incentivadas IPCA+: duplo choque — spread de crédito E taxa real.
+        // A duration de taxa real longa (6-7 anos) amplifica qualquer abertura de juro.
+        // Em cenário de 30 dias (Covid): carry é pequeno (~1%), mas os dois choques
+        // de PU são grandes e ocorrem imediatamente.
+        // Em cenário de 365 dias (2015): o carry acumula mais, mas o spread de crédito
+        // de infra tende a ficar aberto por mais tempo (ativos ilíquidos).
+        return cdiCarry - creditLoss - durationLoss + alpha_period * 0.3;
+      }
+
+      // Fallback conservador para rf_subtype desconhecido
+      return cdiCarry - creditLoss - durationLoss + alpha_period * 0.3;
+    }
+
+    // ── Branch Equity / Multimercado (modelo de beta original) ───────────────
     // Betas from regression (if available) or fallback from exposure profile
     let b_ibov = betas.beta_ibov;
     let b_sp   = betas.beta_sp500;
@@ -3875,17 +4217,12 @@ function renderPortfolioStress(selected, wNorm) {
     let r_factor = netAdj * (b_ibov * r_ibov + b_sp * r_sp_brl);
 
     // Correlation stress: in severe crisis (ibov < -30%), correlations converge
-    // We apply a mild damping to diversification benefit
+    // Less diversification benefit — correlations spike to 1
     if (Math.abs(scenario.ibov_ret) > 0.3) {
-      // Less diversification benefit in extreme scenarios
       r_factor *= 1.05; // slight amplification from correlation spike
     }
 
-    // Alpha residual over period (annualised alpha * days/252)
-    const alpha_ann = (betas.alpha_ann || 0) / 100;
-    const alpha_period = Math.pow(1 + alpha_ann, scenario.days / 252) - 1;
-
-    return r_factor + alpha_period * 0.3; // alpha contributes partially (uncertain in crisis)
+    return r_factor + alpha_period * 0.3;
   }
 
   // Portfolio return = weighted sum of fund returns + correlation adjustment
@@ -4285,6 +4622,17 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
             lambdaParts.push(`prior=${fmt(target.prior)}`);
         }
 
+        // Floor info — só para RF, mostra âncora NTN-B e horizonte usado
+        let floorLine = '';
+        if (target.isRF && target.cdiFloor != null) {
+          const wCdiPct = target.floorWCdi != null ? (target.floorWCdi * 100).toFixed(0) : '—';
+          const wNeuPct = target.floorWCdi != null ? ((1 - target.floorWCdi) * 100).toFixed(0) : '—';
+          floorLine = `\n↳ floor: ${target.cdiFloor.toFixed(1)}% `
+            + `(h=${target.floorHorizonte?.toFixed(0)}a · ${wCdiPct}%CDI`
+            + `+${wNeuPct}%neutro · NTN-B=${target.ntnbLong?.toFixed(1)}%→nominal=${target.neutralNominal?.toFixed(1)}%`
+            + ` · IPCA_estr=${target.ipcaEstr?.toFixed(1)}%)`;
+        }
+
         const adjustLine = adjustParts.length ? `\n↳ ${adjustParts.join('  ·  ')}` : '';
         const lambdaLine = lambdaParts.length  ? `\n↳ ${lambdaParts.join('  ·  ')}` : '';
         const finalLine  = `\nBruto √T: ${fmt(target.raw)}  →  E[R]: ${sign}${v.toFixed(1)}%`;
@@ -4292,7 +4640,7 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
         targetHtml = `<div class="alloc-target-wrap">
           <span class="port-alloc-target ${cls}">${sign}${v.toFixed(1)}%</span>
           <div class="alloc-target-tip">Retorno alvo estimado
-${tipLines}${adjustLine}${lambdaLine}${finalLine}</div>
+${tipLines}${adjustLine}${lambdaLine}${floorLine}${finalLine}</div>
         </div>`;
       }
 
@@ -5904,10 +6252,14 @@ function runOptimizer() {
   const ibovProxy  = (ibov && ibov.cagr36) || 20;
 
   // Build muMap
+  // Horizonte do otimizador: 10 anos (carteiras de longo prazo).
+  // Para RF, isso significa que o floor usa ~37% CDI observado + ~63% juro neutro —
+  // refletindo que a Selic atual não será o regime dominante ao longo da década.
+  const OPT_HORIZONTE = 10;
   const muMap = {};
   for (const cnpj of allCnpjs) {
     const fData = funds.find(f => f.cnpjFmt === cnpj);
-    const t = fData ? calcTargetReturn(fData) : null;
+    const t = fData ? calcTargetReturn(fData, undefined, undefined, OPT_HORIZONTE) : null;
     muMap[cnpj] = t ? t.value : null;
   }
 
@@ -7515,10 +7867,12 @@ function mcGetParams() {
     if (selected.length > 0 && total > 0 && !isNaN(retInput) && retInput > 0) {
       retorno = retInput;
     } else if (selected.length > 0 && total > 0) {
+      const mcHorizonte = parseInt(document.getElementById('mcAnos')?.value) || 10;
       const portTarget = calcPortfolioTargetReturn(
         selected,
         Object.fromEntries(selected.map(c => [c, weights[c] / total])),
-        historyData
+        historyData,
+        mcHorizonte
       );
       retorno = portTarget ? portTarget.expReturn : null;
       fromAuto = true;
@@ -7552,7 +7906,8 @@ function mcGetParams() {
     if (!isNaN(retInput) && retInput > 0) {
       retorno = retInput;
     } else if (fData) {
-      const t = calcTargetReturn(fData);
+      const mcHorizonte = parseInt(document.getElementById('mcAnos')?.value) || 10;
+      const t = calcTargetReturn(fData, undefined, undefined, mcHorizonte);
       retorno = t ? t.value : null;
       fromAuto = true;
     }
@@ -9899,7 +10254,73 @@ function renderFundProfile() {
   const volIdioAnu  = volFrac * Math.sqrt(Math.max(0, 1 - r2));   // √(1−R²) × vol_total
 
   // ── Montar stress rows ────────────────────────────────────────────────────
+  //
+  // Para fundos de Renda Fixa (primary === "cdi"): modelo de duration/spread.
+  // Para fundos de equity/multimercado: modelo de beta + componente idiossincrática.
+  //
+  const isRFExposure = exposure.primary === 'cdi';
+
   const stressRows = (typeof STRESS_SCENARIOS !== 'undefined') ? STRESS_SCENARIOS.map(sc => {
+    if (isRFExposure) {
+      // ── Modelo RF: carry CDI + choque de spread + choque de duration ────────
+      //
+      // Fundos RF não têm exposição beta ao mercado acionário.
+      // Seu risco em crise vem de dois vetores independentes:
+      //   1. Abertura de spread de crédito (DI+): marcação negativa instantânea
+      //      via duration de crédito do portfolio.
+      //   2. Alta do juro real longo (NTN-B): marcação negativa de PU para títulos
+      //      IPCA+ com duration longa.
+      // O CDI continua acumulando como "carry" durante o período da crise.
+      //
+      const subtype     = exposure.rf_subtype   || 'pos_fixado';
+      const creditDur   = exposure.credit_duration || 0;
+      const rateDur     = exposure.rate_duration   || 0;
+      const fxExposure  = exposure.fx_exposure     || 0;
+
+      // Carry do CDI no período (calibrado por crise em cdi_acc_period)
+      const cdiAnnRate = (typeof cdi !== 'undefined' && cdi?.cagr12)
+        ? cdi.cagr12 / 100 : 0.1275;
+      const cdiCarry = sc.cdi_acc_period
+        ?? (Math.pow(1 + cdiAnnRate, sc.days / 365) - 1);
+
+      // Choque de spread: ΔSpread (pp) × CreditDuration (anos) = perda % de PU
+      const spreadShock  = (sc.credit_spread_shock || 0) / 100;
+      const creditLoss   = spreadShock * creditDur;
+
+      // Choque de taxa real: ΔJuroReal (pp) × RateDuration (anos) = perda % de PU
+      const realRateShock = (sc.real_rate_shock || 0) / 100;
+      const durationLoss  = realRateShock * rateDur;
+
+      // Impacto cambial residual (Janeiro RF: diversificação global, algum FX residual)
+      // Depreciação do BRL beneficia quem tem ativos em moeda forte, MAS em crises
+      // severas os hedges podem ter custo de rolagem e margin call → sinal negativo leve
+      const fxLoss = fxExposure * Math.abs(sc.brl_dep) * -0.3;
+
+      const r_carry   = cdiCarry;
+      const r_credit  = -creditLoss;
+      const r_duration = -durationLoss;
+      const r_fx      = fxLoss;
+      const r_total   = (r_carry + r_credit + r_duration + r_fx) * 100;
+
+      return {
+        name:       sc.name,
+        ret:        r_total,
+        isRF:       true,
+        r_carry:    r_carry    * 100,
+        r_credit:   r_credit   * 100,
+        r_duration: r_duration * 100,
+        r_fx:       r_fx       * 100,
+        creditDur,
+        rateDur,
+        spreadShock: (sc.credit_spread_shock || 0),
+        rateShock:   (sc.real_rate_shock || 0),
+        subtype,
+        label:      sc.label,
+        w_emp: 0,
+      };
+    }
+
+    // ── Modelo equity/multimercado: β + componente idiossincrática ──────────
     const sp_brl = sc.sp500_usd + sc.brl_dep;
 
     // Componente sistemática: usa β_crise
@@ -9925,6 +10346,7 @@ function renderFundProfile() {
     return {
       name:    sc.name,
       ret:     r_total,
+      isRF:    false,
       r_sist:  r_sist  * 100,
       r_idio:  r_idio  * 100,
       r_emp:   r_emp   * 100,
@@ -9937,7 +10359,25 @@ function renderFundProfile() {
   const worstStress = stressRows.length ? Math.min(...stressRows.map(s => s.ret)) : null;
 
   // ── Diagnóstico do modelo (para tooltip) ─────────────────────────────────
-  const modelDiag = {
+  const modelDiag = isRFExposure ? {
+    // Para RF: diagnóstico do modelo de duration/spread
+    isRF:         true,
+    subtype:      exposure.rf_subtype || 'pos_fixado',
+    creditDur:    (exposure.credit_duration || 0).toFixed(1),
+    rateDur:      (exposure.rate_duration   || 0).toFixed(1),
+    fxExposure:   ((exposure.fx_exposure || 0) * 100).toFixed(0),
+    nDiasRuins:   0,
+    w_emp:        '—',
+    w_teo:        '—',
+    betaCriseIbov:'0.00',
+    betaNormIbov: '0.00',
+    r2:           '0',
+    rhoBar:       '0.00',
+    kIdioCrise:   '—',
+    volIdio:      (volIdioAnu * 100).toFixed(1),
+  } : {
+    // Para equity/multi: diagnóstico do modelo de beta
+    isRF:          false,
     nDiasRuins,
     w_emp: (w_emp * 100).toFixed(0),
     w_teo: (w_teo * 100).toFixed(0),
@@ -10112,28 +10552,49 @@ function renderFundProfile() {
 
   // — Stress estimado por cenário —
   if (stressRows.length) {
-    const diagTip = `Modelo calibrado empiricamente (${modelDiag.nDiasRuins} pregões ruins disponíveis)\n`
-      + `Peso empírico: ${modelDiag.w_emp}% · Peso teórico: ${modelDiag.w_teo}%\n`
-      + `β IBOV normal: ${modelDiag.betaNormIbov} → β crise: ${modelDiag.betaCriseIbov}\n`
-      + `R² do modelo de fator: ${modelDiag.r2}% · Vol idiossincrática: ${modelDiag.volIdio}% a.a.\n`
-      + `k ampliação idio em crise: ${modelDiag.kIdioCrise}× · Autocorr. resíduos ρ̄: ${modelDiag.rhoBar}\n\n`
-      + `ATENÇÃO: leia como ranking relativo e ordem de grandeza.\n`
-      + `Estimativas pontuais têm incerteza alta — crises futuras não replicam crises passadas.`;
+    const diagTip = isRFExposure
+      ? `Modelo de Renda Fixa — duration e spread de crédito\n`
+        + `Subtipo: ${modelDiag.subtype}\n`
+        + `Duration crédito: ${modelDiag.creditDur} anos · Duration taxa real: ${modelDiag.rateDur} anos\n`
+        + `Exposição cambial residual: ${modelDiag.fxExposure}%\n\n`
+        + `Componentes: carry CDI + choque de spread × dur. crédito + choque juro real × dur. taxa\n`
+        + `Os choques de PU são instantâneos (marcação a mercado), não pro-rateados pelos dias.\n`
+        + `O carry do CDI é pro-rateado pelo período da crise.\n\n`
+        + `ATENÇÃO: leia como ordem de grandeza. Crises reais têm timing e magnitude incertos.`
+      : `Modelo calibrado empiricamente (${modelDiag.nDiasRuins} pregões ruins disponíveis)\n`
+        + `Peso empírico: ${modelDiag.w_emp}% · Peso teórico: ${modelDiag.w_teo}%\n`
+        + `β IBOV normal: ${modelDiag.betaNormIbov} → β crise: ${modelDiag.betaCriseIbov}\n`
+        + `R² do modelo de fator: ${modelDiag.r2}% · Vol idiossincrática: ${modelDiag.volIdio}% a.a.\n`
+        + `k ampliação idio em crise: ${modelDiag.kIdioCrise}× · Autocorr. resíduos ρ̄: ${modelDiag.rhoBar}\n\n`
+        + `ATENÇÃO: leia como ranking relativo e ordem de grandeza.\n`
+        + `Estimativas pontuais têm incerteza alta — crises futuras não replicam crises passadas.`;
 
     html += `<div class="fp-section-title" data-tip="${diagTip}">Comportamento estimado em crises históricas ⓘ</div>
     <div class="fp-stress-grid">`;
 
     stressRows.forEach(s => {
       const cls = s.ret >= 0 ? 'var(--green)' : s.ret >= -10 ? 'var(--amber,#e07800)' : 'var(--red)';
-      const tipText = `${s.name}\n`
-        + `─────────────────────────────\n`
-        + `Total estimado:    ${s.ret >= 0 ? '+' : ''}${s.ret.toFixed(1)}%\n\n`
-        + `Componente β (sistemática):  ${s.r_sist >= 0 ? '+' : ''}${s.r_sist.toFixed(1)}%\n`
-        + `  β_crise=${modelDiag.betaCriseIbov} (normal: ${modelDiag.betaNormIbov})\n\n`
-        + `Componente idiossincrática:  ${s.r_idio >= 0 ? '+' : ''}${s.r_idio.toFixed(1)}%\n`
-        + `  CVaR resíduo (emp ${s.w_emp.toFixed(0)}%): ${s.r_emp >= 0 ? '+' : ''}${s.r_emp.toFixed(1)}%\n`
-        + `  Piso teórico (teo ${(100-s.w_emp).toFixed(0)}%):  ${s.r_teo.toFixed(1)}%\n`
-        + `  Vol idio: ${modelDiag.volIdio}% a.a. · k=${modelDiag.kIdioCrise}× · ρ̄=${modelDiag.rhoBar}`;
+      let tipText;
+      if (s.isRF) {
+        tipText = `${s.name}\n`
+          + `─────────────────────────────\n`
+          + `Total estimado:    ${s.ret >= 0 ? '+' : ''}${s.ret.toFixed(1)}%\n\n`
+          + `Carry CDI no período:        +${s.r_carry.toFixed(1)}%\n`
+          + `Choque spread crédito:        ${s.r_credit.toFixed(1)}% (Δspread=${s.spreadShock.toFixed(1)}pp × dur=${s.creditDur.toFixed(1)}a)\n`
+          + `Choque duration taxa real:    ${s.r_duration.toFixed(1)}% (Δjuro=${s.rateShock.toFixed(1)}pp × dur=${s.rateDur.toFixed(1)}a)\n`
+          + (Math.abs(s.r_fx) > 0.01 ? `Risco cambial residual:       ${s.r_fx.toFixed(1)}%\n` : '')
+          + `\nOs choques de PU são marcação instantânea.\nO carry é acumulado pro-rata no período.`;
+      } else {
+        tipText = `${s.name}\n`
+          + `─────────────────────────────\n`
+          + `Total estimado:    ${s.ret >= 0 ? '+' : ''}${s.ret.toFixed(1)}%\n\n`
+          + `Componente β (sistemática):  ${s.r_sist >= 0 ? '+' : ''}${s.r_sist.toFixed(1)}%\n`
+          + `  β_crise=${modelDiag.betaCriseIbov} (normal: ${modelDiag.betaNormIbov})\n\n`
+          + `Componente idiossincrática:  ${s.r_idio >= 0 ? '+' : ''}${s.r_idio.toFixed(1)}%\n`
+          + `  CVaR resíduo (emp ${s.w_emp.toFixed(0)}%): ${s.r_emp >= 0 ? '+' : ''}${s.r_emp.toFixed(1)}%\n`
+          + `  Piso teórico (teo ${(100-s.w_emp).toFixed(0)}%):  ${s.r_teo.toFixed(1)}%\n`
+          + `  Vol idio: ${modelDiag.volIdio}% a.a. · k=${modelDiag.kIdioCrise}× · ρ̄=${modelDiag.rhoBar}`;
+      }
       html += `<div class="fp-stress-item" data-tip="${tipText}">
         <div class="fp-stress-name" title="${s.label}">${s.name}</div>
         <div class="fp-stress-val" style="color:${cls}">${s.ret >= 0 ? '+' : ''}${s.ret.toFixed(1)}%</div>
@@ -10142,9 +10603,12 @@ function renderFundProfile() {
 
     html += `</div>`;
     if (worstStress != null) {
+      const footerRF = isRFExposure
+        ? `modelo de duration/spread · subtipo: ${modelDiag.subtype} · dur.crédito=${modelDiag.creditDur}a · dur.taxa=${modelDiag.rateDur}a`
+        : `${modelDiag.nDiasRuins} pregões ruins observados · peso empírico ${modelDiag.w_emp}% · β crise ${modelDiag.betaCriseIbov} (normal ${modelDiag.betaNormIbov})`;
       html += `<div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);margin-top:0.4rem;line-height:1.8">
         Pior cenário estimado: <strong style="color:var(--red)">${worstStress.toFixed(1)}%</strong> ·
-        ${modelDiag.nDiasRuins} pregões ruins observados · peso empírico ${modelDiag.w_emp}% · β crise ${modelDiag.betaCriseIbov} (normal ${modelDiag.betaNormIbov}) ·
+        ${footerRF} ·
         Passe o mouse em cada cenário para ver a decomposição completa
       </div>`;
     }
@@ -10307,27 +10771,42 @@ function evalPortfolioAdvanced(w, cnpjs, mus, cdiTarget, ibovProxy, cov, history
 // ════════════════════════════════════════════════════════════════════════════
 
 // Calcula retorno do portfólio em um cenário de stress usando o modelo de fator
-// Idêntico ao portfolioStressReturn() do stress test — reutiliza STRESS_SCENARIOS e FUND_EXPOSURE
+// Reutiliza STRESS_SCENARIOS e FUND_EXPOSURE — mantido em sync com fundStressReturn
 function portfolioStressReturnOpt(scenario, cnpjs, weights) {
   function sp500BRL(sp_usd, brl_dep) { return (1 + sp_usd) * (1 + brl_dep) - 1; }
 
   function fundStress(cnpj, sc) {
     const betas = fundBetas[cnpj] || {};
     const expo  = FUND_EXPOSURE[cnpj] || { net_normal:1.0, net_crisis:0.8, primary:'ibov' };
+
+    // ── Branch RF: modelo de duration/spread ─────────────────────────────────
+    if (expo.primary === 'cdi') {
+      const creditDur  = expo.credit_duration || 0;
+      const rateDur    = expo.rate_duration   || 0;
+      const fxExposure = expo.fx_exposure     || 0;
+      const cdiAnnRate = (typeof cdi !== 'undefined' && cdi?.cagr12) ? cdi.cagr12 / 100 : 0.1275;
+      const cdiCarry   = sc.cdi_acc_period ?? (Math.pow(1 + cdiAnnRate, sc.days / 365) - 1);
+      const creditLoss = ((sc.credit_spread_shock || 0) / 100) * creditDur;
+      const durLoss    = ((sc.real_rate_shock    || 0) / 100) * rateDur;
+      const fxLoss     = fxExposure * Math.abs(sc.brl_dep) * -0.3;
+      const alpha_ann    = (betas.alpha_ann || 0) / 100;
+      const alpha_period = Math.pow(1 + alpha_ann, sc.days / 252) - 1;
+      return cdiCarry - creditLoss - durLoss + fxLoss + alpha_period * 0.3;
+    }
+
+    // ── Branch equity/multimercado: modelo de beta ────────────────────────────
     let b_ibov = betas.beta_ibov;
     let b_sp   = betas.beta_sp500;
     if (b_ibov == null) {
-      if (expo.primary === 'ibov')   { b_ibov = expo.net_normal; b_sp = 0.05; }
+      if (expo.primary === 'ibov')       { b_ibov = expo.net_normal; b_sp = 0.05; }
       else if (expo.primary === 'sp500') { b_ibov = 0.05; b_sp = expo.net_normal; }
       else { b_ibov = expo.net_normal * 0.5; b_sp = expo.net_normal * 0.5; }
     }
-    // Use crisis exposure (funds reduce net long in severe scenarios)
-    const netAdj = expo.net_crisis / Math.max(expo.net_normal, 0.01);
-    const r_ibov   = sc.ibov_ret;
-    const r_sp_brl = sp500BRL(sc.sp500_usd, sc.brl_dep);
-    let r = netAdj * (b_ibov * r_ibov + b_sp * r_sp_brl);
+    const netAdj    = expo.net_crisis / Math.max(expo.net_normal, 0.01);
+    const r_sp_brl  = sp500BRL(sc.sp500_usd, sc.brl_dep);
+    let r = netAdj * (b_ibov * sc.ibov_ret + b_sp * r_sp_brl);
     if (Math.abs(sc.ibov_ret) > 0.3) r *= 1.05;
-    const alpha_ann = (betas.alpha_ann || 0) / 100;
+    const alpha_ann    = (betas.alpha_ann || 0) / 100;
     const alpha_period = Math.pow(1 + alpha_ann, sc.days / 252) - 1;
     return r + alpha_period * 0.3;
   }
