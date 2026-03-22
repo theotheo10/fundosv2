@@ -75,7 +75,7 @@
 
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; overflow-x: auto; }
   table { border-collapse: collapse; }
-  .table-wrap table { width: 100%; min-width: 760px; }
+  .table-wrap table { width: 100%; min-width: 760px; table-layout: fixed; }
 
   thead th {
     font-family: 'Courier New', monospace; font-size: 0.68rem;
@@ -110,9 +110,9 @@
   .rank.r3   { background: #9c5c2a; color: #fff; }
   .rank.ibov { background: var(--blue-light); color: var(--blue); font-size: 0.52rem; width: 30px; letter-spacing: -0.02em; }
 
-  .fund-name-cell { display: flex; align-items: center; min-width: 220px; }
-  .fund-name  { font-size: 0.84rem; line-height: 1.3; }
-  .fund-cnpj  { font-family: 'Courier New', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
+  .fund-name-cell { display: flex; align-items: center; min-width: 0; overflow: hidden; }
+  .fund-name  { font-size: 0.84rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .fund-cnpj  { font-family: 'Courier New', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .expand-arrow { font-size: 0.55rem; color: var(--muted); margin-left: 5px; display: inline-block; transition: transform 0.2s; }
 
   .cagr-val     { font-family: 'Courier New', monospace; font-size: 0.88rem; font-weight: bold; }
@@ -2036,13 +2036,13 @@
 <div class="table-wrap" id="rankingTableWrap">
   <table>
     <colgroup>
-      <col><!-- nome: auto -->
-      <col style="width:106px"><!-- 12M -->
-      <col style="width:130px"><!-- 36M (wider: has alpha pill) -->
-      <col style="width:106px"><!-- 60M -->
-      <col style="width:92px"><!-- Alpha -->
-      <col style="width:106px"><!-- Início -->
-      <col style="width:110px"><!-- Histórico -->
+      <col style="width:auto"><!-- nome -->
+      <col style="width:100px"><!-- 12M -->
+      <col style="width:126px"><!-- 36M: has alpha pill -->
+      <col style="width:96px"><!-- 60M -->
+      <col style="width:86px"><!-- Alpha -->
+      <col style="width:96px"><!-- Início -->
+      <col style="width:100px"><!-- Histórico -->
     </colgroup>
     <thead>
       <tr>
