@@ -2838,7 +2838,9 @@ function fmtPct(v) {
 // Gross-up display: for fundos isentos, mostra o CAGR ajustado (÷0,85) com tooltip mostrando o bruto real.
 // NOTA: usa data-tip (não title=) para manter o padrão do tooltip customizado global (#g-tip).
 // Nunca usar title= em elementos do ranking — o tooltip nativo do browser é inconsistente com o design.
-// O símbolo ✦ é embutido inline sem <sup> para não desalinhar a linha da tabela.
+// NOTA: usa data-tip (não title=) para manter o padrão do tooltip customizado global (#g-tip).
+// Nunca usar title= em elementos do ranking — o tooltip nativo do browser é inconsistente com o design.
+// Sem símbolo extra no texto — cursor:help é o único indicador visual, sem risco de desalinhar a linha.
 function fmtPctGU(v, f) {
   if (v === null || v === undefined || isNaN(v))
     return '<span class="cagr-val na">N/D</span>';
@@ -2847,7 +2849,7 @@ function fmtPctGU(v, f) {
     const gu = v / 0.85;
     const sign = gu >= 0 ? '+' : '';
     const signBruto = v >= 0 ? '+' : '';
-    return `<span class="cagr-val ${gu >= 0 ? 'pos' : 'neg'}" data-tip="Gross-up: equivalente tributável (÷ 0,85). Bruto real: ${signBruto}${v.toFixed(2)}%">${sign}${gu.toFixed(2)}% <span style="font-size:0.6em;opacity:0.55;vertical-align:middle;line-height:1;">✦</span></span>`;
+    return `<span class="cagr-val ${gu >= 0 ? 'pos' : 'neg'}" style="cursor:help;text-decoration:underline dotted;text-underline-offset:2px;" data-tip="Gross-up: equivalente tributável (÷ 0,85). Bruto real: ${signBruto}${v.toFixed(2)}%">${sign}${gu.toFixed(2)}%</span>`;
   }
   const sign = v >= 0 ? '+' : '';
   return `<span class="cagr-val ${v >= 0 ? 'pos' : 'neg'}">${sign}${v.toFixed(2)}%</span>`;
