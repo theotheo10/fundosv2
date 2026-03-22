@@ -2831,6 +2831,24 @@ function fmtPct(v) {
   return `<span class="cagr-val ${v >= 0 ? 'pos' : 'neg'}">${sign}${v.toFixed(2)}%</span>`;
 }
 
+// Gross-up display: for fundos isentos, mostra o CAGR ajustado (÷0,85) com tooltip mostrando o bruto real.
+function fmtPctGU(v, f) {
+  if (v === null || v === undefined || isNaN(v))
+    return '<span class="cagr-val na">N/D</span>';
+  const meta = f && FUND_META && FUND_META[f.cnpjFmt];
+  if (meta && meta.grossUp) {
+    const gu = v / 0.85;
+    const sign = gu >= 0 ? '+' : '';
+    const signBruto = v >= 0 ? '+' : '';
+    return `<span class="cagr-val ${gu >= 0 ? 'pos' : 'neg'} grossup-val"
+              title="Gross-up: equivalente tributável. Bruto real: ${signBruto}${v.toFixed(2)}%"
+              style="cursor:help;"
+            >${sign}${gu.toFixed(2)}% <sup style="font-size:0.6em;opacity:0.7;">✦</sup></span>`;
+  }
+  const sign = v >= 0 ? '+' : '';
+  return `<span class="cagr-val ${v >= 0 ? 'pos' : 'neg'}">${sign}${v.toFixed(2)}%</span>`;
+}
+
 function fmtPctLarge(v) {
   if (v === null || v === undefined || isNaN(v))
     return '<span class="perf-val na">N/D</span>';
@@ -3173,10 +3191,17 @@ function fmtDrawdown(v) {
   return `<span class="perf-val neg">${v.toFixed(1)}%</span>`;
 }
 
+function applyGrossUp(v, f) {
+  if (v == null) return v;
+  const meta = f && FUND_META && FUND_META[f.cnpjFmt];
+  return (meta && meta.grossUp) ? v / 0.85 : v;
+}
+
 function getSortVal(f, key) {
   if (key === 'tenure')    return tenureDays(f.cnpjFmt);
-  if (key === 'inception') return cagrInception(f) ?? -Infinity;
+  if (key === 'inception') return applyGrossUp(cagrInception(f), f) ?? -Infinity;
   if (key === 'alpha')     return calcAlpha(f, currentAlphaWindow) ?? -Infinity;
+  if (['cagr12','cagr36','cagr60'].includes(key)) return applyGrossUp(f[key], f) ?? -Infinity;
   return f[key] ?? -Infinity;
 }
 
@@ -3427,11 +3452,11 @@ function render() {
           <div class="fund-cnpj">${f.cnpjFmt}</div>
         </div>
       </div></td>
-      <td>${fmtPct(f.cagr12)}</td>
-      <td>${fmtPct(f.cagr36)}</td>
-      <td>${fmtPct(f.cagr60)}</td>
+      <td>${fmtPctGU(f.cagr12, f)}</td>
+      <td>${fmtPctGU(f.cagr36, f)}</td>
+      <td>${fmtPctGU(f.cagr60, f)}</td>
       <td>${fmtAlpha(calcAlpha(f, currentAlphaWindow), currentAlphaWindow)}</td>
-      <td>${fmtPct(cagrInception(f))}</td>
+      <td>${fmtPctGU(cagrInception(f), f)}</td>
       <td>${fmtTenure(f.cnpjFmt)}</td>
     </tr>
     <tr class="detail-row"><td colspan="6">${buildDetailPanel(f, isExp)}</td></tr>`;
