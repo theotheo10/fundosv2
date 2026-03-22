@@ -11080,8 +11080,11 @@ function renderFundProfile() {
     const scaleCorr = Math.sqrt(T_anos * Math.max(0.5, 1 + 2 * rhoBar));
 
     // Componente idiossincrática empírica: CVaR do resíduo × scaling
+    // cvarResiduo é diário (decimal). scaleCorr = √(T_anos × (1+2ρ̄)) escala para o período.
+    // √252 converte de retorno diário para anualizado (base do scaleCorr).
+    // ATENÇÃO: * sqrt(252), NÃO * 252 — seria double-annualization e produziria valores absurdos.
     const r_emp = cvarResiduo != null
-      ? cvarResiduo * scaleCorr * 252  // CVaR é diário → anualize via scaling
+      ? cvarResiduo * scaleCorr * Math.sqrt(252)
       : -(volIdioAnu * scaleCorr);     // fallback se CVaR não disponível
 
     // Componente idiossincrática teórica: vol_idio × k_crise × scaling
@@ -11363,43 +11366,51 @@ function renderFundProfile() {
   }
 
   // ── Evolução histórica das métricas ──────────────────────────────────────
-  // Mostra como o retorno alvo, retorno líquido e max drawdown estimado
-  // evoluíram ao longo dos últimos 12 meses, calculados com dados disponíveis
-  // em cada data (sem lookahead).
+  // Eixo esquerdo: retorno alvo bruto e líquido (referência positiva)
+  // Eixo direito:  pior cenário de stress + drawdown histórico (negativo, zero no topo)
   const metricsHist = historyData?.metricsHistory?.[cnpj];
   if (metricsHist && Object.keys(metricsHist).length >= 2) {
-    const sortedDates = Object.keys(metricsHist).sort();
-    const labels      = sortedDates.map(d => { const [y,m] = d.split('-'); return `${m}/${y.slice(2)}`; });
-    const tgtData     = sortedDates.map(d => metricsHist[d].targetReturn  ?? null);
-    const net5Data    = sortedDates.map(d => metricsHist[d].netReturn5    ?? null);
-    const net10Data   = sortedDates.map(d => metricsHist[d].netReturn10   ?? null);
-    const cdiData     = sortedDates.map(d => metricsHist[d].cdiWeighted   ?? null);
-    const floorData   = sortedDates.map(d => metricsHist[d].cdiFloor      ?? null);
-    const ddData      = sortedDates.map(d => metricsHist[d].maxDD         ?? null);
-    const ntnbData    = sortedDates.map(d => metricsHist[d].ntnbLong      ?? null);
+    const sortedDates  = Object.keys(metricsHist).sort();
+    const labels       = sortedDates.map(d => { const [y,m] = d.split('-'); return `${m}/${y.slice(2)}`; });
+    const tgtData      = sortedDates.map(d => metricsHist[d].targetReturn  ?? null);
+    const net5Data     = sortedDates.map(d => metricsHist[d].netReturn5    ?? null);
+    const cdiData      = sortedDates.map(d => metricsHist[d].cdiWeighted   ?? null);
+    // Eixo direito — valores negativos, zero no topo
+    const stressData   = sortedDates.map(d => metricsHist[d].worstStress   ?? null);
+    const maxDDData    = sortedDates.map(d => {
+      const v = metricsHist[d].maxDD;
+      return v != null ? -Math.abs(v) : null;  // garantir negativo
+    });
 
     const canvasId = `metricsHistChart_${cnpj.replace(/\D/g,'')}_${Date.now()}`;
     html += `
-      <div class="fp-section-title" style="margin-top:1.4rem" data-tip="Evolução retroativa das métricas-chave do fundo nos últimos 12 meses.&#10;Cada ponto representa o que o modelo estimaria naquela data, usando apenas os dados disponíveis até ali (sem lookahead).&#10;Eixo esquerdo: retorno alvo bruto, líquido (IR) e CDI/floor. Eixo direito: NTN-B longa (taxa real %).">Evolução histórica das métricas ⓘ</div>
-      <div style="position:relative;height:180px;margin-bottom:0.6rem">
+      <div class="fp-section-title" style="margin-top:1.4rem"
+           data-tip="Evolução das métricas-chave nos últimos 12 meses, calculadas sem lookahead.&#10;Eixo esquerdo (positivo): retorno alvo bruto e líquido 5a vs CDI.&#10;Eixo direito (negativo, zero no topo): pior cenário de stress estimado e max drawdown histórico acumulado.">Evolução histórica das métricas ⓘ</div>
+      <div style="position:relative;height:190px;margin-bottom:0.5rem">
         <canvas id="${canvasId}"></canvas>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:0.5rem 1.2rem;font-family:'Courier New',monospace;font-size:0.54rem;color:var(--muted);margin-bottom:0.5rem">
-        <span><span style="display:inline-block;width:20px;height:2px;background:var(--accent);vertical-align:middle;margin-right:4px"></span>Retorno alvo</span>
-        <span><span style="display:inline-block;width:20px;height:2px;background:var(--green);vertical-align:middle;margin-right:4px;border-bottom:2px dashed var(--green)"></span>Líquido 5a</span>
-        <span><span style="display:inline-block;width:20px;height:2px;background:var(--blue);vertical-align:middle;margin-right:4px;opacity:0.6"></span>CDI pond.</span>
-        <span><span style="display:inline-block;width:20px;height:2px;background:var(--amber,#e07800);vertical-align:middle;margin-right:4px;opacity:0.7;border-bottom:2px dotted var(--amber,#e07800)"></span>Floor RF</span>
-        <span><span style="display:inline-block;width:8px;height:8px;background:var(--red);border-radius:50%;vertical-align:middle;margin-right:4px;opacity:0.4"></span>NTN-B real (eixo dir.)</span>
+        <span><span style="display:inline-block;width:18px;height:2px;background:var(--accent);vertical-align:middle;margin-right:4px"></span>Retorno alvo</span>
+        <span><span style="display:inline-block;width:18px;height:2px;background:var(--green);vertical-align:middle;margin-right:4px;border-bottom:2px dashed"></span>Líquido 5a</span>
+        <span><span style="display:inline-block;width:18px;height:2px;background:var(--blue);vertical-align:middle;margin-right:4px;opacity:0.55"></span>CDI pond.</span>
+        <span style="margin-left:0.5rem"><span style="display:inline-block;width:18px;height:2px;background:#ef4444;vertical-align:middle;margin-right:4px"></span>Pior stress ⟶</span>
+        <span><span style="display:inline-block;width:18px;height:2px;background:#f97316;vertical-align:middle;margin-right:4px;border-bottom:2px dashed"></span>Max DD hist. ⟶</span>
       </div>`;
 
-    // Deferred chart render after innerHTML is set
     setTimeout(function() {
       const ctx = document.getElementById(canvasId);
       if (!ctx || typeof Chart === 'undefined') return;
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-      const textColor = isDark ? '#888' : '#aaa';
+      const isDark      = document.documentElement.getAttribute('data-theme') === 'dark';
+      const gridColor   = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      const textColor   = isDark ? '#888' : '#aaa';
       const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2563eb';
+
+      // Compute right-axis max: 0 at top, min is the worst value
+      const rightVals = [...stressData, ...maxDDData].filter(v => v != null);
+      const rightMin  = rightVals.length ? Math.min(...rightVals) : -60;
+      // Round down to nearest 10
+      const rightMinRounded = Math.floor(rightMin / 10) * 10;
+
       new Chart(ctx, {
         type: 'line',
         data: {
@@ -11409,7 +11420,7 @@ function renderFundProfile() {
               label: 'Retorno alvo',
               data: tgtData,
               borderColor: accentColor, borderWidth: 2,
-              pointRadius: 3, pointHoverRadius: 5,
+              pointRadius: 2, pointHoverRadius: 4,
               tension: 0.35, fill: false, yAxisID: 'y',
             },
             {
@@ -11422,22 +11433,26 @@ function renderFundProfile() {
             {
               label: 'CDI pond.',
               data: cdiData,
-              borderColor: '#3b82f6', borderWidth: 1, opacity: 0.5,
+              borderColor: '#3b82f6', borderWidth: 1,
+              borderDash: [2, 4],
               pointRadius: 0, tension: 0.2, fill: false, yAxisID: 'y',
             },
             {
-              label: 'Floor RF',
-              data: floorData,
-              borderColor: '#e07800', borderWidth: 1,
-              borderDash: [2, 3],
-              pointRadius: 0, tension: 0.2, fill: false, yAxisID: 'y',
-            },
-            {
-              label: 'NTN-B longa (real)',
-              data: ntnbData,
-              borderColor: '#ef4444', borderWidth: 1,
-              pointRadius: 2, pointStyle: 'circle',
+              label: 'Pior stress',
+              data: stressData,
+              borderColor: '#ef4444', borderWidth: 1.5,
+              pointRadius: 2, pointHoverRadius: 4,
               tension: 0.2, fill: false, yAxisID: 'y2',
+            },
+            {
+              label: 'Max DD hist.',
+              data: maxDDData,
+              borderColor: '#f97316', borderWidth: 1.5,
+              borderDash: [4, 3],
+              pointRadius: 0, tension: 0.3,
+              fill: { target: 'origin', above: 'transparent',
+                      below: 'rgba(249,115,22,0.08)' },
+              yAxisID: 'y2',
             },
           ],
         },
@@ -11454,9 +11469,11 @@ function renderFundProfile() {
               bodyColor: isDark ? '#94a3b8' : '#64748b',
               bodyFont: { family: 'Courier New', size: 11 },
               callbacks: {
-                label: ctx => {
-                  const v = ctx.parsed.y;
-                  return v != null ? `${ctx.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(1)}%` : null;
+                label: function(c) {
+                  const v = c.parsed.y;
+                  if (v == null) return null;
+                  const sign = v >= 0 ? '+' : '';
+                  return `${c.dataset.label}: ${sign}${v.toFixed(1)}%`;
                 },
               },
             },
@@ -11470,15 +11487,18 @@ function renderFundProfile() {
               position: 'left',
               ticks: { font: { family: 'Courier New', size: 9 }, color: textColor,
                        callback: v => `${v.toFixed(0)}%` },
-              grid:  { color: gridColor },
-              title: { display: false },
+              grid: { color: gridColor },
             },
             y2: {
               position: 'right',
-              ticks: { font: { family: 'Courier New', size: 9 }, color: '#ef4444',
-                       callback: v => `${v.toFixed(1)}%r` },
+              // Zero no topo: max=0, min=rightMinRounded (negativo)
+              max: 0,
+              min: rightMinRounded,
+              ticks: {
+                font: { family: 'Courier New', size: 9 }, color: '#ef4444',
+                callback: v => `${v.toFixed(0)}%`,
+              },
               grid: { drawOnChartArea: false },
-              title: { display: false },
             },
           },
         },
