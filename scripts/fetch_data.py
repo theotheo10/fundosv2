@@ -467,6 +467,178 @@ def fetch_cdi(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a60
         return {"cagr12": None, "cagr36": None, "cagr60": None}, {}
 
 
+def fetch_ntnb() -> dict:
+    """
+    Busca as taxas atuais das NTN-B (Tesouro IPCA+) via CSV público do Tesouro Direto.
+
+    Retorna dict com:
+      ntnb_rate_long:  média das taxas reais das NTN-B de vencimento >= 2035 (%)
+      ntnb_rate_mid:   taxa da NTN-B mais próxima de 5 anos de prazo (%)
+      ntnb_fetched_at: ISO datetime do fetch
+      ntnb_titles:     lista [{nome, vencimento, taxa}] para debug
+
+    Em caso de falha, retorna valores fallback conhecidos (~mar/2026).
+    O CSV público do Tesouro Direto é acessível sem autenticação.
+    """
+    # Fallback calibrado com dados de mar/2026 (NTN-B 2035: ~7.05%, 2040/2045: ~7.0%)
+    FALLBACK = {
+        "ntnb_rate_long":   7.05,
+        "ntnb_rate_mid":    6.90,
+        "ntnb_fetched_at":  None,
+        "ntnb_titles":      [],
+        "ntnb_source":      "fallback",
+    }
+    try:
+        # CSV público: taxas para investir (Tesouro Direto, atualizado diariamente)
+        # Formato: Tipo Titulo;Vencimento do Titulo;Taxa Anual;Valor Minimo;Valor do Titulo
+        url = "https://www.tesourodireto.com.br/json/br/com/b3/tesourodireto/pte/rest/api/v1/home.json"
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+            "Referer": "https://www.tesourodireto.com.br/",
+        })
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = json.loads(resp.read())
+
+        titles = []
+        # A estrutura do JSON é: response.TrsrBdTradgList[].TrsrBd
+        bond_list = (raw.get("response") or {}).get("TrsrBdTradgList") or []
+        for item in bond_list:
+            bd = item.get("TrsrBd") or {}
+            nome = bd.get("nm", "")
+            if "IPCA" not in nome.upper():
+                continue
+            try:
+                venc_str = bd.get("mtrtyDt", "")[:10]   # "YYYY-MM-DD"
+                venc = datetime.date.fromisoformat(venc_str)
+                taxa = float(bd.get("anulInvstmtRate") or 0)
+                if taxa > 0:
+                    titles.append({"nome": nome, "vencimento": venc_str, "taxa": taxa})
+            except Exception:
+                continue
+
+        if not titles:
+            print("  ✗ NTN-B: nenhum título IPCA+ encontrado no JSON")
+            return FALLBACK
+
+        # Taxa "longa": média das NTN-B com vencimento >= 8 anos a partir de hoje
+        today = datetime.date.today()
+        horizon_long = today.replace(year=today.year + 8)
+        longs = [t for t in titles if datetime.date.fromisoformat(t["vencimento"]) >= horizon_long]
+        ntnb_long = sum(t["taxa"] for t in longs) / len(longs) if longs else None
+
+        # Taxa "mid": NTN-B mais próxima de prazo de 5 anos (±2 anos)
+        horizon_5y = today.replace(year=today.year + 5)
+        mids = [t for t in titles
+                if abs((datetime.date.fromisoformat(t["vencimento"]) - horizon_5y).days) < 730]
+        ntnb_mid = min(mids, key=lambda t: abs((datetime.date.fromisoformat(t["vencimento"]) - horizon_5y).days))["taxa"] if mids else None
+
+        result = {
+            "ntnb_rate_long":   round(ntnb_long, 4) if ntnb_long else FALLBACK["ntnb_rate_long"],
+            "ntnb_rate_mid":    round(ntnb_mid,  4) if ntnb_mid  else FALLBACK["ntnb_rate_mid"],
+            "ntnb_fetched_at":  datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "ntnb_titles":      titles,
+            "ntnb_source":      "live",
+        }
+        longs_str = ", ".join(f"{t['vencimento']}={t['taxa']:.2f}%" for t in longs)
+        print(f"  NTN-B longa ({len(longs)} títulos): {longs_str}")
+        print(f"  NTN-B_long={result['ntnb_rate_long']:.2f}% NTN-B_mid={result['ntnb_rate_mid']:.2f}%")
+        return result
+
+    except Exception as e:
+        print(f"  ✗ NTN-B falhou: {e} — usando fallback")
+        return FALLBACK
+
+
+def fetch_ipca_focus() -> dict:
+    """
+    Busca a expectativa de IPCA de longo prazo do Focus (BCB) via Olinda API.
+
+    Retorna dict com:
+      ipca_12m:          mediana do Focus para IPCA nos próximos 12 meses (%)
+      ipca_longo_prazo:  mediana do Focus para IPCA em 5 anos à frente (%)
+      ipca_fetched_at:   ISO datetime do fetch
+      ipca_source:       "live" | "fallback"
+
+    Fonte: BCB Olinda — Expectativas de Mercado (Focus), série anual.
+    Endpoint público, sem autenticação. Atualizado semanalmente (sextas-feiras).
+
+    Por que Focus e não inflação implícita dos títulos (NTN-B vs LTN)?
+      A inflação implícita (break-even) = taxa_LTN / taxa_NTN-B − 1 não é uma
+      medida limpa de expectativa de inflação porque:
+        1. LTN e NTN-B carregam prêmios de risco diferentes e variáveis no tempo
+           (risco de inflação surpresa na LTN, risco fiscal na NTN-B).
+        2. No Brasil, com dívida crescente e dominância fiscal percebida, esses
+           prêmios são substanciais e não se cancelam na diferença.
+        3. O break-even sistematicamente sobrestima a inflação esperada em ~1-2pp.
+      O Focus reflete diretamente as expectativas dos economistas de mercado,
+      sem o ruído dos prêmios de risco dos títulos.
+    """
+    FALLBACK = {
+        "ipca_12m":         4.8,   # Calibrado com Focus mar/2026 (~4.8% para 2026)
+        "ipca_longo_prazo": 4.0,   # Meta do CMN / convergência longo prazo do Focus
+        "ipca_fetched_at":  None,
+        "ipca_source":      "fallback",
+    }
+    try:
+        today_str = datetime.date.today().isoformat()
+        # Expectativas anuais do Focus para IPCA — último registro disponível
+        # Filtramos pelos anos relevantes: ano corrente+1 (12m proxy) e ano+5 (longo prazo)
+        import urllib.parse
+        base = "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/"
+        endpoint = "ExpectativasMercadoAnuais"
+        params = urllib.parse.urlencode({
+            "$filter": "Indicador eq 'IPCA'",
+            "$orderby": "Data desc",
+            "$top": "50",           # últimas 50 observações (várias datas × vários anos)
+            "$format": "json",
+            "$select": "Data,Ano,Mediana",
+        })
+        url = f"{base}{endpoint}?{params}"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            raw = json.loads(resp.read())
+
+        records = raw.get("value") or []
+        if not records:
+            raise ValueError("Focus API retornou vazio")
+
+        # Agrupar por (Data, Ano) — queremos a data mais recente disponível
+        from collections import defaultdict
+        by_date_ano: dict = defaultdict(dict)
+        for r in records:
+            data = r.get("Data", "")
+            ano  = r.get("Ano")
+            med  = r.get("Mediana")
+            if data and ano and med is not None:
+                by_date_ano[data][int(ano)] = float(med)
+
+        if not by_date_ano:
+            raise ValueError("Nenhum registro válido")
+
+        latest_date = max(by_date_ano.keys())
+        by_ano = by_date_ano[latest_date]
+
+        today_year = datetime.date.today().year
+        # 12M proxy: projeção para o próximo ano calendário completo
+        ipca_12m = by_ano.get(today_year + 1) or by_ano.get(today_year)
+        # Longo prazo: projeção para o ano 5 anos à frente (proxy de "neutro")
+        ipca_lp  = by_ano.get(today_year + 5) or by_ano.get(today_year + 4) or by_ano.get(today_year + 3)
+
+        result = {
+            "ipca_12m":         round(ipca_12m, 2) if ipca_12m else FALLBACK["ipca_12m"],
+            "ipca_longo_prazo": round(ipca_lp,  2) if ipca_lp  else FALLBACK["ipca_longo_prazo"],
+            "ipca_fetched_at":  latest_date,
+            "ipca_source":      "live",
+        }
+        print(f"  Focus IPCA 12M={result['ipca_12m']}% LP={result['ipca_longo_prazo']}% (ref. {latest_date})")
+        return result
+
+    except Exception as e:
+        print(f"  ✗ Focus IPCA falhou: {e} — usando fallback")
+        return FALLBACK
+
+
 # ── history.json — histórico crescente ────────────────────────────────────────
 
 def _legacy_max_dd(rets: list) -> float:
@@ -1443,6 +1615,36 @@ def main() -> None:
     print(f"\n── S&P 500")
     sp500 = fetch_sp500(anchor, a12, a36, a60)
 
+    print(f"\n── NTN-B (Tesouro IPCA+ — âncora de juro real)")
+    ntnb = fetch_ntnb()
+
+    print(f"\n── Focus IPCA (expectativa de inflação de longo prazo)")
+    ipca_focus = fetch_ipca_focus()
+
+    # ── NTN-B fallback: se fetch falhou, usa último valor bom gravado ────────────
+    if ntnb.get("ntnb_source") == "fallback" and out_path.exists():
+        try:
+            prev_data = json.loads(out_path.read_text())
+            prev_ntnb = prev_data.get("ntnb", {})
+            if prev_ntnb.get("ntnb_rate_long") and prev_ntnb.get("ntnb_source") == "live":
+                ntnb = prev_ntnb
+                print(f"  ↩ NTN-B: usando último valor live gravado ({prev_ntnb.get('ntnb_fetched_at', '')[:10]}): "
+                      f"long={prev_ntnb.get('ntnb_rate_long')}% mid={prev_ntnb.get('ntnb_rate_mid')}%")
+        except Exception:
+            pass
+
+    # ── Focus IPCA fallback: usa último valor bom gravado ────────────────────────
+    if ipca_focus.get("ipca_source") == "fallback" and out_path.exists():
+        try:
+            prev_data  = json.loads(out_path.read_text())
+            prev_ipca  = prev_data.get("ipca_focus", {})
+            if prev_ipca.get("ipca_longo_prazo") and prev_ipca.get("ipca_source") == "live":
+                ipca_focus = prev_ipca
+                print(f"  ↩ Focus IPCA: usando último valor live gravado ({prev_ipca.get('ipca_fetched_at', '')[:10]}): "
+                      f"12M={prev_ipca.get('ipca_12m')}% LP={prev_ipca.get('ipca_longo_prazo')}%")
+        except Exception:
+            pass
+
     print(f"\n── Betas (regressão OLS vs IBOV e S&P BRL)")
     # Reutiliza o fetch já feito antes de update_history — evita segunda chamada à API.
     index_rets = _idx_rets_early
@@ -1469,6 +1671,8 @@ def main() -> None:
         "ibov":        ibov,
         "cdi":         cdi_final,
         "sp500":       sp500,
+        "ntnb":        ntnb,
+        "ipca_focus":  ipca_focus,
         "fund_betas":  fund_betas,
         "funds":       results,
     }
