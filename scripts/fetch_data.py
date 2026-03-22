@@ -1336,6 +1336,7 @@ def compute_metrics_history(
     cdi_price_map: dict[str, float],
     ntnb_hist: dict[str, float],
     anchor: datetime.date,
+    betas_data: dict,
     backfill_months: int = 12,
 ) -> None:
     """
@@ -1349,21 +1350,24 @@ def compute_metrics_history(
       targetReturn:    retorno alvo bruto estimado (%)
       netReturn5:      retorno alvo líquido IR a 5 anos (%)
       netReturn10:     retorno alvo líquido IR a 10 anos (%)
-      cdiFloor:        floor do modelo (%) com horizonte 5 anos
-      ntnbLong:        taxa NTN-B longa usada naquela data (%)
       cdiWeighted:     CDI ponderado (12M×1+36M×3+60M×5)/9 naquela data (%)
-      maxDD:           max drawdown histórico até a data (%)
+      ntnbLong:        taxa NTN-B longa usada naquela data (%)
+      maxDD:           max drawdown histórico acumulado até a data (%)
+      worstStress:     pior retorno estimado nos 5 cenários de crise (%)
+                       modelo completo: R_sist(β_crise) + R_idio(CVaR+vol_idio)
+                       RF: modelo de carry/spread/duration (sem componente idio)
 
     Schema adicionado ao history.json:
       metricsHistory: {
         "22.232.927/0001-90": {
-          "2024-03-01": { targetReturn, netReturn5, ... },
+          "2024-03-01": { targetReturn, netReturn5, ..., worstStress },
           ...
         },
         ...
       }
 
     Datas de referência: última data útil de cada mês nos últimos backfill_months.
+    Incremental: pula datas já calculadas em execuções anteriores.
     """
     if not hist_path.exists():
         print("  ⚠ compute_metrics_history: history.json não encontrado")
@@ -1433,7 +1437,242 @@ def compute_metrics_history(
         w_cdi        = math.exp(-horizonte / TAU_ANOS)
         return w_cdi * cdi_obs + (1 - w_cdi) * neutral_nom
 
-    # IR simplificado para retorno líquido (regressiva TR, 5 e 10 anos)
+    # ── Modelo de stress completo — espelho fiel do buildFundPanel JS ─────────
+    #
+    # R_stress = R_sistemático + R_idiossincrático
+    #
+    # R_sist = exposure.net_crisis × (β_crise_ibov × R_ibov + β_crise_sp × R_sp_brl)
+    #   β_crise: OLS só em pregões com R_ibov < CRISE_THRESHOLD (dias ruins)
+    #   Sem dados suficientes: usa β_normal como fallback
+    #
+    # R_idio = w_emp × CVaR_resíduo × scaleCorr × √252
+    #        + w_teo × (−vol_idio × k_crise × scaleCorr)
+    #   CVaR: média dos piores 10% dos resíduos diários
+    #   k_crise: std(ε|dias ruins) / std(ε|todos)
+    #   ρ̄: autocorrelação média dos resíduos nos lags 1–3
+    #   scaleCorr = √(T_anos × max(0.5, 1 + 2ρ̄))
+    #   w_emp = min(1, n_dias_ruins / N_MIN)
+    #
+    # RF: usa modelo de carry/spread/duration (sem componente idiossincrática)
+    #
+    CRISE_THRESHOLD = -0.015   # IBOV < -1.5% = dia de crise
+    N_MIN_CRISE     = 40       # dias ruins mínimos para confiança empírica total
+    K_IDIO_DEFAULT  = 1.5      # amplificação padrão quando sem dados suficientes
+
+    # Cenários de stress — espelho exato do JS STRESS_SCENARIOS
+    STRESS_SCENARIOS_PY = [
+        {"name":"2008",  "ibov_ret":-0.600, "sp500_usd":-0.565, "brl_dep":+0.350, "days":365,
+         "credit_spread_shock":4.0, "real_rate_shock":3.5, "cdi_acc_period":0.133},
+        {"name":"2013",  "ibov_ret":-0.280, "sp500_usd":+0.000, "brl_dep":+0.150, "days":180,
+         "credit_spread_shock":1.0, "real_rate_shock":2.0, "cdi_acc_period":0.054},
+        {"name":"2015",  "ibov_ret":-0.410, "sp500_usd":-0.120, "brl_dep":+0.500, "days":365,
+         "credit_spread_shock":2.0, "real_rate_shock":2.8, "cdi_acc_period":0.133},
+        {"name":"Covid", "ibov_ret":-0.449, "sp500_usd":-0.340, "brl_dep":+0.300, "days":30,
+         "credit_spread_shock":3.5, "real_rate_shock":3.5, "cdi_acc_period":0.011},
+        {"name":"2022",  "ibov_ret":-0.280, "sp500_usd":-0.240, "brl_dep":+0.080, "days":90,
+         "credit_spread_shock":1.2, "real_rate_shock":3.0, "cdi_acc_period":0.030},
+    ]
+
+    # Exposição por CNPJ (espelho do FUND_EXPOSURE JS)
+    FUND_EXPOSURE_PY: dict[str, dict] = {
+        "22.232.927/0001-90": {"net_normal":1.00, "net_crisis":0.95, "primary":"ibov"},
+        "17.400.251/0001-66": {"net_normal":1.00, "net_crisis":0.95, "primary":"ibov"},
+        "18.302.338/0001-63": {"net_normal":1.00, "net_crisis":0.95, "primary":"ibov"},
+        "37.495.383/0001-26": {"net_normal":0.70, "net_crisis":0.50, "primary":"ibov"},
+        "42.698.666/0001-05": {"net_normal":0.30, "net_crisis":0.10, "primary":"sp500"},
+        "24.623.392/0001-03": {"net_normal":0.55, "net_crisis":0.30, "primary":"ibov"},
+        "28.747.685/0001-53": {"net_normal":1.00, "net_crisis":0.85, "primary":"ibov"},
+        "10.500.884/0001-05": {"net_normal":1.00, "net_crisis":0.95, "primary":"ibov"},
+        "35.744.790/0001-02": {"net_normal":0.00, "net_crisis":0.00, "primary":"sp500"},
+        "38.954.217/0001-03": {"net_normal":0.50, "net_crisis":0.25, "primary":"ibov"},
+        "32.073.525/0001-43": {"net_normal":1.00, "net_crisis":0.95, "primary":"ibov"},
+        "21.689.246/0001-92": {"net_normal":1.00, "net_crisis":0.95, "primary":"sp500"},
+        "14.438.229/0001-17": {"net_normal":1.00, "net_crisis":0.95, "primary":"ibov"},
+        "17.397.315/0001-17": {"net_normal":0.80, "net_crisis":0.65, "primary":"ibov"},
+        "46.351.969/0001-08": {"net_normal":1.00, "net_crisis":0.95, "primary":"sp500"},
+        "15.334.585/0001-53": {"net_normal":1.00, "net_crisis":0.95, "primary":"ibov"},
+        "47.511.351/0001-20": {"net_normal":1.00, "net_crisis":0.95, "primary":"sp500"},
+        "52.116.227/0001-09": {"net_normal":0.30, "net_crisis":0.10, "primary":"ibov"},
+        "47.612.105/0001-65": {"net_normal":0.30, "net_crisis":0.10, "primary":"mixed"},
+        "29.726.133/0001-21": {"net_normal":0.30, "net_crisis":0.10, "primary":"mixed"},
+        "35.828.684/0001-07": {"net_normal":0.30, "net_crisis":0.10, "primary":"mixed"},
+        "16.876.874/0001-47": {"net_normal":1.00, "net_crisis":0.95, "primary":"ibov"},
+        "52.239.457/0001-57": {"net_normal":0.0, "net_crisis":0.0, "primary":"cdi",
+                               "rf_subtype":"pos_fixado_global","credit_duration":0.5,"rate_duration":0.5,"fx_exposure":0.15},
+        "51.253.495/0001-00": {"net_normal":0.0, "net_crisis":0.0, "primary":"cdi",
+                               "rf_subtype":"credito_privado","credit_duration":2.0,"rate_duration":0.0,"fx_exposure":0.0},
+        "52.969.671/0001-69": {"net_normal":0.0, "net_crisis":0.0, "primary":"cdi",
+                               "rf_subtype":"debentures_infra","credit_duration":4.5,"rate_duration":6.5,"fx_exposure":0.0},
+    }
+
+    ibov_returns_map: dict[str, float] = hist.get("ibovReturns", {})
+
+    def _compute_fund_stress_params(
+        cnpj: str,
+        fund_rets: list,          # retornos diários do fundo até ref_date
+        common_dates_slice: list, # datas correspondentes
+        beta_ibov_n: float,
+        beta_sp_n: float,
+        r2: float,
+    ) -> dict:
+        """
+        Calcula os parâmetros de stress para um fundo (espelho do JS buildFundPanel).
+        Retorna: {b_ibov_crise, b_sp_crise, cvarResiduo, rhoBar, kIdioCrise,
+                  volAnual, r2, nDiasRuins, w_emp}
+        """
+        n = len(fund_rets)
+
+        # Vol total anualizada
+        if n < 2:
+            return {}
+        mean_r = sum(fund_rets) / n
+        var_   = sum((r - mean_r) ** 2 for r in fund_rets) / (n - 1)
+        vol_ann = math.sqrt(var_ * 252)  # decimal, não %
+
+        # Resíduos do modelo normal: ε = r_fundo − β_ibov_n × r_ibov
+        # (β_sp contribui pouco para fundos Brasil; usa ibov como proxy para ambos)
+        ibov_rets_slice = [ibov_returns_map.get(d, 0.0) for d in common_dates_slice]
+        residuos        = [fund_rets[i] - beta_ibov_n * ibov_rets_slice[i] for i in range(n)]
+
+        # Identificar dias de crise (IBOV < threshold)
+        crise_mask   = [ibov_rets_slice[i] < CRISE_THRESHOLD for i in range(n)]
+        n_dias_ruins = sum(crise_mask)
+
+        # β_crise: OLS nos dias ruins
+        b_ibov_crise = beta_ibov_n  # fallback = β_normal
+        b_sp_crise   = beta_sp_n
+        if n_dias_ruins >= 10:
+            x  = [ibov_rets_slice[i] for i in range(n) if crise_mask[i]]
+            y  = [fund_rets[i]        for i in range(n) if crise_mask[i]]
+            nx = len(x)
+            mx, my = sum(x)/nx, sum(y)/nx
+            denom = sum((xi - mx)**2 for xi in x)
+            if denom > 1e-12:
+                b_ibov_crise = sum((x[i]-mx)*(y[i]-my) for i in range(nx)) / denom
+                # Clampa: [0, 3] para ibov, sem clampa para sp500
+                expo = FUND_EXPOSURE_PY.get(cnpj, {})
+                if expo.get("primary") == "ibov":
+                    b_ibov_crise = max(0.0, min(3.0, b_ibov_crise))
+                b_sp_crise = b_ibov_crise * (beta_sp_n / max(abs(beta_ibov_n), 1e-6))
+
+        # CVaR 10% dos resíduos
+        sorted_res  = sorted(residuos)
+        n10         = max(1, n // 10)
+        cvar_resid  = sum(sorted_res[:n10]) / n10  # decimal diário, negativo
+
+        # Autocorrelação dos resíduos, lags 1–3
+        rho_sum = 0.0
+        rho_cnt = 0
+        mean_e  = sum(residuos) / n
+        var_e   = sum((e - mean_e)**2 for e in residuos) / max(n-1, 1)
+        if var_e > 1e-12:
+            for lag in range(1, 4):
+                pairs = [(residuos[i]-mean_e, residuos[i-lag]-mean_e)
+                         for i in range(lag, n)]
+                if pairs:
+                    cov_lag = sum(a*b for a,b in pairs) / len(pairs)
+                    rho_sum += cov_lag / var_e
+                    rho_cnt += 1
+        rho_bar = rho_sum / rho_cnt if rho_cnt > 0 else 0.0
+
+        # k_crise: amplificação idiossincrática em dias ruins
+        k_idio = K_IDIO_DEFAULT
+        if n_dias_ruins >= 5:
+            res_crise  = [residuos[i] for i in range(n) if crise_mask[i]]
+            mean_all_e = mean_e
+            std_all    = math.sqrt(var_e) if var_e > 0 else 1e-6
+            var_crise  = sum((e - sum(res_crise)/len(res_crise))**2
+                             for e in res_crise) / max(len(res_crise)-1, 1)
+            std_crise  = math.sqrt(var_crise) if var_crise > 0 else std_all
+            k_idio     = std_crise / std_all if std_all > 1e-8 else K_IDIO_DEFAULT
+
+        w_emp = min(1.0, n_dias_ruins / N_MIN_CRISE)
+
+        return {
+            "b_ibov_crise": b_ibov_crise,
+            "b_sp_crise":   b_sp_crise,
+            "cvar_resid":   cvar_resid,
+            "rho_bar":      rho_bar,
+            "k_idio":       k_idio,
+            "vol_ann":      vol_ann,
+            "r2":           r2,
+            "n_dias_ruins": n_dias_ruins,
+            "w_emp":        w_emp,
+        }
+
+    def calc_worst_stress(
+        cnpj: str,
+        stress_params: dict,  # saída de _compute_fund_stress_params
+        cdi_ann: float,       # CDI anual ponderado (%) para carry RF
+    ) -> float | None:
+        """
+        Pior retorno nos 5 cenários de crise — modelo completo fiel ao JS.
+        """
+        expo = FUND_EXPOSURE_PY.get(cnpj, {"net_normal":1.0,"net_crisis":0.8,"primary":"ibov"})
+        worst = None
+
+        for sc in STRESS_SCENARIOS_PY:
+            # ── Branch RF ────────────────────────────────────────────────────
+            if expo.get("primary") == "cdi":
+                credit_dur  = expo.get("credit_duration", 0)
+                rate_dur    = expo.get("rate_duration",   0)
+                fx_expo     = expo.get("fx_exposure",     0)
+                cdi_carry   = (math.pow(1 + cdi_ann / 100, sc["days"] / 365) - 1
+                               if sc.get("cdi_acc_period") is None
+                               else sc["cdi_acc_period"])
+                credit_loss = (sc.get("credit_spread_shock", 0) / 100) * credit_dur
+                dur_loss    = (sc.get("real_rate_shock",    0) / 100) * rate_dur
+                fx_loss     = fx_expo * abs(sc.get("brl_dep", 0)) * -0.3
+                ret = (cdi_carry - credit_loss - dur_loss + fx_loss) * 100
+
+            # ── Branch equity/multi ──────────────────────────────────────────
+            else:
+                if not stress_params:
+                    continue
+                b_ibov_c = stress_params["b_ibov_crise"]
+                b_sp_c   = stress_params["b_sp_crise"]
+                vol_ann  = stress_params["vol_ann"]
+                r2       = stress_params["r2"]
+                cvar     = stress_params["cvar_resid"]
+                rho_bar  = stress_params["rho_bar"]
+                k_idio   = stress_params["k_idio"]
+                w_emp    = stress_params["w_emp"]
+                w_teo    = 1.0 - w_emp
+
+                # Exposição em crise
+                nn = max(expo.get("net_normal", 1.0), 0.01)
+                nc = expo.get("net_crisis", 0.8)
+                net_adj = nc / nn
+
+                # Retornos dos índices no cenário
+                r_ibov   = sc["ibov_ret"]
+                r_sp_brl = (1 + sc.get("sp500_usd", 0)) * (1 + sc.get("brl_dep", 0)) - 1
+                primary  = expo.get("primary", "ibov")
+                if primary == "ibov":
+                    r_factor = net_adj * (b_ibov_c * r_ibov + b_sp_c * r_sp_brl)
+                elif primary == "sp500":
+                    r_factor = net_adj * (b_sp_c * r_sp_brl + b_ibov_c * r_ibov)
+                else:  # mixed
+                    r_factor = net_adj * (b_ibov_c * r_ibov * 0.5 + b_sp_c * r_sp_brl * 0.5)
+
+                # Amplificação de correlação em crises severas
+                if abs(r_ibov) > 0.3:
+                    r_factor *= 1.05
+
+                # Componente idiossincrática
+                vol_idio_ann = vol_ann * math.sqrt(max(0.0, 1.0 - r2))
+                T_anos       = sc["days"] / 252
+                scale_corr   = math.sqrt(T_anos * max(0.5, 1.0 + 2.0 * rho_bar))
+                r_emp        = cvar * scale_corr * math.sqrt(252)
+                r_teo        = -(vol_idio_ann * k_idio * scale_corr)
+                r_idio       = w_emp * r_emp + w_teo * r_teo
+
+                ret = (r_factor + r_idio) * 100
+
+            if worst is None or ret < worst:
+                worst = ret
+
+        return round(worst, 2) if worst is not None else None
     IR_RATES = {5: 0.15, 10: 0.15}   # simplificação: tabela regressiva ≈ 15% LP
     def net_return(gross_pct: float, years: int, trib: str) -> float:
         """Retorno líquido de IR: simplificado para o backfill."""
@@ -1577,14 +1816,33 @@ def compute_metrics_history(
                     max_dd = dd
 
             trib = get_trib(cnpj, fd)
+
+            # Parâmetros de stress — modelo completo fiel ao JS
+            # Usa os retornos até ref_date e os betas do data.json (estáticos no backfill)
+            # Os betas variam pouco mês a mês; usar o atual é boa aproximação sem lookahead
+            # (alternativa: recalcular OLS por data, mas seria muito mais lento)
+            beta_ibov_n = float(betas_data.get(cnpj, {}).get("beta_ibov") or 0.0)
+            beta_sp_n   = float(betas_data.get(cnpj, {}).get("beta_sp500") or 0.0)
+            r2_val      = float(betas_data.get(cnpj, {}).get("r2") or 0.0)
+            dates_slice = [common_dates[i] for i in valid_idx]
+
+            stress_params = _compute_fund_stress_params(
+                cnpj          = cnpj,
+                fund_rets     = rets_to_ref,
+                common_dates_slice = dates_slice,
+                beta_ibov_n   = beta_ibov_n,
+                beta_sp_n     = beta_sp_n,
+                r2            = r2_val,
+            )
+            worst_stress = calc_worst_stress(cnpj, stress_params, cdi_weighted)
             entry = {
                 "targetReturn": round(target, 2),
                 "netReturn5":   round(net_return(target, 5,  trib), 2),
                 "netReturn10":  round(net_return(target, 10, trib), 2),
-                "cdiFloor":     round(cdi_floor_5a, 2),
-                "ntnbLong":     round(ntnb_long, 2),
                 "cdiWeighted":  round(cdi_weighted, 2),
+                "ntnbLong":     round(ntnb_long, 2),
                 "maxDD":        round(max_dd * 100, 2),
+                "worstStress":  worst_stress,   # pior cenário de crise estimado (%)
             }
             new_entries[cnpj][ref_iso] = entry
             total_computed += 1
@@ -1976,6 +2234,7 @@ def main() -> None:
             cdi_price_map  = cdi_price_map,
             ntnb_hist      = ntnb_hist,
             anchor         = anchor,
+            betas_data     = fund_betas,
             backfill_months = 12,
         )
     except Exception as _mh:
