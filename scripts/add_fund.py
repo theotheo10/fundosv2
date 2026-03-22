@@ -11,14 +11,18 @@ Campos obrigatórios:
     exibicao  — nome no ranking e painéis (ex: "Opportunity Global")
     curto     — nome em gráficos e seletores (ex: "Opportunity")
     tipo      — "Long Only" | "Long Biased" | "Multimercado" | "Long & Short"
-    trib      — "RV" | "TR"
+              | "Renda Fixa" | "Renda Fixa - Crédito Privado"
+              | "Renda Fixa - Pós-fixado" | "Renda Fixa - Debêntures Incentivadas"
+    trib      — "RV" | "TR" | "Isento"
     expo      — "Brasil" | "Internacional" | "Majoritariamente Brasil"
     banco     — custodiante (ex: "Itaú", "BTG", "XP")
 
 Campos opcionais (inferidos do tipo+expo se omitidos):
     expo_liquida_normal  — exposição líquida típica 0.0–1.0 (ex: 0.70)
     expo_liquida_crise   — exposição líquida em crise severa (ex: 0.50)
-    benchmark            — "ibov" | "sp500" | "mixed"
+    benchmark            — "ibov" | "sp500" | "mixed" | "cdi"
+    gross_up             — true para fundos isentos (debêntures incentivadas)
+    obs                  — observação livre exibida no painel do fundo
 """
 
 import sys, json, zipfile, io, math, datetime, urllib.request
@@ -60,6 +64,12 @@ def default_exposure(tipo: str, expo: str) -> dict:
             "net_normal":  0.30,
             "net_crisis":  0.10,
             "benchmark":   "mixed",
+        }
+    if "Renda Fixa" in tipo:
+        return {
+            "net_normal":  0.0,
+            "net_crisis":  0.0,
+            "benchmark":   "cdi",
         }
     # Long Only (default)
     return {
@@ -368,11 +378,13 @@ def update_index(funds: list[dict]) -> None:
             continue
 
         # FUND_META entry
+        gross_up_str = "true" if f.get("gross_up") else "false"
+        obs_str = f.get("obs", "")
         new_meta = (
             f'  "{f["cnpj_fmt"]}": {{ nome:"{f["exibicao"]}", short:"{f["curto"]}", '
             f'inception:"{f["inception_date"]}", initialQuota:{f["initial_quota"]}, '
             f'maxQuota:{f["max_quota"]}, tipo:"{f["tipo"]}", trib:"{f["trib"]}", '
-            f'expo:"{f["expo"]}", banco:"{f["banco"]}", obs:"" }},\n'
+            f'expo:"{f["expo"]}", banco:"{f["banco"]}", grossUp:{gross_up_str}, obs:"{obs_str}" }},\n'
         )
         src = src.replace('};\nconst TRIB_LABEL', f'{new_meta}}};\nconst TRIB_LABEL', 1)
 
@@ -465,6 +477,8 @@ def main():
             "trib":           f["trib"],
             "expo":           f["expo"],
             "banco":          f["banco"],
+            "gross_up":       f.get("gross_up", False),
+            "obs":            f.get("obs", ""),
             "inception_date": inception_date,
             "initial_quota":  initial_quota,
             "max_quota":      max_quota_val,
