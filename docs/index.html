@@ -329,6 +329,50 @@
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
+  /* ── Slider de horizonte do portfólio ─────────────────────────────────── */
+  .port-horizon-panel {
+    padding: 0.75rem 1.4rem 0;
+    flex-shrink: 0;
+    display: none; /* shown via JS only when RF funds are present */
+  }
+  .port-horizon-panel.visible { display: block; }
+  .port-horizon-row {
+    display: flex; align-items: center; gap: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg));
+    border: 0.5px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+    border-radius: 7px;
+  }
+  .port-horizon-icon {
+    font-size: 0.82rem; flex-shrink: 0; opacity: 0.7;
+  }
+  .port-horizon-label {
+    font-family: 'Courier New', monospace; font-size: 0.6rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); white-space: nowrap; flex-shrink: 0;
+  }
+  .port-horizon-slider {
+    flex: 1; accent-color: var(--accent);
+    height: 3px; cursor: pointer; min-width: 60px;
+  }
+  .port-horizon-val {
+    font-family: 'Courier New', monospace; font-size: 0.88rem;
+    font-weight: bold; color: var(--accent);
+    min-width: 36px; text-align: right; flex-shrink: 0;
+  }
+  .port-horizon-suffix {
+    font-family: 'Courier New', monospace; font-size: 0.68rem;
+    color: var(--muted); flex-shrink: 0;
+  }
+  .port-horizon-floor {
+    font-family: 'Courier New', monospace; font-size: 0.6rem;
+    color: var(--muted); flex-shrink: 0; white-space: nowrap;
+    padding-left: 0.4rem; border-left: 1px solid var(--border);
+  }
+  @media (max-width: 600px) {
+    .port-horizon-floor { display: none; }
+    .port-horizon-label { display: none; }
+  }
   .port-metrics-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -2336,6 +2380,21 @@
 
     <!-- Coluna direita: resultados -->
     <div class="port-right">
+
+      <!-- ── Slider de horizonte — afeta retorno alvo de fundos RF ── -->
+      <div class="port-horizon-panel" id="portHorizonPanel">
+        <div class="port-horizon-row">
+          <span class="port-horizon-icon">⏱</span>
+          <span class="port-horizon-label" data-tip="Horizonte de investimento esperado. Para fundos de Renda Fixa, o retorno alvo é ajustado: no curto prazo o CDI atual domina; no longo prazo, o juro real neutro estrutural (derivado da NTN-B) ganha peso. Fundos de ações e multimercado não são afetados.">Horizonte de investimento</span>
+          <input type="range" class="port-horizon-slider" id="portHorizonSlider"
+                 min="1" max="20" value="5" step="1"
+                 oninput="onPortHorizonSlider()">
+          <span class="port-horizon-val" id="portHorizonVal">5</span>
+          <span class="port-horizon-suffix" id="portHorizonSuffix">anos</span>
+          <span class="port-horizon-floor" id="portHorizonFloor"></span>
+        </div>
+      </div>
+
       <div class="port-metrics-panel">
         <div class="port-section-label" style="margin-bottom:0.8rem">Métricas do portfólio</div>
         <div id="portMetrics" class="port-empty">Selecione ao menos um fundo e defina os pesos</div>
@@ -4343,6 +4402,8 @@ function updatePortfolio() {
     document.getElementById('portMetrics').innerHTML = '<div class="port-empty">Selecione ao menos um fundo e defina os pesos</div>';
     document.getElementById('portAllocPanel').style.display = 'none';
     document.getElementById('portCorr').innerHTML    = '<div class="port-empty">Selecione ao menos 2 fundos</div>';
+    const hp = document.getElementById('portHorizonPanel');
+    if (hp) hp.classList.remove('visible');
     return;
   }
   if (!historyData) return;
@@ -4451,7 +4512,23 @@ function updatePortfolio() {
   const brlAlocado = patrimonio * total / 100;
 
   // Retorno alvo do portfólio
-  const portTarget = calcPortfolioTargetReturn(selected, wNorm, historyData);
+  // ── Slider de horizonte: mostrar só se houver fundo RF na carteira ────────
+  const hasRF = selected.some(c => {
+    const m = FUND_META[c] || {};
+    return (m.tipo || '').toLowerCase().includes('renda fixa');
+  });
+  const horizPanel = document.getElementById('portHorizonPanel');
+  if (horizPanel) {
+    if (hasRF) {
+      horizPanel.classList.add('visible');
+      _updateHorizonFloorLabel(getPortHorizonte());
+    } else {
+      horizPanel.classList.remove('visible');
+    }
+  }
+  const portHorizonte = hasRF ? getPortHorizonte() : undefined;
+
+  const portTarget = calcPortfolioTargetReturn(selected, wNorm, historyData, portHorizonte);
   const fmtTarget  = v => v == null
     ? '<span class="port-metric-val na">N/D</span>'
     : `<span class="port-metric-val ${v >= 0 ? 'pos' : 'neg'}">${v >= 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
@@ -4469,7 +4546,7 @@ function updatePortfolio() {
       const meta    = FUND_META[cnpj] || {};
       const trib    = meta.trib || 'RV';
       const fDataI  = funds.find(f => f.cnpjFmt === cnpj);
-      const tgtI    = fDataI ? calcTargetReturn(fDataI) : null;
+      const tgtI    = fDataI ? calcTargetReturn(fDataI, undefined, undefined, portHorizonte) : null;
       const gross   = tgtI ? tgtI.value : portTarget.expReturn;
       netSum5  += wNorm[cnpj] * calcNetReturn(gross, 5,  trib);
       netSum10 += wNorm[cnpj] * calcNetReturn(gross, 10, trib);
@@ -4542,7 +4619,7 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
     fundVolMap[cnpj] = volPct;
 
     const fData  = funds.find(f => f.cnpjFmt === cnpj);
-    const target = fData ? calcTargetReturn(fData) : null;
+    const target = fData ? calcTargetReturn(fData, undefined, undefined, portHorizonte) : null;
     if (target && volPct > 0) {
       fundSharpeMap[cnpj] = (target.value - cdiForAlloc) / volPct;
     }
@@ -4586,7 +4663,7 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
 
       // Retorno alvo individual
       const fData  = funds.find(f => f.cnpjFmt === cnpj);
-      const target = fData ? calcTargetReturn(fData) : null;
+      const target = fData ? calcTargetReturn(fData, undefined, undefined, portHorizonte) : null;
       let targetHtml;
       if (!target) {
         targetHtml = `<span class="port-alloc-target na">N/D</span>`;
@@ -4892,6 +4969,57 @@ function simularFundo(aporte, retornoAnual, trib, anosResgate) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
+// ── Slider de horizonte do portfólio ─────────────────────────────────────────
+//
+// Retorna o horizonte de investimento em anos conforme o slider.
+// Usado por updatePortfolio() para calcular o floor de RF com a maturidade correta.
+function getPortHorizonte() {
+  const sl = document.getElementById('portHorizonSlider');
+  return sl ? (parseInt(sl.value) || 5) : 5;
+}
+
+// Chamado pelo slider — atualiza label e re-renderiza métricas do portfólio.
+function onPortHorizonSlider() {
+  const h    = getPortHorizonte();
+  const valEl = document.getElementById('portHorizonVal');
+  const sufEl = document.getElementById('portHorizonSuffix');
+  if (valEl) valEl.textContent = h;
+  if (sufEl) sufEl.textContent = h === 1 ? 'ano' : 'anos';
+  // Atualiza o floor display imediatamente (antes do updatePortfolio)
+  _updateHorizonFloorLabel(h);
+  updatePortfolio();
+}
+
+// Atualiza o label de floor inline no slider (ex: "floor RF ≈ 10,9%")
+function _updateHorizonFloorLabel(h) {
+  const el = document.getElementById('portHorizonFloor');
+  if (!el) return;
+  try {
+    // CDI observado ponderado
+    const cs = [[1, cdi?.cagr12], [3, cdi?.cagr36], [5, cdi?.cagr60]]
+      .filter(([, v]) => v != null);
+    if (!cs.length) { el.textContent = ''; return; }
+    const cdiObs = cs.reduce((s,[T,v]) => s+T*v, 0) / cs.reduce((s,[T]) => s+T, 0);
+    const fi = calcFloorRF(h, cdiObs);
+    const wCdiPct = Math.round(fi.w_cdi * 100);
+    el.textContent = `floor RF ≈ ${fi.floor.toFixed(1)}%`
+      + ` · ${wCdiPct}% CDI + ${100-wCdiPct}% neutro (NTN-B ${fi.ntnbLong.toFixed(1)}% real)`;
+  } catch (_) { el.textContent = ''; }
+}
+
+// Sincroniza o slider do portfólio com o horizonte do otimizador.
+// Chamado por _finishOptimizer() após aplicar o resultado.
+function syncHorizonSliderFromOptimizer(horizonte) {
+  const sl  = document.getElementById('portHorizonSlider');
+  const h   = Math.min(20, Math.max(1, Math.round(horizonte)));
+  if (sl) sl.value = h;
+  const valEl = document.getElementById('portHorizonVal');
+  const sufEl = document.getElementById('portHorizonSuffix');
+  if (valEl) valEl.textContent = h;
+  if (sufEl) sufEl.textContent = h === 1 ? 'ano' : 'anos';
+  _updateHorizonFloorLabel(h);
+}
+
 function onIrSlider() {
   const anos = parseInt(document.getElementById('irSlider').value);
   const valEl = document.getElementById('irSliderVal');
@@ -6231,6 +6359,9 @@ function _finishOptimizer(best, nCombos, stressCandidates, btn, status) {
     best.cnpjs.map((c, i) => `${shortName(c)} ${Math.round(best.w[i]*100)}%`).join(' · ');
 
   applyOptimizedPortfolio(best.cnpjs, best.w);
+  // Sincroniza o slider de horizonte do portfólio com o horizonte usado pelo otimizador.
+  // OPT_HORIZONTE = 10 anos — assim o usuário vê imediatamente o floor consistente.
+  syncHorizonSliderFromOptimizer(OPT_HORIZONTE);
   btn.disabled = false;
   document.getElementById('optCancelBtn').style.display = 'none';
 }
