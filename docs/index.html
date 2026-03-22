@@ -150,8 +150,10 @@
   .dnote  { font-family: 'Courier New', monospace; font-size: 0.62rem; color: var(--muted); margin-top: 2px; }
 
   .tag { display: inline-block; font-family: 'Courier New', monospace; font-size: 0.6rem; padding: 1px 6px; border-radius: 8px; margin-left: 4px; vertical-align: middle; }
-  .tag-rv  { border: 0.5px solid var(--green); color: var(--green); background: var(--green-light); }
-  .tag-tr  { border: 0.5px solid var(--amber); color: var(--amber); background: var(--amber-light); }
+  .tag-rv      { border: 0.5px solid var(--green); color: var(--green); background: var(--green-light); }
+  .tag-tr      { border: 0.5px solid var(--amber); color: var(--amber); background: var(--amber-light); }
+  .tag-isento  { border: 0.5px solid #4da6ff; color: #4da6ff; background: rgba(77,166,255,0.10); }
+  .tag-grossup { border: 0.5px solid #b06aff; color: #b06aff; background: rgba(176,106,255,0.10); cursor: help; }
 
   .perf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem 1rem; }
   .perf-label { font-family: 'Courier New', monospace; font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 2px; }
@@ -2006,6 +2008,7 @@
       <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
       <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
       <button class="filter-chip" data-filter="tipo" data-val="Multimercado" onclick="setFilter('tipo','Multimercado',this)">Multimercado</button>
+      <button class="filter-chip" data-filter="tipo" data-val="Renda Fixa" onclick="setFilter('tipo','Renda Fixa',this)">Renda Fixa</button>
       <span class="filter-divider"></span>
       <span class="filter-label">Mercado</span>
       <button class="filter-chip active" data-filter="expo" data-val="" onclick="setFilter('expo','',this)">Todos</button>
@@ -2133,6 +2136,7 @@
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long Only"    onclick="toggleUniChip(this)">Long Only</button>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long Biased"  onclick="toggleUniChip(this)">Long Biased</button>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Multimercado" onclick="toggleUniChip(this)">Multimercado</button>
+                  <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Renda Fixa"   onclick="toggleUniChip(this)">Renda Fixa</button>
                 </div>
                 <div class="opt-uni-chips" style="margin-bottom:5px">
                   <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);align-self:center">Exposição:</span>
@@ -2144,6 +2148,7 @@
                   <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);align-self:center">Tributação:</span>
                   <button class="opt-uni-chip active" data-unifilter="trib" data-val="RV" onclick="toggleUniChip(this)">Sem come-cotas (RV)</button>
                   <button class="opt-uni-chip active" data-unifilter="trib" data-val="TR" onclick="toggleUniChip(this)">Come-cotas (TR)</button>
+                  <button class="opt-uni-chip active" data-unifilter="trib" data-val="Isento" onclick="toggleUniChip(this)">Isento de IR</button>
                   <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);margin-left:6px;align-self:center">Histórico mín.:</span>
                   <input type="number" class="opt-uni-perf-input" id="optUniMinYears"
                     placeholder="—" min="0" max="15" step="1"
@@ -2789,7 +2794,7 @@ const FUND_META = {
   "35.828.684/0001-07": { nome:"Genoa Radar", short:"Radar", inception:"2020-06-30", initialQuota:1.0, maxQuota:2.03416388, tipo:"Multimercado", trib:"TR", expo:"Internacional", banco:"BTG / Itaú", obs:"" },
   "16.876.874/0001-47": { nome:"Witpar", short:"Witpar", inception:"2019-01-02", initialQuota:1.0, maxQuota:7.4575602696, tipo:"Long Only", trib:"RV", expo:"Brasil", banco:"BTG", obs:"" },
 };
-const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva" };
+const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva", Isento:"Isento de IR" };
 
 function shortName(cnpj) {
   const meta = FUND_META[cnpj];
@@ -2903,6 +2908,7 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
   const meta = FUND_META[f.cnpjFmt] || {};
   const tipo = (meta.tipo || '').toLowerCase();
   const isMulti = tipo.includes('multimercado');
+  const isRF    = tipo.includes('renda fixa');
 
   // ── Sinal próprio ─────────────────────────────────────────────────────────
 
@@ -2950,10 +2956,10 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
     } catch (_) {}
     return 12.0;
   })();
-  const benchmark = isMulti ? cdiFloor : ibovLong;
+  const benchmark = (isMulti || isRF) ? cdiFloor : ibovLong;
 
   // Alpha do fundo vs. benchmark no período disponível
-  const alphaObservado = isMulti
+  const alphaObservado = (isMulti || isRF)
     ? (f.alphaVsCdi  ?? 0)
     : (f.alphaVsIbov ?? f.alphaAnn ?? 0);
 
@@ -2967,13 +2973,13 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
       const pAge  = (pMeta.inception && p.latestDate)
         ? (new Date(p.latestDate) - new Date(pMeta.inception + 'T00:00:00')) / (365.25 * 86400000)
         : 0;
-      return pAge >= 5 && (isMulti ? pTipo.includes('multimercado') : !pTipo.includes('multimercado'));
+      return pAge >= 5 && (isMulti ? pTipo.includes('multimercado') : isRF ? pTipo.includes('renda fixa') : !pTipo.includes('multimercado') && !pTipo.includes('renda fixa'));
     });
     if (peers.length > 0) {
       const peerAlphas = peers.map(p => {
         const pCi = cagrInception(p) ?? p.cagrInception;
         if (pCi == null) return null;
-        return isMulti
+        return (isMulti || isRF)
           ? (p.alphaVsCdi  ?? pCi - (p.cdiCagrInception  ?? cdiFloor))
           : (p.alphaVsIbov ?? p.alphaAnn ?? pCi - (p.ibovCagrInception ?? ibovLong));
       }).filter(v => v != null);
@@ -3059,6 +3065,7 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget) {
     prior:          parseFloat(prior.toFixed(2)),
     ciCap:          ciCap != null ? parseFloat(ciCap.toFixed(2)) : null,
     isMulti:        isMulti,
+    isRF:           isRF,
     samples:        samples,
   };
 }
@@ -3220,7 +3227,7 @@ function toggleDetail(cnpj) {
 function buildDetailPanel(f, isExp) {
   const meta = FUND_META[f.cnpjFmt] || {};
   const id   = (f.cnpjFmt || '').replace(/[^a-z0-9]/gi, '');
-  const tribClass = meta.trib === 'RV' ? 'tag-rv' : 'tag-tr';
+  const tribClass = meta.trib === 'RV' ? 'tag-rv' : meta.trib === 'Isento' ? 'tag-isento' : 'tag-tr';
   const inception = meta.inception ? meta.inception.split('-').reverse().join('/') : '—';
   const tenure = fmtTenure(f.cnpjFmt).replace(/<[^>]+>/g,'');
 
@@ -3243,6 +3250,8 @@ function buildDetailPanel(f, isExp) {
   // Tributação em linguagem simples
   const tribExplain = meta.trib === 'RV'
     ? 'IR de 15% apenas no resgate. Sem come-cotas.'
+    : meta.trib === 'Isento'
+    ? 'Rendimentos isentos de IR para pessoa física (Lei 12.431). Sem come-cotas e sem IR no resgate.'
     : 'Come-cotas em maio e novembro — IR antecipado semestralmente.';
 
   return `<div class="detail-panel ${isExp ? 'open' : ''}" id="detail-${id}">
@@ -3291,8 +3300,14 @@ function buildDetailPanel(f, isExp) {
           ${meta.obs ? `<div class="dnote">${meta.obs}</div>` : ''}
         </div>
         <div class="ditem" style="margin-top:0.5rem">
-          <div class="dlabel">Imposto de renda <span class="tag ${tribClass}">${meta.trib || '—'}</span></div>
+          <div class="dlabel">Imposto de renda <span class="tag ${tribClass}">${meta.trib || '—'}</span>${meta.grossUp ? ' <span class="tag tag-grossup" title="Rendimento bruto equivalente = CAGR ÷ 0,85. Para comparação com fundos tributados.">gross-up</span>' : ''}</div>
           <div class="dval" style="font-size:0.72rem;line-height:1.5;color:var(--muted)">${tribExplain}</div>
+          ${meta.grossUp && f.cagrInception != null ? (() => {
+            const bruto = (cagrInception(f) ?? f.cagrInception);
+            if (bruto == null) return '';
+            const gu = bruto / 0.85;
+            return `<div style="margin-top:0.4rem;font-size:0.72rem;color:var(--muted)">Equivalente tributável: <strong>${gu.toFixed(1)}% a.a.</strong> <span style="font-size:0.65rem">(retorno ÷ 0,85 · alíquota TR 15%)</span></div>`;
+          })() : ''}
         </div>
       </div>
 
@@ -4365,6 +4380,19 @@ function simularFundo(aporte, retornoAnual, trib, anosResgate) {
     };
   }
 
+  if (trib === 'Isento') {
+    // ── Isento de IR (debêntures incentivadas, etc.) ─────────────────────────
+    // Sem IR de qualquer natureza: sem come-cotas, sem IR no resgate.
+    const valorBruto = aporte * Math.pow(1 + r, anosResgate);
+    const rendimento = valorBruto - aporte;
+    return {
+      aporte, valorBruto, rendimentoBruto: rendimento,
+      irComeCotas: 0, irResgate: 0, irTotal: 0,
+      valorLiquido: valorBruto, aliqEfetiva: 0, aliqEconomica: 0,
+      detalhes: []
+    };
+  }
+
   // ── Tabela Regressiva ─────────────────────────────────────────────────────
   // Simula período a período (entre come-cotas)
   //
@@ -4568,6 +4596,8 @@ function renderIR() {
   for (const row of rows) {
     const tribBadge = row.trib === 'RV'
       ? '<span class="ir-trib-badge ir-trib-rv">RV</span>'
+      : row.trib === 'Isento'
+      ? '<span class="ir-trib-badge" style="background:rgba(77,166,255,0.12);color:#4da6ff;border:0.5px solid #4da6ff">Isento</span>'
       : '<span class="ir-trib-badge ir-trib-tr">TR</span>';
 
     if (row.sem_dados) {
@@ -4612,6 +4642,14 @@ e R$&nbsp;${(100 - row.aliqEconomica).toFixed(1)} ficaram com você.
 
 Para fundos RV sem come-cotas, isso equivale
 exatamente à alíquota aplicada: 15%.</div>
+             </div>`
+          : row.trib === 'Isento'
+          ? `<div class="ir-custo-cell">
+               <span style="font-family:Courier New,monospace;font-weight:bold;color:#4da6ff">0%</span>
+               <div class="ir-custo-tip"><strong>Isento de IR</strong>
+Fundo enquadrado na Lei 12.431 (infraestrutura).
+Rendimentos isentos de IR para pessoa física.
+Sem come-cotas e sem IR no resgate.</div>
              </div>`
           : `<div class="ir-custo-cell">
                <span class="ir-custo-eco ir-val-neg">${fmtPctIr(row.aliqEconomica)}</span>
@@ -4813,9 +4851,9 @@ let optNetRetYears      = 5;     // prazo estimado para cálculo do IR (anos)
 const optUniExcluded = new Set();
 // Active elegibility chip filters (value = set of allowed values; null = all)
 const optUniFilters = {
-  tipo: new Set(['Long Only', 'Long Biased', 'Multimercado']),
+  tipo: new Set(['Long Only', 'Long Biased', 'Multimercado', 'Renda Fixa']),
   expo: new Set(['Brasil', 'Internacional', 'Majoritariamente']),
-  trib: new Set(['RV', 'TR']),
+  trib: new Set(['RV', 'TR', 'Isento']),
 };
 
 // ── Universe helpers ──────────────────────────────────────────────────────────
@@ -6760,8 +6798,11 @@ function renderScatter() {
     if (!fData) return;
     const t = calcTargetReturn(fData);
     if (!t) return;
-    points.push({ x: parseFloat(vol.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
-      label: (FUND_META[cnpj]||{}).nome || fd.nome, color: CHART_COLORS[i % CHART_COLORS.length] });
+    const meta    = FUND_META[cnpj] || {};
+    const retVal  = meta.grossUp ? parseFloat((t.value / 0.85).toFixed(2)) : parseFloat(t.value.toFixed(2));
+    const guLabel = meta.grossUp ? ' ✦gross-up' : '';
+    points.push({ x: parseFloat(vol.toFixed(2)), y: retVal,
+      label: (meta.nome || fd.nome) + guLabel, color: CHART_COLORS[i % CHART_COLORS.length] });
   });
 
   if (!points.length) return;
@@ -9883,8 +9924,8 @@ function renderFundProfile() {
   // ── Métricas rápidas (info) ───────────────────────────────────────────────
   const inception   = meta.inception ? meta.inception.split('-').reverse().join('/') : '—';
   const tenure      = (typeof fmtTenure === 'function') ? fmtTenure(cnpj).replace(/<[^>]+>/g, '') : '—';
-  const tribLabel   = trib === 'RV' ? 'Renda Variável (RV)' : 'Tabela Regressiva (TR)';
-  const tribExplain = trib === 'RV' ? 'IR 15% no resgate · Sem come-cotas' : 'Come-cotas semestral · IR 15% no resgate (LP)';
+  const tribLabel   = trib === 'RV' ? 'Renda Variável (RV)' : trib === 'Isento' ? 'Isento de IR' : 'Tabela Regressiva (TR)';
+  const tribExplain = trib === 'RV' ? 'IR 15% no resgate · Sem come-cotas' : trib === 'Isento' ? 'IR isento (Lei 12.431) · Sem come-cotas' : 'Come-cotas semestral · IR 15% no resgate (LP)';
 
   // ── HTML ──────────────────────────────────────────────────────────────────
   let html = `
