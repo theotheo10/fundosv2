@@ -38,7 +38,7 @@ FUNDS = [
     {"name": "Opportunity Global Equity Real Institucional FIC FIF Ações IE RL",        "cnpj": "46351969000108", "cnpjFmt": "46.351.969/0001-08", "exibicao": "Opportunity Global", "curto": "Opportunity"},
     {"name": "SPX Patriot FIF CIC Ações RL", "cnpj": "15334585000153", "cnpjFmt": "15.334.585/0001-53", "exibicao": "SPX Patriot", "curto": "Patriot"},
     {"name": "TB FIF Cotas FIA", "cnpj": "47511351000120", "cnpjFmt": "47.511.351/0001-20", "exibicao": "TB", "curto": "TB"},
-    {"name": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO", "cnpj": "52116227000109", "cnpjFmt": "52.116.227/0001-09", "exibicao": "Itaú Janeiro Multimercado", "curto": "Janeiro"},
+    {"name": "Itaú Janeiro Multimercado FIF DA Classe FIC RL ATIVO", "cnpj": "52116227000109", "cnpjFmt": "52.116.227/0001-09", "exibicao": "Itaú Janeiro Multimercado", "curto": "Janeiro MM"},
     {"name": "Ace Capital Multicenários FIC FIF Multimercado RL", "cnpj": "47612105000165", "cnpjFmt": "47.612.105/0001-65", "exibicao": "Ace Capital Multicenários", "curto": "Ace"},
     {"name": "Kapitalo K10 FIF Cotas FIM", "exibicao": "Kapitalo K10", "curto": "K10", "cnpj": "29726133000121", "cnpjFmt": "29.726.133/0001-21"},
     {"name": "Genoa Capital Radar CIC Classe FIM RL", "exibicao": "Genoa Radar", "curto": "Radar", "cnpj": "35828684000107", "cnpjFmt": "35.828.684/0001-07"},
