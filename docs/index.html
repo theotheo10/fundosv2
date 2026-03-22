@@ -680,12 +680,10 @@
     font-family: 'Courier New', monospace; font-size: 0.7rem;
     font-weight: bold; color: var(--text);
     background: transparent; border: none;
-    border-bottom: 1px dashed var(--muted);
     width: 46px; text-align: right; padding: 0;
     cursor: text; outline: none;
   }
   .opt-val-input:focus {
-    border-bottom-color: var(--accent);
     color: var(--accent);
   }
   .opt-val-input::-webkit-inner-spin-button,
@@ -1878,10 +1876,9 @@
     font-family: 'Courier New', monospace; font-size: 0.65rem;
     font-weight: bold; color: var(--text);
     background: transparent; border: none;
-    border-bottom: 1px dashed var(--muted);
     width: 34px; text-align: right; padding: 0; outline: none; cursor: text;
   }
-  .opt-uni-perf-input:focus { border-bottom-color: var(--accent); color: var(--accent); }
+  .opt-uni-perf-input:focus { color: var(--accent); }
   .opt-uni-perf-input::-webkit-inner-spin-button,
   .opt-uni-perf-input::-webkit-outer-spin-button { -webkit-appearance: none; }
   .opt-uni-perf-input[type=number] { -moz-appearance: textfield; }
@@ -1985,9 +1982,9 @@
 
 <div class="tabs">
   <button class="tab-btn active" id="tab-btn-ranking" onclick="switchTab('ranking')">Ranking</button>
-  <button class="tab-btn" id="tab-btn-portfolio" onclick="switchTab('portfolio')">Portfólio</button>
   <button class="tab-btn" id="tab-btn-graficos" onclick="switchTab('graficos')">Gráficos</button>
   <button class="tab-btn" id="tab-btn-analise" onclick="switchTab('analise')">Análise</button>
+  <button class="tab-btn" id="tab-btn-portfolio" onclick="switchTab('portfolio')">Portfólio</button>
 </div>
 
 <div id="tab-ranking" class="tab-pane active">
@@ -2302,10 +2299,10 @@
               value="5" min="1" max="10" step="1"
               oninput="onOptNetRetYearsInput(this)" onchange="onOptNetRetYearsInput(this)" onkeydown="if(event.key==='Enter')this.blur()"
               style="font-family:'Courier New',monospace;font-size:0.72rem;font-weight:bold;color:var(--text);
-                     background:transparent;border:none;border-bottom:1px dashed var(--muted);
+                     background:transparent;border:none;
                      width:24px;text-align:center;padding:0;outline:none;cursor:text;"
-              onfocus="this.style.borderBottomColor='var(--accent)';this.style.color='var(--accent)'"
-              onblur="this.style.borderBottomColor='var(--muted)';this.style.color='var(--text)'">
+              onfocus="this.style.color='var(--accent)'"
+              onblur="this.style.color='var(--text)'">
             <span style="font-family:'Courier New',monospace;font-size:0.72rem;color:var(--muted)">anos</span>
             <span style="display:none" id="optNetRetYearsLabel">5 anos</span>
           </div>
@@ -2366,10 +2363,10 @@
           value="5" min="1" max="20" step="1"
           oninput="onIrValInput(this)" onchange="onIrValInput(this)" onkeydown="if(event.key==='Enter')this.blur()"
           style="font-family:'Courier New',monospace;font-size:0.78rem;font-weight:bold;color:var(--text);
-                 background:transparent;border:none;border-bottom:1px dashed var(--muted);
+                 background:transparent;border:none;
                  width:28px;text-align:center;padding:0;outline:none;cursor:text;"
-          onfocus="this.style.borderBottomColor='var(--accent)';this.style.color='var(--accent)'"
-          onblur="this.style.borderBottomColor='var(--muted)';this.style.color='var(--text)'">
+          onfocus="this.style.color='var(--accent)'"
+          onblur="this.style.color='var(--text)'">
         <span style="font-family:'Courier New',monospace;font-size:0.78rem;color:var(--muted)" id="irSliderAnosSuffix">anos</span>
       </div>
     </div>
@@ -2559,7 +2556,7 @@
       <div>
         <div class="comp-header-title">Comparador de carteiras — A vs B</div>
         <div class="comp-header-note">
-          Monte duas carteiras e compare lado a lado: retorno esperado, risco, Sharpe, Sortino, Calmar, drawdown.
+          Monte duas carteiras e compare lado a lado: retorno alvo, risco, Sharpe, Sortino, Calmar, drawdown.
           <br>Útil para avaliar o impacto de trocar um fundo por outro, ou comparar duas teses de alocação.
         </div>
       </div>
@@ -2747,7 +2744,7 @@
 
 <div class="legend">
   <div style="font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);opacity:0.7;line-height:1.6;width:100%">
-    * Retorno esperado = estimativa baseada no histórico do fundo. Não é garantia de retorno futuro. Rentabilidade passada não garante rentabilidade futura.
+    * Retorno alvo = estimativa baseada no histórico do fundo. Não é garantia de retorno futuro. Rentabilidade passada não garante rentabilidade futura.
   </div>
   <div class="legend-status">
     <span class="status-dot loading" id="statusDot"></span><span id="statusText">Carregando…</span>
@@ -3097,7 +3094,7 @@ function calcPortfolioTargetReturn(selected, wNorm, historyData) {
   }
   if (Object.keys(targets).length === 0) return null;
 
-  // Retorno esperado ponderado do portfólio
+  // Retorno alvo ponderado do portfólio
   let expReturn = 0;
   for (const cnpj of selected) {
     if (targets[cnpj] != null) expReturn += wNorm[cnpj] * targets[cnpj];
@@ -4118,7 +4115,7 @@ Use o stress test para simular cenários de crise histórica.">Max. drawdown</di
       <div class="port-metric"><div class="port-metric-label">Patrimônio alocado</div><span class="port-metric-val neu">${patrimonio > 0 ? 'R$\u00a0' + brlAlocado.toLocaleString('pt-BR',{maximumFractionDigits:0}) : '—'}</span></div>
       <div class="port-metric" style="border-top:1px solid var(--border);padding-top:0.65rem;margin-top:0.1rem;grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:0">
         <div>
-          <div class="port-metric-label" data-tip="Retorno esperado estimado: média ponderada dos retornos dos fundos, com peso maior em janelas mais longas e ajuste de mean-reversion.">Retorno alvo* <span style="font-size:0.52rem;opacity:0.65">(bruto de I.R.)</span></div>
+          <div class="port-metric-label" data-tip="Retorno alvo estimado: média ponderada dos retornos dos fundos, com peso maior em janelas mais longas e ajuste de mean-reversion.">Retorno alvo* <span style="font-size:0.52rem;opacity:0.65">(bruto de I.R.)</span></div>
           ${fmtTarget(portTarget?.expReturn)}
         </div>
         <div>
@@ -4548,7 +4545,7 @@ function renderIR() {
   let html = `<div class="ir-table-wrap"><table class="ir-table">
     <thead><tr>
       <th>Fundo</th>
-      <th data-tip="Retorno esperado anualizado com base no histórico. Bruto de IR.">Ret. alvo*</th>
+      <th data-tip="Retorno alvo anualizado com base no histórico. Bruto de IR.">Ret. alvo*</th>
       <th>Aporte</th>
       <th data-tip="Valor projetado no resgate antes de qualquer tributação.">Valor bruto</th>
       <th data-tip="Total de IR pago — inclui come-cotas semestrais (TR) e IR no resgate.">IR total</th>
@@ -4965,21 +4962,36 @@ function toggleOptUniverse() {
 }
 
 // ── Dominance filtering ───────────────────────────────────────────────────────
-// A fund B is dominated by fund A if, for the current objective:
-//   - A has higher or equal expected return than B, AND
-//   - A has lower or equal risk than B
-// Where "risk" is defined per objective:
-//   Sharpe/Return: volatility
-//   Sortino: semi-deviation (downside vol)
-//   Calmar: max drawdown (in absolute value)
-//   IR: tracking error vs IBOV
-//   Stress: worst-case stress return (lower = worse)
-// A dominated fund can never contribute to the optimal portfolio.
-// This is mathematically exact — no precision loss.
+// A fund B is strictly dominated by fund A if A is at least as good as B in
+// ALL relevant dimensions AND strictly better in at least one.
+//
+// Dominance is defined in the (return, risk) space relevant to each objective:
+//   Sharpe:  return = retorno alvo,  risk = volatilidade
+//   Sortino: return = retorno alvo,  risk = semi-desvio descendente
+//   Calmar:  return = retorno alvo,  risk = max drawdown histórico (|valor|)
+//   IR:      return = alpha vs IBOV, risk = tracking error
+//   Stress:  return = retorno alvo,  risk = -pior retorno em stress (menor stress = maior risco)
+//   Vol:     return = (ignored),     risk = volatilidade  → só remove dominados por vol
+//   Return:  return = retorno alvo,  risk = (ignored)    → sem dominância aplicável
+//
+// IMPORTANT: "return" mode has no natural risk dimension — dominance is not
+// applied because any fund with lower return could still reduce portfolio risk
+// via diversification. Same for "vol" mode in reverse.
+//
+// Tolerance: require A to be meaningfully better (> TOL) to avoid removing
+// funds that are statistically indistinguishable.
 function applyDominance() {
   if (!historyData || !funds.length) return;
   const active  = optUniGetActive();
   const result  = document.getElementById('optDomResult');
+
+  // Dominance not meaningful for pure return or pure vol objectives
+  if (optObj === 'return' || optObj === 'vol') {
+    if (result) result.innerHTML = `<span style="color:var(--muted)">Dominância não aplicável para o objetivo <em>${optObj === 'return' ? 'Máx. retorno' : 'Mín. variância'}</em> — qualquer fundo pode contribuir via diversificação independente de seu retorno/risco individual.</span>`;
+    return;
+  }
+
+  const TOL = 0.5;  // must be > 0.5pp better to be considered dominant
 
   // Build metric vectors for active funds
   const metrics = active.map(cnpj => {
@@ -4988,59 +5000,86 @@ function applyDominance() {
     const ret   = tgt ? tgt.value : 0;
     const adv   = getAdvMetrics(cnpj);
     const fd    = historyData.funds[cnpj];
-    const vol   = fd?.metrics?.vol ?? (adv?.ddDev ?? 20);
-    const semi  = adv?.ddDev ?? vol;
-    const mdd   = adv?.mddPct != null ? Math.abs(adv.mddPct) : 100;
-    const te    = adv?.teAnn ?? vol;
-    // Worst stress return (lower is worse) — use existing worstStressReturn if available
-    let stress  = -50;
-    try { stress = worstStressReturn([cnpj], [1]) * 100; } catch (_) {}
-    return { cnpj, ret, vol, semi, mdd, te, stress };
+
+    // Risk metrics — use precomputed where available, fall back gracefully
+    const vol   = fd?.metrics?.vol  ?? adv?.ddDev  ?? 25;
+    const semi  = adv?.ddDev        ?? vol;
+    const mdd   = adv?.mddPct != null ? Math.abs(adv.mddPct) : 50;
+    const te    = adv?.teAnn        ?? vol;
+    const alpha = adv?.alphaAnn     ?? (ret - (adv?.ibovCagr36 ?? 15));
+
+    // Worst stress return for this fund solo (lower = worse, i.e. higher risk)
+    let stressRisk = 50;  // default: treat as high stress risk
+    try {
+      const w = worstStressReturn([cnpj], [1]);
+      stressRisk = -w * 100;  // positive number: higher = worse stress
+    } catch (_) {}
+
+    return { cnpj, ret, vol, semi, mdd, te, alpha, stressRisk };
   });
 
-  // For each fund, check if another fund dominates it
+  // For each fund, check if another active fund dominates it
   const dominated = new Set();
+
   for (let i = 0; i < metrics.length; i++) {
+    const B = metrics[i];
+    if (dominated.has(B.cnpj)) continue;
+
     for (let j = 0; j < metrics.length; j++) {
       if (i === j) continue;
-      if (dominated.has(metrics[i].cnpj)) break;
-      const A = metrics[j], B = metrics[i];
-      // A dominates B if A is strictly better in at least one dim and >= in all others
-      let dominates = false;
+      const A = metrics[j];
+
+      let retA, retB, riskA, riskB;  // higher ret = better; lower risk = better
+
       switch (optObj) {
         case 'sharpe':
-        case 'return':
-          dominates = A.ret >= B.ret && A.vol <= B.vol && (A.ret > B.ret || A.vol < B.vol);
+          retA = A.ret;  retB = B.ret;
+          riskA = A.vol; riskB = B.vol;
           break;
         case 'sortino':
-          dominates = A.ret >= B.ret && A.semi <= B.semi && (A.ret > B.ret || A.semi < B.semi);
+          retA = A.ret;   retB = B.ret;
+          riskA = A.semi; riskB = B.semi;
           break;
         case 'calmar':
-          dominates = A.ret >= B.ret && A.mdd <= B.mdd && (A.ret > B.ret || A.mdd < B.mdd);
+          retA = A.ret;  retB = B.ret;
+          riskA = A.mdd; riskB = B.mdd;
           break;
         case 'ir':
-          dominates = A.ret >= B.ret && A.te <= B.te && (A.ret > B.ret || A.te < B.te);
+          retA = A.alpha; retB = B.alpha;
+          riskA = A.te;   riskB = B.te;
           break;
         case 'stress':
-          dominates = A.stress >= B.stress && A.vol <= B.vol && (A.stress > B.stress || A.vol < B.vol);
+          retA = A.ret;        retB = B.ret;
+          riskA = A.stressRisk; riskB = B.stressRisk;
           break;
-        default:
-          dominates = A.ret >= B.ret && A.vol <= B.vol && (A.ret > B.ret || A.vol < B.vol);
+        default: continue;
       }
-      if (dominates) dominated.add(B.cnpj);
+
+      // A dominates B: A >= B in return AND A <= B in risk,
+      // with strict improvement of > TOL in at least one dimension
+      const retBetter  = retA  >= retB  - 1e-6;
+      const riskBetter = riskA <= riskB + 1e-6;
+      const strictRet  = retA  >  retB  + TOL;
+      const strictRisk = riskA <  riskB - TOL;
+
+      if (retBetter && riskBetter && (strictRet || strictRisk)) {
+        dominated.add(B.cnpj);
+        break;
+      }
     }
   }
 
-  // Exclude dominated funds
+  // Exclude dominated funds from universe
   dominated.forEach(cnpj => optUniExcluded.add(cnpj));
   updateOptUniverse();
 
   if (result) {
     if (dominated.size === 0) {
-      result.textContent = 'Nenhum fundo dominado encontrado — todos os fundos ativos são eficientes para este objetivo.';
+      result.innerHTML = `Nenhum fundo dominado encontrado — todos os ${active.length} fundos ativos são não-dominados (fronteira eficiente individual) para o objetivo <em>${optObj}</em>.`;
     } else {
       const names = [...dominated].map(c => (FUND_META[c]||{}).short || (FUND_META[c]||{}).nome?.split(' ')[0] || c);
-      result.innerHTML = `<span style="color:var(--red)">${dominated.size} removido${dominated.size>1?'s':''}</span>: ${names.join(', ')} — dominado${dominated.size>1?'s':''} por fundos com melhor retorno e menor risco para o objetivo <em>${optObj}</em>.`;
+      const objLabel = { sharpe:'Sharpe', sortino:'Sortino', calmar:'Calmar', ir:'IR', stress:'Stress' }[optObj] || optObj;
+      result.innerHTML = `<span style="color:var(--amber,#e07800)">${dominated.size} removido${dominated.size>1?'s':''}</span>: ${names.join(', ')} — existe outro fundo ativo com retorno alvo mais alto <em>e</em> risco menor (>${TOL}pp de margem) para o objetivo <em>${objLabel}</em>.`;
     }
   }
 }
@@ -8762,9 +8801,9 @@ document.addEventListener('keydown', function(e) {
   // Already have Escape for modal — add tab shortcuts
   if (e.altKey) {
     if (e.key === '1') { switchTab('ranking');   e.preventDefault(); }
-    if (e.key === '2') { switchTab('portfolio'); e.preventDefault(); }
-    if (e.key === '3') { switchTab('graficos');  e.preventDefault(); }
-    if (e.key === '4') { switchTab('analise');   e.preventDefault(); }
+    if (e.key === '2') { switchTab('graficos');  e.preventDefault(); }
+    if (e.key === '3') { switchTab('analise');   e.preventDefault(); }
+    if (e.key === '4') { switchTab('portfolio'); e.preventDefault(); }
   }
 });
 
@@ -10416,7 +10455,7 @@ function runComparador() {
 
   // Metrics: [label, tooltip, valueA, valueB, higherIsBetter]
   const metrics = [
-    ['Retorno esperado*', 'CAGR anualizado sobre o período histórico disponível. Não é garantia de retorno futuro.', fmt(mA.cagr,1,true), fmt(mB.cagr,1,true), true, mA.cagr, mB.cagr],
+    ['Retorno alvo*', 'CAGR anualizado sobre o período histórico disponível. Não é garantia de retorno futuro.', fmt(mA.cagr,1,true), fmt(mB.cagr,1,true), true, mA.cagr, mB.cagr],
     ['Volatilidade a.a.', 'Desvio padrão anualizado dos retornos diários — quanto o portfólio oscila por ano.', fmt(mA.vol,1), fmt(mB.vol,1), false, mA.vol, mB.vol],
     ['Max. drawdown', 'Maior queda pico-a-vale registrada no período histórico (desde 2021).', fmt(mA.mdd,1), fmt(mB.mdd,1), true, -Math.abs(mA.mdd), -Math.abs(mB.mdd)],
     ['Sharpe', '(Retorno − CDI) ÷ volatilidade total. Eficiência do retorno por unidade de toda a oscilação.', fmtR(mA.sharpe), fmtR(mB.sharpe), true, mA.sharpe, mB.sharpe],
