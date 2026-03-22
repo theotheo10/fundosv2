@@ -1798,6 +1798,150 @@
   .opt-beta-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
   .opt-beta-row label { cursor: pointer; }
 
+  /* ── Optimizer: universe panel ── */
+  .opt-universe {
+    margin-bottom: 0.6rem;
+    border: 0.5px solid var(--border);
+    border-radius: 7px;
+    overflow: hidden;
+  }
+  .opt-universe-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.45rem 0.7rem;
+    cursor: pointer;
+    user-select: none;
+    background: var(--bg);
+    gap: 8px;
+  }
+  .opt-universe-header:hover { background: color-mix(in srgb, var(--accent) 5%, var(--bg)); }
+  .opt-universe-title {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+    font-weight: bold; white-space: nowrap;
+  }
+  .opt-universe-counter {
+    font-family: 'Courier New', monospace; font-size: 0.6rem;
+    color: var(--text); flex: 1; text-align: right;
+  }
+  .opt-universe-counter .combo-count { color: var(--accent); font-weight: bold; }
+  .opt-universe-counter .combo-warn  { color: var(--amber, #e07800); font-weight: bold; }
+  .opt-universe-chevron {
+    font-size: 0.6rem; color: var(--muted);
+    transition: transform 0.18s ease; flex-shrink: 0;
+  }
+  .opt-universe.open .opt-universe-chevron { transform: rotate(180deg); }
+  .opt-universe-body {
+    display: none; padding: 0.7rem 0.7rem 0.5rem;
+    border-top: 0.5px solid var(--border);
+    background: var(--surface);
+  }
+  .opt-universe.open .opt-universe-body { display: block; }
+
+  /* filter groups */
+  .opt-uni-group { margin-bottom: 0.55rem; }
+  .opt-uni-group-label {
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--muted); margin-bottom: 0.3rem; display: flex; align-items: center; gap: 5px;
+  }
+  .opt-uni-warn-badge {
+    font-size: 0.48rem; padding: 1px 5px; border-radius: 3px;
+    background: var(--amber-light, #fff3cd); color: var(--amber, #e07800);
+    border: 0.5px solid var(--amber, #e07800);
+  }
+  .opt-uni-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .opt-uni-chip {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    padding: 2px 8px; border-radius: 10px;
+    border: 0.5px solid var(--border);
+    background: transparent; color: var(--muted);
+    cursor: pointer; transition: all 0.12s;
+  }
+  .opt-uni-chip:hover { border-color: var(--text); color: var(--text); }
+  .opt-uni-chip.active {
+    background: var(--accent); border-color: var(--accent);
+    color: #fff; font-weight: bold;
+  }
+
+  /* perf filters */
+  .opt-uni-perf-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px;
+  }
+  .opt-uni-perf-row {
+    display: flex; align-items: center; gap: 5px;
+  }
+  .opt-uni-perf-label {
+    font-family: 'Courier New', monospace; font-size: 0.57rem;
+    color: var(--muted); white-space: nowrap; flex: 1;
+  }
+  .opt-uni-perf-input {
+    font-family: 'Courier New', monospace; font-size: 0.65rem;
+    font-weight: bold; color: var(--text);
+    background: transparent; border: none;
+    border-bottom: 1px dashed var(--muted);
+    width: 34px; text-align: right; padding: 0; outline: none; cursor: text;
+  }
+  .opt-uni-perf-input:focus { border-bottom-color: var(--accent); color: var(--accent); }
+  .opt-uni-perf-input::-webkit-inner-spin-button,
+  .opt-uni-perf-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .opt-uni-perf-input[type=number] { -moz-appearance: textfield; }
+  .opt-uni-perf-unit {
+    font-family: 'Courier New', monospace; font-size: 0.57rem; color: var(--muted);
+  }
+
+  /* dominance button */
+  .opt-dom-btn {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    padding: 4px 10px; border-radius: 5px; cursor: pointer;
+    border: 0.5px solid var(--accent); color: var(--accent);
+    background: transparent; transition: all 0.12s; width: 100%; text-align: left;
+    margin-bottom: 0.55rem;
+  }
+  .opt-dom-btn:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .opt-dom-result {
+    font-family: 'Courier New', monospace; font-size: 0.57rem;
+    color: var(--muted); margin-top: 3px; line-height: 1.5;
+  }
+
+  /* fund checkboxes */
+  .opt-uni-divider {
+    height: 0.5px; background: var(--border); margin: 0.5rem 0;
+  }
+  .opt-uni-fund-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 0.35rem;
+  }
+  .opt-uni-fund-title {
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted);
+  }
+  .opt-uni-fund-actions {
+    display: flex; gap: 6px;
+  }
+  .opt-uni-action {
+    font-family: 'Courier New', monospace; font-size: 0.55rem;
+    color: var(--accent); background: none; border: none;
+    cursor: pointer; padding: 0; text-decoration: underline;
+  }
+  .opt-uni-fund-grid {
+    display: flex; flex-wrap: wrap; gap: 3px 6px;
+  }
+  .opt-uni-fund-chip {
+    display: flex; align-items: center; gap: 4px;
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    padding: 2px 7px; border-radius: 10px;
+    border: 0.5px solid var(--border);
+    background: transparent; color: var(--muted);
+    cursor: pointer; transition: all 0.12s; user-select: none;
+  }
+  .opt-uni-fund-chip.active {
+    border-color: var(--accent); color: var(--text);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  .opt-uni-fund-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+
 
   /* ── Global custom tooltip (replaces all native title= tooltips) ── */
   #g-tip {
@@ -1974,6 +2118,101 @@
           </div>
           <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
           <button class="opt-run" id="optCancelBtn" onclick="cancelOptimizer()" style="display:none;background:var(--border);color:var(--text);margin-left:6px">Cancelar</button>
+
+          <!-- ── Universo de fundos ── -->
+          <div class="opt-universe" id="optUniverse">
+            <div class="opt-universe-header" onclick="toggleOptUniverse()">
+              <span class="opt-universe-title">Universo</span>
+              <span class="opt-universe-counter" id="optUniCounter">carregando…</span>
+              <span class="opt-universe-chevron">▾</span>
+            </div>
+            <div class="opt-universe-body">
+
+              <!-- Elegibilidade -->
+              <div class="opt-uni-group">
+                <div class="opt-uni-group-label">Elegibilidade</div>
+                <div class="opt-uni-chips" style="margin-bottom:5px">
+                  <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);align-self:center">Tipo:</span>
+                  <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long Only"    onclick="toggleUniChip(this)">Long Only</button>
+                  <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long Biased"  onclick="toggleUniChip(this)">Long Biased</button>
+                  <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Multimercado" onclick="toggleUniChip(this)">Multimercado</button>
+                </div>
+                <div class="opt-uni-chips" style="margin-bottom:5px">
+                  <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);align-self:center">Exposição:</span>
+                  <button class="opt-uni-chip active" data-unifilter="expo" data-val="Brasil"          onclick="toggleUniChip(this)">Brasil</button>
+                  <button class="opt-uni-chip active" data-unifilter="expo" data-val="Internacional"   onclick="toggleUniChip(this)">Internacional</button>
+                  <button class="opt-uni-chip active" data-unifilter="expo" data-val="Majoritariamente" onclick="toggleUniChip(this)">Misto</button>
+                </div>
+                <div class="opt-uni-chips">
+                  <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);align-self:center">Tributação:</span>
+                  <button class="opt-uni-chip active" data-unifilter="trib" data-val="RV" onclick="toggleUniChip(this)">Sem come-cotas (RV)</button>
+                  <button class="opt-uni-chip active" data-unifilter="trib" data-val="TR" onclick="toggleUniChip(this)">Come-cotas (TR)</button>
+                  <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);margin-left:6px;align-self:center">Histórico mín.:</span>
+                  <input type="number" class="opt-uni-perf-input" id="optUniMinYears"
+                    placeholder="—" min="0" max="15" step="1"
+                    oninput="updateOptUniverse()" onchange="updateOptUniverse()">
+                  <span class="opt-uni-perf-unit">anos</span>
+                </div>
+              </div>
+
+              <!-- Performance (com aviso) -->
+              <div class="opt-uni-group">
+                <div class="opt-uni-group-label">
+                  Filtros de performance
+                  <span class="opt-uni-warn-badge" data-tip="Filtros de performance podem excluir fundos que o otimizador escolheria por razões de diversificação. Um fundo com CAGR baixo ou vol alta pode ser crucial para reduzir o risco do portfólio como um todo.">⚠ pode excluir soluções ótimas</span>
+                </div>
+                <div class="opt-uni-perf-grid">
+                  <div class="opt-uni-perf-row">
+                    <span class="opt-uni-perf-label" data-tip="Retorno alvo mínimo estimado (bayesiano). Fundos abaixo deste piso são excluídos do universo antes da otimização.">Ret. alvo mín.:</span>
+                    <input type="number" class="opt-uni-perf-input" id="optUniMinTarget"
+                      placeholder="—" min="0" max="50" step="1"
+                      oninput="updateOptUniverse()" onchange="updateOptUniverse()">
+                    <span class="opt-uni-perf-unit">%</span>
+                  </div>
+                  <div class="opt-uni-perf-row">
+                    <span class="opt-uni-perf-label" data-tip="CAGR mínimo nos últimos 12 meses. Atenção: CAGR 12M é ruidoso — um fundo excelente pode ter tido um ano ruim por razões cíclicas.">CAGR 12M mín.:</span>
+                    <input type="number" class="opt-uni-perf-input" id="optUniMinCagr12"
+                      placeholder="—" min="-50" max="100" step="1"
+                      oninput="updateOptUniverse()" onchange="updateOptUniverse()">
+                    <span class="opt-uni-perf-unit">%</span>
+                  </div>
+                  <div class="opt-uni-perf-row">
+                    <span class="opt-uni-perf-label" data-tip="Volatilidade histórica máxima anualizada. Fundos acima deste limite são excluídos. Cuidado: vol alta pode ser assimétrica (mais volatilidade para cima).">Vol. máx.:</span>
+                    <input type="number" class="opt-uni-perf-input" id="optUniMaxVol"
+                      placeholder="—" min="0" max="100" step="1"
+                      oninput="updateOptUniverse()" onchange="updateOptUniverse()">
+                    <span class="opt-uni-perf-unit">%</span>
+                  </div>
+                  <div class="opt-uni-perf-row">
+                    <span class="opt-uni-perf-label" data-tip="Drawdown máximo histórico (em módulo). Fundos com queda pico→vale superior a este limite são excluídos.">DD máx. hist.:</span>
+                    <input type="number" class="opt-uni-perf-input" id="optUniMaxDD"
+                      placeholder="—" min="0" max="100" step="1"
+                      oninput="updateOptUniverse()" onchange="updateOptUniverse()">
+                    <span class="opt-uni-perf-unit">%</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dominância -->
+              <button class="opt-dom-btn" id="optDomBtn" onclick="applyDominance()"
+                data-tip="Remove do universo fundos que são dominados: para o objetivo atual, existe outro fundo com retorno esperado maior E risco menor. Um fundo dominado nunca pode contribuir para o portfólio ótimo — sua remoção é matematicamente exata, sem perda de precisão.">
+                ✦ Remover fundos dominados <span id="optDomObjLabel">(para: Sharpe)</span>
+              </button>
+              <div class="opt-dom-result" id="optDomResult"></div>
+
+              <!-- Lista de fundos -->
+              <div class="opt-uni-divider"></div>
+              <div class="opt-uni-fund-header">
+                <span class="opt-uni-fund-title">Fundos no universo</span>
+                <div class="opt-uni-fund-actions">
+                  <button class="opt-uni-action" onclick="setAllUniFunds(true)">Todos</button>
+                  <button class="opt-uni-action" onclick="setAllUniFunds(false)">Nenhum</button>
+                </div>
+              </div>
+              <div class="opt-uni-fund-grid" id="optUniFundGrid"></div>
+
+            </div><!-- /opt-universe-body -->
+          </div><!-- /opt-universe -->
         </div>
         <div class="opt-beta-row">
           <input type="checkbox" id="optBetaAdj" onchange="updateBetaAdjNote()">
@@ -1987,7 +2226,7 @@
             oninput="onOptMaxWSlider()">
           <input type="number" class="opt-val-input" id="optMaxWVal"
             value="100" min="10" max="100" step="5"
-            onchange="onOptMaxWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            oninput="onOptMaxWInput(this)" onchange="onOptMaxWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
           <span class="opt-constraint-label" id="optMaxWNote" style="opacity:0.5">(sem restrição)</span>
         </div>
@@ -1998,7 +2237,7 @@
             oninput="onOptMinWSlider()">
           <input type="number" class="opt-val-input" id="optMinWVal"
             value="1.0" min="1.0" max="30.0" step="0.1"
-            onchange="onOptMinWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            oninput="onOptMinWInput(this)" onchange="onOptMinWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
           <span class="opt-constraint-label" id="optMinWNote" style="opacity:0.5">(padrão)</span>
         </div>
@@ -2009,7 +2248,7 @@
             oninput="onOptMaxBetaSlider('ibov')">
           <input type="number" class="opt-val-input" id="optMaxBetaIbovVal"
             value="" min="0.0" max="2.0" step="0.1" placeholder="—"
-            onchange="onOptMaxBetaInput('ibov', this)" onkeydown="if(event.key==='Enter')this.blur()">
+            oninput="onOptMaxBetaInput('ibov', this)" onchange="onOptMaxBetaInput('ibov', this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-row">
@@ -2019,7 +2258,7 @@
             oninput="onOptMaxBetaSlider('sp')">
           <input type="number" class="opt-val-input" id="optMaxBetaSpVal"
             value="" min="0.0" max="2.0" step="0.1" placeholder="—"
-            onchange="onOptMaxBetaInput('sp', this)" onkeydown="if(event.key==='Enter')this.blur()">
+            oninput="onOptMaxBetaInput('sp', this)" onchange="onOptMaxBetaInput('sp', this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5">(sem restrição)</span>
         </div>
         <div class="opt-constraint-row">
@@ -2029,7 +2268,7 @@
             oninput="onOptMaxStressLossSlider()">
           <input type="number" class="opt-val-input" id="optMaxStressLossVal"
             value="" min="0" max="60" step="1" placeholder="—"
-            onchange="onOptMaxStressLossInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            oninput="onOptMaxStressLossInput(this)" onchange="onOptMaxStressLossInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMaxStressLossPct"></span>
           <span class="opt-constraint-label" id="optMaxStressLossNote" style="opacity:0.5">(sem restrição)</span>
         </div>
@@ -2040,7 +2279,7 @@
             oninput="onOptMinTargetRetSlider()">
           <input type="number" class="opt-val-input" id="optMinTargetRetVal"
             value="" min="0" max="50" step="1" placeholder="—"
-            onchange="onOptMinTargetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            oninput="onOptMinTargetRetInput(this)" onchange="onOptMinTargetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMinTargetRetPct"></span>
           <span class="opt-constraint-label" id="optMinTargetRetNote" style="opacity:0.5">(sem restrição)</span>
         </div>
@@ -2051,7 +2290,7 @@
             oninput="onOptMinNetRetSlider()" style="flex:1;min-width:80px">
           <input type="number" class="opt-val-input" id="optMinNetRetVal"
             value="" min="0" max="40" step="1" placeholder="—"
-            onchange="onOptMinNetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            oninput="onOptMinNetRetInput(this)" onchange="onOptMinNetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMinNetRetPct"></span>
           <span class="opt-constraint-label" id="optMinNetRetNote" style="opacity:0.5">(sem restrição)</span>
           <div style="width:100%;display:flex;align-items:center;gap:8px;margin-top:3px" id="optNetRetTimeRow">
@@ -2059,7 +2298,16 @@
             <input type="range" class="opt-maxw-slider" id="optNetRetYearsSlider"
               min="1" max="10" value="5" step="1"
               oninput="onOptNetRetYearsSlider()" style="flex:1;min-width:60px">
-            <span style="font-family:'Courier New',monospace;font-size:0.72rem;font-weight:bold;color:var(--text);min-width:50px" id="optNetRetYearsLabel">5 anos</span>
+            <input type="number" id="optNetRetYearsVal"
+              value="5" min="1" max="10" step="1"
+              oninput="onOptNetRetYearsInput(this)" onchange="onOptNetRetYearsInput(this)" onkeydown="if(event.key==='Enter')this.blur()"
+              style="font-family:'Courier New',monospace;font-size:0.72rem;font-weight:bold;color:var(--text);
+                     background:transparent;border:none;border-bottom:1px dashed var(--muted);
+                     width:24px;text-align:center;padding:0;outline:none;cursor:text;"
+              onfocus="this.style.borderBottomColor='var(--accent)';this.style.color='var(--accent)'"
+              onblur="this.style.borderBottomColor='var(--muted)';this.style.color='var(--text)'">
+            <span style="font-family:'Courier New',monospace;font-size:0.72rem;color:var(--muted)">anos</span>
+            <span style="display:none" id="optNetRetYearsLabel">5 anos</span>
           </div>
         </div>
         <div class="opt-constraint-warn" id="optConstraintWarn">
@@ -2114,7 +2362,15 @@
         <span class="ir-slider-label">Prazo até o resgate:</span>
         <input type="range" class="ir-slider" id="irSlider" min="1" max="20" value="5" step="1"
                oninput="onIrSlider()">
-        <span class="ir-slider-val" id="irSliderVal">5 anos</span>
+        <input type="number" id="irSliderVal"
+          value="5" min="1" max="20" step="1"
+          oninput="onIrValInput(this)" onchange="onIrValInput(this)" onkeydown="if(event.key==='Enter')this.blur()"
+          style="font-family:'Courier New',monospace;font-size:0.78rem;font-weight:bold;color:var(--text);
+                 background:transparent;border:none;border-bottom:1px dashed var(--muted);
+                 width:28px;text-align:center;padding:0;outline:none;cursor:text;"
+          onfocus="this.style.borderBottomColor='var(--accent)';this.style.color='var(--accent)'"
+          onblur="this.style.borderBottomColor='var(--muted)';this.style.color='var(--text)'">
+        <span style="font-family:'Courier New',monospace;font-size:0.78rem;color:var(--muted)" id="irSliderAnosSuffix">anos</span>
       </div>
     </div>
     <div id="irBody" class="ir-empty">Selecione fundos e pesos no portfólio acima</div>
@@ -3371,6 +3627,7 @@ async function loadHistory() {
     initMCSelect();
     initDistSelect();
     initCorrRollSelects();
+    updateOptUniverse();  // init universe panel counter + fund chips
     // Pre-render analysis if already on those tabs
     const activeTab = document.querySelector('.tab-pane.active')?.id;
     if (activeTab === 'tab-graficos') renderNormalizedChart();
@@ -4217,7 +4474,22 @@ function simularFundo(aporte, retornoAnual, trib, anosResgate) {
 // ── Render ────────────────────────────────────────────────────────────────────
 function onIrSlider() {
   const anos = parseInt(document.getElementById('irSlider').value);
-  document.getElementById('irSliderVal').textContent = anos + (anos === 1 ? ' ano' : ' anos');
+  const valEl = document.getElementById('irSliderVal');
+  if (valEl) valEl.value = anos;
+  const sufEl = document.getElementById('irSliderAnosSuffix');
+  if (sufEl) sufEl.textContent = anos === 1 ? 'ano' : 'anos';
+  renderIR();
+}
+
+function onIrValInput(el) {
+  let v = parseInt(el.value);
+  if (isNaN(v)) return;
+  v = Math.max(1, Math.min(20, v));
+  el.value = v;
+  const slider = document.getElementById('irSlider');
+  if (slider) slider.value = v;
+  const sufEl = document.getElementById('irSliderAnosSuffix');
+  if (sufEl) sufEl.textContent = v === 1 ? 'ano' : 'anos';
   renderIR();
 }
 
@@ -4528,6 +4800,251 @@ let optMinTargetRet     = null;  // null = sem restrição; valor em % (ex: 20 =
 let optMinNetRet        = null;  // null = sem restrição; valor em % líquido
 let optNetRetYears      = 5;     // prazo estimado para cálculo do IR (anos)
 
+// ── Universe filter state ─────────────────────────────────────────────────────
+// Set of CNPJs manually toggled OFF by the user (starts empty = all active)
+const optUniExcluded = new Set();
+// Active elegibility chip filters (value = set of allowed values; null = all)
+const optUniFilters = {
+  tipo: new Set(['Long Only', 'Long Biased', 'Multimercado']),
+  expo: new Set(['Brasil', 'Internacional', 'Majoritariamente']),
+  trib: new Set(['RV', 'TR']),
+};
+
+// ── Universe helpers ──────────────────────────────────────────────────────────
+
+function optUniGetActive() {
+  // Returns sorted array of CNPJs in the current universe
+  if (!historyData) return [];
+  const allCnpjs = Object.keys(historyData.funds);
+
+  // perf filter inputs
+  const minYears  = parseFloat(document.getElementById('optUniMinYears')?.value)  || null;
+  const minTarget = parseFloat(document.getElementById('optUniMinTarget')?.value) || null;
+  const minCagr12 = parseFloat(document.getElementById('optUniMinCagr12')?.value);
+  const maxVol    = parseFloat(document.getElementById('optUniMaxVol')?.value)    || null;
+  const maxDD     = parseFloat(document.getElementById('optUniMaxDD')?.value)     || null;
+
+  return allCnpjs.filter(cnpj => {
+    if (optUniExcluded.has(cnpj)) return false;
+    const meta = FUND_META[cnpj] || {};
+
+    // Elegibility filters
+    const tipo = meta.tipo || '';
+    const tipoMatch = [...optUniFilters.tipo].some(t => tipo.includes(t));
+    if (!tipoMatch) return false;
+
+    const expo = meta.expo || '';
+    const expoMatch = [...optUniFilters.expo].some(e => expo.includes(e));
+    if (!expoMatch) return false;
+
+    if (!optUniFilters.trib.has(meta.trib || 'RV')) return false;
+
+    // Histórico mínimo
+    if (minYears != null && !isNaN(minYears)) {
+      const days = tenureDays(cnpj);
+      if (days / 365.25 < minYears) return false;
+    }
+
+    // Performance filters
+    const fData = funds.find(f => f.cnpjFmt === cnpj);
+    if (minTarget != null && !isNaN(minTarget)) {
+      const tgt = fData ? calcTargetReturn(fData) : null;
+      if (!tgt || tgt.value < minTarget) return false;
+    }
+    if (!isNaN(minCagr12) && minCagr12 !== null && minCagr12 !== undefined && document.getElementById('optUniMinCagr12')?.value !== '') {
+      if (!fData || fData.cagr12 == null || fData.cagr12 < minCagr12) return false;
+    }
+    if (maxVol != null && !isNaN(maxVol)) {
+      const fd = historyData.funds[cnpj];
+      const vol = fd?.metrics?.vol ?? null;
+      if (vol != null && vol > maxVol) return false;
+    }
+    if (maxDD != null && !isNaN(maxDD)) {
+      const adv = getAdvMetrics(cnpj);
+      if (adv && adv.mddPct != null && Math.abs(adv.mddPct) > maxDD) return false;
+    }
+
+    return true;
+  });
+}
+
+function optUniCombos(n, k) {
+  // C(n,k)
+  if (k > n) return 0;
+  if (k === 0 || k === n) return 1;
+  let r = 1;
+  for (let i = 0; i < Math.min(k, n - k); i++) {
+    r = r * (n - i) / (i + 1);
+  }
+  return Math.round(r);
+}
+
+function optUniEstimateTime(combos, k) {
+  // Rough estimate: ~0.03ms per combo for Sharpe, ~0.15ms for Calmar/Stress
+  const ms = combos * ((['calmar','stress'].includes(optObj)) ? 0.15 : 0.04);
+  if (ms < 500)  return '< 1s';
+  if (ms < 2000) return `~${(ms/1000).toFixed(0)}s`;
+  if (ms < 10000) return `~${(ms/1000).toFixed(0)}s ⚠`;
+  return `~${(ms/1000).toFixed(0)}s — considere reduzir o universo`;
+}
+
+function updateOptUniverse() {
+  const active  = optUniGetActive();
+  const n       = active.length;
+  const k       = optN;
+  const combos  = optUniCombos(n, k);
+  const timeEst = optUniEstimateTime(combos, k);
+
+  // Counter
+  const counter = document.getElementById('optUniCounter');
+  if (counter) {
+    const comboClass = combos > 50000 ? 'combo-warn' : 'combo-count';
+    counter.innerHTML = `${n} fundos · <span class="${comboClass}">${combos.toLocaleString('pt-BR')} combinações</span> · ${timeEst}`;
+  }
+
+  // Rebuild fund chips
+  renderOptUniFundGrid(active);
+}
+
+function renderOptUniFundGrid(activeCnpjs) {
+  const grid = document.getElementById('optUniFundGrid');
+  if (!grid || !historyData) return;
+
+  const allCnpjs = Object.keys(historyData.funds).sort((a,b) => {
+    const na = (FUND_META[a]||{}).nome || a;
+    const nb = (FUND_META[b]||{}).nome || b;
+    return na.localeCompare(nb);
+  });
+
+  grid.innerHTML = allCnpjs.map(cnpj => {
+    const meta   = FUND_META[cnpj] || {};
+    const short  = meta.short || meta.nome?.split(' ')[0] || cnpj.slice(0,8);
+    const color  = (typeof getFundColor === 'function') ? getFundColor(cnpj) : '#888';
+    const active = activeCnpjs.includes(cnpj);
+    return `<div class="opt-uni-fund-chip ${active ? 'active' : ''}"
+      data-cnpj="${cnpj}" onclick="toggleOptUniFund('${cnpj}')"
+      data-tip="${(FUND_META[cnpj]||{}).nome || cnpj}">
+      <span class="opt-uni-fund-dot" style="background:${color}"></span>${short}
+    </div>`;
+  }).join('');
+}
+
+function toggleOptUniFund(cnpj) {
+  if (optUniExcluded.has(cnpj)) {
+    optUniExcluded.delete(cnpj);
+  } else {
+    optUniExcluded.add(cnpj);
+  }
+  updateOptUniverse();
+}
+
+function setAllUniFunds(include) {
+  if (!historyData) return;
+  optUniExcluded.clear();
+  if (!include) {
+    Object.keys(historyData.funds).forEach(c => optUniExcluded.add(c));
+  }
+  updateOptUniverse();
+}
+
+function toggleUniChip(btn) {
+  const filter = btn.dataset.unifilter;
+  const val    = btn.dataset.val;
+  btn.classList.toggle('active');
+  if (btn.classList.contains('active')) {
+    optUniFilters[filter].add(val);
+  } else {
+    optUniFilters[filter].delete(val);
+  }
+  updateOptUniverse();
+}
+
+function toggleOptUniverse() {
+  const panel = document.getElementById('optUniverse');
+  if (panel) panel.classList.toggle('open');
+}
+
+// ── Dominance filtering ───────────────────────────────────────────────────────
+// A fund B is dominated by fund A if, for the current objective:
+//   - A has higher or equal expected return than B, AND
+//   - A has lower or equal risk than B
+// Where "risk" is defined per objective:
+//   Sharpe/Return: volatility
+//   Sortino: semi-deviation (downside vol)
+//   Calmar: max drawdown (in absolute value)
+//   IR: tracking error vs IBOV
+//   Stress: worst-case stress return (lower = worse)
+// A dominated fund can never contribute to the optimal portfolio.
+// This is mathematically exact — no precision loss.
+function applyDominance() {
+  if (!historyData || !funds.length) return;
+  const active  = optUniGetActive();
+  const result  = document.getElementById('optDomResult');
+
+  // Build metric vectors for active funds
+  const metrics = active.map(cnpj => {
+    const fData = funds.find(f => f.cnpjFmt === cnpj);
+    const tgt   = fData ? calcTargetReturn(fData) : null;
+    const ret   = tgt ? tgt.value : 0;
+    const adv   = getAdvMetrics(cnpj);
+    const fd    = historyData.funds[cnpj];
+    const vol   = fd?.metrics?.vol ?? (adv?.ddDev ?? 20);
+    const semi  = adv?.ddDev ?? vol;
+    const mdd   = adv?.mddPct != null ? Math.abs(adv.mddPct) : 100;
+    const te    = adv?.teAnn ?? vol;
+    // Worst stress return (lower is worse) — use existing worstStressReturn if available
+    let stress  = -50;
+    try { stress = worstStressReturn([cnpj], [1]) * 100; } catch (_) {}
+    return { cnpj, ret, vol, semi, mdd, te, stress };
+  });
+
+  // For each fund, check if another fund dominates it
+  const dominated = new Set();
+  for (let i = 0; i < metrics.length; i++) {
+    for (let j = 0; j < metrics.length; j++) {
+      if (i === j) continue;
+      if (dominated.has(metrics[i].cnpj)) break;
+      const A = metrics[j], B = metrics[i];
+      // A dominates B if A is strictly better in at least one dim and >= in all others
+      let dominates = false;
+      switch (optObj) {
+        case 'sharpe':
+        case 'return':
+          dominates = A.ret >= B.ret && A.vol <= B.vol && (A.ret > B.ret || A.vol < B.vol);
+          break;
+        case 'sortino':
+          dominates = A.ret >= B.ret && A.semi <= B.semi && (A.ret > B.ret || A.semi < B.semi);
+          break;
+        case 'calmar':
+          dominates = A.ret >= B.ret && A.mdd <= B.mdd && (A.ret > B.ret || A.mdd < B.mdd);
+          break;
+        case 'ir':
+          dominates = A.ret >= B.ret && A.te <= B.te && (A.ret > B.ret || A.te < B.te);
+          break;
+        case 'stress':
+          dominates = A.stress >= B.stress && A.vol <= B.vol && (A.stress > B.stress || A.vol < B.vol);
+          break;
+        default:
+          dominates = A.ret >= B.ret && A.vol <= B.vol && (A.ret > B.ret || A.vol < B.vol);
+      }
+      if (dominates) dominated.add(B.cnpj);
+    }
+  }
+
+  // Exclude dominated funds
+  dominated.forEach(cnpj => optUniExcluded.add(cnpj));
+  updateOptUniverse();
+
+  if (result) {
+    if (dominated.size === 0) {
+      result.textContent = 'Nenhum fundo dominado encontrado — todos os fundos ativos são eficientes para este objetivo.';
+    } else {
+      const names = [...dominated].map(c => (FUND_META[c]||{}).short || (FUND_META[c]||{}).nome?.split(' ')[0] || c);
+      result.innerHTML = `<span style="color:var(--red)">${dominated.size} removido${dominated.size>1?'s':''}</span>: ${names.join(', ')} — dominado${dominated.size>1?'s':''} por fundos com melhor retorno e menor risco para o objetivo <em>${optObj}</em>.`;
+    }
+  }
+}
+
 // ── Optimizer drawer toggle ──────────────────────────────────────────────────
 function toggleOptDrawer() {
   const drawer = document.getElementById('optDrawer');
@@ -4572,14 +5089,24 @@ function setOptN(n) {
   );
   validateOptConstraints();
   updateOptSummary();
+  updateOptUniverse();
 }
 function setOptObj(obj) {
   optObj = obj;
-  ['sharpe','return','vol'].forEach(k =>
-    document.getElementById('optObj' + k.charAt(0).toUpperCase() + k.slice(1))
-      .classList.toggle('active', k === obj)
+  // Toggle all 7 objective buttons (classic + advanced)
+  ['Sharpe','Vol','Return','Sortino','Calmar','IR','Stress'].forEach(k =>
+    document.getElementById('optObj' + k)?.classList.toggle('active', k.toLowerCase() === obj.toLowerCase())
   );
+  // Update dominance button label
+  const domLabel = document.getElementById('optDomObjLabel');
+  const objNames = { sharpe:'Sharpe', vol:'Mín. variância', return:'Máx. retorno',
+                     sortino:'Sortino', calmar:'Calmar', ir:'IR', stress:'Stress' };
+  if (domLabel) domLabel.textContent = `(para: ${objNames[obj] || obj})`;
+  // Clear previous dominance result when objective changes
+  const domResult = document.getElementById('optDomResult');
+  if (domResult) domResult.textContent = '';
   updateOptSummary();
+  updateOptUniverse();
 }
 
 function onOptMaxWSlider() {
@@ -4808,11 +5335,30 @@ function onOptMinNetRetInput(el) {
 function onOptNetRetYearsSlider() {
   const slider = document.getElementById('optNetRetYearsSlider');
   const label  = document.getElementById('optNetRetYearsLabel');
+  const valEl  = document.getElementById('optNetRetYearsVal');
   const noteEl = document.getElementById('optMinNetRetNote');
   optNetRetYears = parseInt(slider.value);
-  label.textContent = optNetRetYears + (optNetRetYears === 1 ? ' ano' : ' anos');
-  if (optMinNetRet !== null) {
+  if (label) label.textContent = optNetRetYears + (optNetRetYears === 1 ? ' ano' : ' anos');
+  if (valEl) valEl.value = optNetRetYears;
+  if (optMinNetRet !== null && noteEl) {
     noteEl.textContent = `ao ano (${optNetRetYears}a)`;
+  }
+  updateOptSummary();
+}
+
+function onOptNetRetYearsInput(el) {
+  let v = parseInt(el.value);
+  if (isNaN(v)) return;
+  v = Math.max(1, Math.min(10, v));
+  el.value = v;
+  const slider = document.getElementById('optNetRetYearsSlider');
+  if (slider) slider.value = v;
+  const label  = document.getElementById('optNetRetYearsLabel');
+  if (label) label.textContent = v + (v === 1 ? ' ano' : ' anos');
+  optNetRetYears = v;
+  const noteEl = document.getElementById('optMinNetRetNote');
+  if (optMinNetRet !== null && noteEl) {
+    noteEl.textContent = `ao ano (${v}a)`;
   }
   updateOptSummary();
 }
@@ -5226,7 +5772,7 @@ function runOptimizer() {
   cancelBtn.style.display = '';
   status.textContent = 'Calculando…';
 
-  const allCnpjs   = Object.keys(historyData.funds);
+  const allCnpjs   = optUniGetActive();  // respects universe filters + exclusions
   const k          = optN;
   const ibovProxy  = (ibov && ibov.cagr36) || 20;
 
@@ -5253,7 +5799,7 @@ function runOptimizer() {
   // Pre-materialise all combos to allow chunking
   const allCombos = [...combinations(validCnpjs, k)];
   const total     = allCombos.length;
-  const CHUNK     = 150;
+  const CHUNK     = 600;
 
   let best            = null;
   let nCombos         = 0;
