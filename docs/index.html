@@ -2191,10 +2191,21 @@
               </div>
 
               <!-- Dominância -->
-              <button class="opt-dom-btn" id="optDomBtn" onclick="applyDominance()"
-                data-tip="Remove do universo fundos que são dominados: para o objetivo atual, existe outro fundo com retorno esperado maior E risco menor. Um fundo dominado nunca pode contribuir para o portfólio ótimo — sua remoção é matematicamente exata, sem perda de precisão.">
-                ✦ Remover fundos dominados <span id="optDomObjLabel">(para: Sharpe)</span>
+              <button class="opt-dom-btn" id="optDomBtn" onclick="applyHighCorrFilter()"
+                data-tip="Remove do universo fundos com correlação muito alta entre si (≥ limiar escolhido). Dois fundos altamente correlacionados são essencialmente o mesmo ativo — o de menor Sharpe individual nunca contribui para diversificação. Esta é a única pré-filtragem matematicamente exata: não depende do objetivo e não descarta ativos úteis por diversificação.&#10;&#10;Diferente da 'dominância' individual: aqui a remoção é baseada na correlação par a par, não no retorno/risco isolado de cada fundo.">
+                ✦ Remover fundos altamente correlacionados
+                <span id="optCorrThreshLabel" style="opacity:0.7"> (limiar: 0.95)</span>
               </button>
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:0.4rem">
+                <span class="opt-uni-perf-label" style="flex:none">Limiar de correlação:</span>
+                <input type="range" class="opt-maxw-slider" id="optCorrThreshSlider"
+                  min="70" max="99" value="95" step="1"
+                  oninput="onCorrThreshSlider()" style="flex:1;min-width:60px">
+                <input type="number" class="opt-uni-perf-input" id="optCorrThreshVal"
+                  value="0.95" min="0.70" max="0.99" step="0.01"
+                  oninput="onCorrThreshInput(this)" onchange="onCorrThreshInput(this)"
+                  style="width:38px">
+              </div>
               <div class="opt-dom-result" id="optDomResult"></div>
 
               <!-- Lista de fundos -->
@@ -2225,7 +2236,7 @@
             value="100" min="10" max="100" step="5"
             oninput="onOptMaxWInput(this)" onchange="onOptMaxWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
-          <span class="opt-constraint-label" id="optMaxWNote" style="opacity:0.5">(sem restrição)</span>
+          <span class="opt-constraint-label" id="optMaxWNote" style="opacity:0.5"></span>
         </div>
         <div class="opt-constraint-row">
           <span class="opt-constraint-label">Peso mín. por fundo:</span>
@@ -2236,7 +2247,7 @@
             value="1.0" min="1.0" max="30.0" step="0.1"
             oninput="onOptMinWInput(this)" onchange="onOptMinWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
-          <span class="opt-constraint-label" id="optMinWNote" style="opacity:0.5">(padrão)</span>
+          <span class="opt-constraint-label" id="optMinWNote" style="opacity:0.5"></span>
         </div>
         <div class="opt-constraint-row">
           <span class="opt-constraint-label">Beta máx. vs. IBOV:</span>
@@ -2246,7 +2257,7 @@
           <input type="number" class="opt-val-input" id="optMaxBetaIbovVal"
             value="" min="0.0" max="2.0" step="0.1" placeholder="—"
             oninput="onOptMaxBetaInput('ibov', this)" onchange="onOptMaxBetaInput('ibov', this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5">(sem restrição)</span>
+          <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5"></span>
         </div>
         <div class="opt-constraint-row">
           <span class="opt-constraint-label">Beta máx. vs. S&P:</span>
@@ -2256,7 +2267,7 @@
           <input type="number" class="opt-val-input" id="optMaxBetaSpVal"
             value="" min="0.0" max="2.0" step="0.1" placeholder="—"
             oninput="onOptMaxBetaInput('sp', this)" onchange="onOptMaxBetaInput('sp', this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5">(sem restrição)</span>
+          <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5"></span>
         </div>
         <div class="opt-constraint-row">
           <span class="opt-constraint-label" data-tip="Rejeita qualquer portfólio cujo pior retorno simulado, nos 5 cenários históricos de crise (2008, 2013, 2015, 2020, 2022), seja inferior ao limite definido.&#10;Usa o mesmo modelo de fator do Mín. Stress: R = β_ibov × R_ibov + β_sp500 × R_sp500(BRL) × exposição em crise.&#10;Funciona com qualquer objetivo de otimização — filtra soluções que violam o piso de perda máxima.">Perda máx. em stress:</span>
@@ -2267,7 +2278,7 @@
             value="" min="0" max="60" step="1" placeholder="—"
             oninput="onOptMaxStressLossInput(this)" onchange="onOptMaxStressLossInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMaxStressLossPct"></span>
-          <span class="opt-constraint-label" id="optMaxStressLossNote" style="opacity:0.5">(sem restrição)</span>
+          <span class="opt-constraint-label" id="optMaxStressLossNote" style="opacity:0.7"></span>
         </div>
         <div class="opt-constraint-row">
           <span class="opt-constraint-label" data-tip="Rejeita portfólios com retorno alvo estimado (bruto) abaixo deste piso.&#10;O retorno alvo é a estimativa bayesiana ponderada por √T dos CAGRs históricos — o mesmo valor exibido na coluna 'Retorno alvo' da aba Portfólio.&#10;Útil para garantir que o portfólio otimizado tenha ao menos um nível mínimo de retorno esperado, independente do objetivo de otimização.">Retorno alvo mín. (bruto):</span>
@@ -2278,7 +2289,7 @@
             value="" min="0" max="50" step="1" placeholder="—"
             oninput="onOptMinTargetRetInput(this)" onchange="onOptMinTargetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMinTargetRetPct"></span>
-          <span class="opt-constraint-label" id="optMinTargetRetNote" style="opacity:0.5">(sem restrição)</span>
+          <span class="opt-constraint-label" id="optMinTargetRetNote" style="opacity:0.7"></span>
         </div>
         <div class="opt-constraint-row" style="flex-wrap:wrap;gap:4px 8px">
           <span class="opt-constraint-label" style="width:100%;flex-shrink:0" data-tip="Retorno estimado após imposto de renda, calculado com o mesmo motor exato do Simulador de IR.&#10;&#10;Fundos RV (Renda Variável): IR fixo de 15% sobre o ganho no resgate, sem come-cotas.&#10;&#10;Fundos TR (Tabela Regressiva): simulação evento a evento pelas datas reais de come-cotas (maio e novembro). A cada come-cotas, 15% do rendimento é retirado do patrimônio — o capital perdido deixa de crescer. No resgate: alíquota regressiva sobre o trecho final.&#10;&#10;Consistente com o Monte Carlo e a tabela 'Impacto tributário' da aba Portfólio.">Retorno alvo mín. (líquido):</span>
@@ -2289,7 +2300,7 @@
             value="" min="0" max="40" step="1" placeholder="—"
             oninput="onOptMinNetRetInput(this)" onchange="onOptMinNetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
           <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMinNetRetPct"></span>
-          <span class="opt-constraint-label" id="optMinNetRetNote" style="opacity:0.5">(sem restrição)</span>
+          <span class="opt-constraint-label" id="optMinNetRetNote" style="opacity:0.7"></span>
           <div style="width:100%;display:flex;align-items:center;gap:8px;margin-top:3px" id="optNetRetTimeRow">
             <span class="opt-constraint-label" style="white-space:nowrap">Prazo estimado:</span>
             <input type="range" class="opt-maxw-slider" id="optNetRetYearsSlider"
@@ -4980,106 +4991,114 @@ function toggleOptUniverse() {
 //
 // Tolerance: require A to be meaningfully better (> TOL) to avoid removing
 // funds that are statistically indistinguishable.
-function applyDominance() {
-  if (!historyData || !funds.length) return;
-  const active  = optUniGetActive();
-  const result  = document.getElementById('optDomResult');
+// ── High-correlation filter ───────────────────────────────────────────────────
+// The ONLY mathematically sound pre-filter for portfolio optimization:
+//
+// If two funds have correlation ≥ threshold, they are essentially the same
+// asset from a diversification standpoint. In that case, the one with the
+// lower individual Sharpe ratio can NEVER improve the efficient frontier —
+// keeping both adds combinatorial cost with zero benefit.
+//
+// This is valid regardless of the optimization objective because:
+//   corr(A,B) → 1 ⟹ the covariance matrix becomes rank-deficient in A,B
+//   ⟹ the optimizer will always prefer the one with higher return/vol ratio
+//   ⟹ the other contributes no diversification benefit
+//
+// We remove the fund with the lower individual Sharpe (not the one with lower
+// return or higher vol independently — the Sharpe ratio is the right scalar
+// for comparing two nearly-identical assets).
+//
+// Unlike individual dominance (which ignores cross-correlations and wrongly
+// removes funds that diversify well), this filter is safe for all objectives.
 
-  // Dominance not meaningful for pure return or pure vol objectives
-  if (optObj === 'return' || optObj === 'vol') {
-    if (result) result.innerHTML = `<span style="color:var(--muted)">Dominância não aplicável para o objetivo <em>${optObj === 'return' ? 'Máx. retorno' : 'Mín. variância'}</em> — qualquer fundo pode contribuir via diversificação independente de seu retorno/risco individual.</span>`;
+let optCorrThresh = 0.95;
+
+function onCorrThreshSlider() {
+  const v = parseInt(document.getElementById('optCorrThreshSlider').value) / 100;
+  optCorrThresh = v;
+  document.getElementById('optCorrThreshVal').value = v.toFixed(2);
+  document.getElementById('optCorrThreshLabel').textContent = ` (limiar: ${v.toFixed(2)})`;
+}
+
+function onCorrThreshInput(el) {
+  let v = parseFloat(el.value);
+  if (isNaN(v)) return;
+  v = Math.max(0.70, Math.min(0.99, v));
+  el.value = v.toFixed(2);
+  optCorrThresh = v;
+  document.getElementById('optCorrThreshSlider').value = Math.round(v * 100);
+  document.getElementById('optCorrThreshLabel').textContent = ` (limiar: ${v.toFixed(2)})`;
+}
+
+function applyHighCorrFilter() {
+  if (!historyData) return;
+  const active = optUniGetActive();
+  const result = document.getElementById('optDomResult');
+
+  // Get correlation matrix from historyData (precomputed by server)
+  const corrMatrix = historyData.correlation || null;
+
+  if (!corrMatrix) {
+    if (result) result.innerHTML = `<span style="color:var(--muted)">Matriz de correlação não disponível neste history.json — atualize os dados para usar este filtro.</span>`;
     return;
   }
 
-  const TOL = 0.5;  // must be > 0.5pp better to be considered dominant
-
-  // Build metric vectors for active funds
-  const metrics = active.map(cnpj => {
+  // Compute individual Sharpe for each active fund (for tie-breaking)
+  const cdiRef = (cdi && cdi.cagr36) || 12;
+  function fundSharpe(cnpj) {
     const fData = funds.find(f => f.cnpjFmt === cnpj);
     const tgt   = fData ? calcTargetReturn(fData) : null;
     const ret   = tgt ? tgt.value : 0;
-    const adv   = getAdvMetrics(cnpj);
     const fd    = historyData.funds[cnpj];
+    const vol   = fd?.metrics?.vol ?? 20;
+    return vol > 0 ? (ret - cdiRef) / vol : -99;
+  }
 
-    // Risk metrics — use precomputed where available, fall back gracefully
-    const vol   = fd?.metrics?.vol  ?? adv?.ddDev  ?? 25;
-    const semi  = adv?.ddDev        ?? vol;
-    const mdd   = adv?.mddPct != null ? Math.abs(adv.mddPct) : 50;
-    const te    = adv?.teAnn        ?? vol;
-    const alpha = adv?.alphaAnn     ?? (ret - (adv?.ibovCagr36 ?? 15));
+  // Find pairs with correlation ≥ threshold and remove the weaker one
+  // Process greedily: sort pairs by correlation desc, remove weaker of each pair
+  const toRemove = new Set();
+  const pairs = [];
 
-    // Worst stress return for this fund solo (lower = worse, i.e. higher risk)
-    let stressRisk = 50;  // default: treat as high stress risk
-    try {
-      const w = worstStressReturn([cnpj], [1]);
-      stressRisk = -w * 100;  // positive number: higher = worse stress
-    } catch (_) {}
-
-    return { cnpj, ret, vol, semi, mdd, te, alpha, stressRisk };
-  });
-
-  // For each fund, check if another active fund dominates it
-  const dominated = new Set();
-
-  for (let i = 0; i < metrics.length; i++) {
-    const B = metrics[i];
-    if (dominated.has(B.cnpj)) continue;
-
-    for (let j = 0; j < metrics.length; j++) {
-      if (i === j) continue;
-      const A = metrics[j];
-
-      let retA, retB, riskA, riskB;  // higher ret = better; lower risk = better
-
-      switch (optObj) {
-        case 'sharpe':
-          retA = A.ret;  retB = B.ret;
-          riskA = A.vol; riskB = B.vol;
-          break;
-        case 'sortino':
-          retA = A.ret;   retB = B.ret;
-          riskA = A.semi; riskB = B.semi;
-          break;
-        case 'calmar':
-          retA = A.ret;  retB = B.ret;
-          riskA = A.mdd; riskB = B.mdd;
-          break;
-        case 'ir':
-          retA = A.alpha; retB = B.alpha;
-          riskA = A.te;   riskB = B.te;
-          break;
-        case 'stress':
-          retA = A.ret;        retB = B.ret;
-          riskA = A.stressRisk; riskB = B.stressRisk;
-          break;
-        default: continue;
-      }
-
-      // A dominates B: A >= B in return AND A <= B in risk,
-      // with strict improvement of > TOL in at least one dimension
-      const retBetter  = retA  >= retB  - 1e-6;
-      const riskBetter = riskA <= riskB + 1e-6;
-      const strictRet  = retA  >  retB  + TOL;
-      const strictRisk = riskA <  riskB - TOL;
-
-      if (retBetter && riskBetter && (strictRet || strictRisk)) {
-        dominated.add(B.cnpj);
-        break;
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const ci = active[i], cj = active[j];
+      const corr = corrMatrix[ci]?.[cj] ?? corrMatrix[cj]?.[ci] ?? null;
+      if (corr !== null && Math.abs(corr) >= optCorrThresh) {
+        pairs.push({ ci, cj, corr: Math.abs(corr) });
       }
     }
   }
 
-  // Exclude dominated funds from universe
-  dominated.forEach(cnpj => optUniExcluded.add(cnpj));
+  // Sort by correlation descending — handle highest correlations first
+  pairs.sort((a, b) => b.corr - a.corr);
+
+  const removed = [];  // {cnpj, keptCnpj, corr}
+
+  for (const { ci, cj, corr } of pairs) {
+    // Skip if one was already removed
+    if (toRemove.has(ci) || toRemove.has(cj)) continue;
+    // Keep the one with higher Sharpe, remove the other
+    const sharpeI = fundSharpe(ci);
+    const sharpeJ = fundSharpe(cj);
+    const keep    = sharpeI >= sharpeJ ? ci : cj;
+    const remove  = sharpeI >= sharpeJ ? cj : ci;
+    toRemove.add(remove);
+    removed.push({ cnpj: remove, kept: keep, corr });
+  }
+
+  toRemove.forEach(cnpj => optUniExcluded.add(cnpj));
   updateOptUniverse();
 
   if (result) {
-    if (dominated.size === 0) {
-      result.innerHTML = `Nenhum fundo dominado encontrado — todos os ${active.length} fundos ativos são não-dominados (fronteira eficiente individual) para o objetivo <em>${optObj}</em>.`;
+    if (removed.length === 0) {
+      result.innerHTML = `Nenhum par com correlação ≥ ${optCorrThresh.toFixed(2)} encontrado — todos os ${active.length} fundos ativos são suficientemente distintos entre si.`;
     } else {
-      const names = [...dominated].map(c => (FUND_META[c]||{}).short || (FUND_META[c]||{}).nome?.split(' ')[0] || c);
-      const objLabel = { sharpe:'Sharpe', sortino:'Sortino', calmar:'Calmar', ir:'IR', stress:'Stress' }[optObj] || optObj;
-      result.innerHTML = `<span style="color:var(--amber,#e07800)">${dominated.size} removido${dominated.size>1?'s':''}</span>: ${names.join(', ')} — existe outro fundo ativo com retorno alvo mais alto <em>e</em> risco menor (>${TOL}pp de margem) para o objetivo <em>${objLabel}</em>.`;
+      const lines = removed.map(({ cnpj, kept, corr }) => {
+        const rName = (FUND_META[cnpj]||{}).short || (FUND_META[cnpj]||{}).nome?.split(' ')[0] || cnpj;
+        const kName = (FUND_META[kept]||{}).short  || (FUND_META[kept]||{}).nome?.split(' ')[0]  || kept;
+        return `${rName} (corr ${corr.toFixed(2)} com ${kName})`;
+      });
+      result.innerHTML = `<span style="color:var(--amber,#e07800)">${removed.length} removido${removed.length>1?'s':''}</span>: ${lines.join(' · ')} — Sharpe individual menor no par. Limiar: ${optCorrThresh.toFixed(2)}.`;
     }
   }
 }
@@ -5136,12 +5155,7 @@ function setOptObj(obj) {
   ['Sharpe','Vol','Return','Sortino','Calmar','IR','Stress'].forEach(k =>
     document.getElementById('optObj' + k)?.classList.toggle('active', k.toLowerCase() === obj.toLowerCase())
   );
-  // Update dominance button label
-  const domLabel = document.getElementById('optDomObjLabel');
-  const objNames = { sharpe:'Sharpe', vol:'Mín. variância', return:'Máx. retorno',
-                     sortino:'Sortino', calmar:'Calmar', ir:'IR', stress:'Stress' };
-  if (domLabel) domLabel.textContent = `(para: ${objNames[obj] || obj})`;
-  // Clear previous dominance result when objective changes
+  // Clear previous filter result when objective changes
   const domResult = document.getElementById('optDomResult');
   if (domResult) domResult.textContent = '';
   updateOptSummary();
@@ -5152,7 +5166,7 @@ function onOptMaxWSlider() {
   const v = parseInt(document.getElementById('optMaxWSlider').value);
   optMaxW = v / 100;
   document.getElementById('optMaxWVal').value = v;
-  document.getElementById('optMaxWNote').textContent = v === 100 ? '(sem restrição)' : '';
+  document.getElementById('optMaxWNote').textContent = v === 100 ? '' : '';
   validateOptConstraints();
   updateOptSummary();
 }
@@ -5161,7 +5175,7 @@ function onOptMaxWInput(el) {
   el.value = v;
   document.getElementById('optMaxWSlider').value = v;
   optMaxW = v / 100;
-  document.getElementById('optMaxWNote').textContent = v === 100 ? '(sem restrição)' : '';
+  document.getElementById('optMaxWNote').textContent = v === 100 ? '' : '';
   validateOptConstraints();
   updateOptSummary();
 }
@@ -5171,7 +5185,7 @@ function onOptMinWSlider() {
   const pct  = raw / 10;
   optMinW    = pct / 100;
   document.getElementById('optMinWVal').value = pct.toFixed(1);
-  document.getElementById('optMinWNote').textContent = pct === 1.0 ? '(padrão)' : '';
+  document.getElementById('optMinWNote').textContent = pct === 1.0 ? '' : '';
   validateOptConstraints();
   updateOptSummary();
 }
@@ -5181,7 +5195,7 @@ function onOptMinWInput(el) {
   el.value = pct.toFixed(1);
   document.getElementById('optMinWSlider').value = Math.round(pct * 10);
   optMinW = pct / 100;
-  document.getElementById('optMinWNote').textContent = pct === 1.0 ? '(padrão)' : '';
+  document.getElementById('optMinWNote').textContent = pct === 1.0 ? '' : '';
   validateOptConstraints();
   updateOptSummary();
 }
@@ -5198,7 +5212,7 @@ function onOptMaxBetaSlider(which) {
   inp.value       = noLimit ? '' : (raw / 10).toFixed(1);
   inp.placeholder = noLimit ? '—' : '';
   document.getElementById(noteId).style.opacity = noLimit ? '0.5' : '1';
-  document.getElementById(noteId).textContent   = noLimit ? '(sem restrição)' : '';
+  document.getElementById(noteId).textContent   = noLimit ? '' : '';
   updateOptSummary();
 }
 function onOptMaxBetaInput(which, el) {
@@ -5218,7 +5232,7 @@ function onOptMaxBetaInput(which, el) {
     if (which === 'ibov') optMaxBetaIbov = v; else optMaxBetaSp = v;
   }
   document.getElementById(noteId).style.opacity = noLimit ? '0.5' : '1';
-  document.getElementById(noteId).textContent   = noLimit ? '(sem restrição)' : '';
+  document.getElementById(noteId).textContent   = noLimit ? '' : '';
   updateOptSummary();
 }
 
@@ -5234,7 +5248,7 @@ function onOptMaxStressLossSlider() {
   valEl.placeholder     = noLimit ? '—' : '';
   pctEl.textContent     = noLimit ? '' : '%';
   noteEl.style.opacity  = noLimit ? '0.5' : '1';
-  noteEl.textContent    = noLimit ? '(sem restrição)' : 'pior cenário';
+  noteEl.textContent    = noLimit ? '' : 'pior cenário';
   updateOptSummary();
 }
 function onOptMaxStressLossInput(el) {
@@ -5255,7 +5269,7 @@ function onOptMaxStressLossInput(el) {
     pctEl.textContent = '%';
   }
   noteEl.style.opacity = noLimit ? '0.5' : '1';
-  noteEl.textContent   = noLimit ? '(sem restrição)' : 'pior cenário';
+  noteEl.textContent   = noLimit ? '' : 'pior cenário';
   updateOptSummary();
 }
 
@@ -5272,7 +5286,7 @@ function onOptMinTargetRetSlider() {
   valEl.placeholder    = noLimit ? '—' : '';
   pctEl.textContent    = noLimit ? '' : '%';
   noteEl.style.opacity = noLimit ? '0.5' : '1';
-  noteEl.textContent   = noLimit ? '(sem restrição)' : 'ao ano';
+  noteEl.textContent   = noLimit ? '' : 'ao ano';
   updateOptSummary();
 }
 function onOptMinTargetRetInput(el) {
@@ -5293,7 +5307,7 @@ function onOptMinTargetRetInput(el) {
     pctEl.textContent = v > 0 ? '%' : '';
   }
   noteEl.style.opacity = noLimit ? '0.5' : '1';
-  noteEl.textContent   = noLimit ? '(sem restrição)' : 'ao ano';
+  noteEl.textContent   = noLimit ? '' : 'ao ano';
   updateOptSummary();
 }
 
@@ -5347,7 +5361,7 @@ function onOptMinNetRetSlider() {
   valEl.placeholder    = noLimit ? '—' : '';
   pctEl.textContent    = noLimit ? '' : '%';
   noteEl.style.opacity = noLimit ? '0.5' : '1';
-  noteEl.textContent   = noLimit ? '(sem restrição)' : `ao ano (${optNetRetYears}a)`;
+  noteEl.textContent   = noLimit ? '' : `ao ano (${optNetRetYears}a)`;
   updateOptSummary();
 }
 function onOptMinNetRetInput(el) {
@@ -5368,7 +5382,7 @@ function onOptMinNetRetInput(el) {
     pctEl.textContent = v > 0 ? '%' : '';
   }
   noteEl.style.opacity = noLimit ? '0.5' : '1';
-  noteEl.textContent   = noLimit ? '(sem restrição)' : `ao ano (${optNetRetYears}a)`;
+  noteEl.textContent   = noLimit ? '' : `ao ano (${optNetRetYears}a)`;
   updateOptSummary();
 }
 function onOptNetRetYearsSlider() {
