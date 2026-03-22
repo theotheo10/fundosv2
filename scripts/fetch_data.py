@@ -43,6 +43,9 @@ FUNDS = [
     {"name": "Kapitalo K10 FIF Cotas FIM", "exibicao": "Kapitalo K10", "curto": "K10", "cnpj": "29726133000121", "cnpjFmt": "29.726.133/0001-21"},
     {"name": "Genoa Capital Radar CIC Classe FIM RL", "exibicao": "Genoa Radar", "curto": "Radar", "cnpj": "35828684000107", "cnpjFmt": "35.828.684/0001-07"},
     {"name": "Witpar FIF Ações", "exibicao": "Witpar", "curto": "Witpar", "cnpj": "16876874000147", "cnpjFmt": "16.876.874/0001-47"},
+    {"name": "Itaú Janeiro RF LP FIF", "exibicao": "Itaú Janeiro RF", "curto": "Janeiro RF", "cnpj": "52239457000157", "cnpjFmt": "52.239.457/0001-57"},
+    {"name": "Mapfre Confianza FIF RF Referenciado DI CP", "exibicao": "Mapfre Confianza", "curto": "Mapfre", "cnpj": "51253495000100", "cnpjFmt": "51.253.495/0001-00"},
+    {"name": "Itaú Artax Infra FIF Incentivado Infra CIC RF CP LP RL", "exibicao": "Artax Infra", "curto": "Artax Infra", "cnpj": "52969671000169", "cnpjFmt": "52.969.671/0001-69"},
 ]
 
 FIRST_MONTHLY_YEAR = 2021   # CVM: arquivos mensais a partir daqui
