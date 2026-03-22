@@ -35,7 +35,7 @@
     font-family: 'Georgia', serif;
     background: var(--bg); color: var(--text);
     min-height: 100vh; padding: 2rem 1rem 4rem;
-    max-width: 1100px; margin: 0 auto;
+    max-width: 1160px; margin: 0 auto;
     transition: background 0.2s, color 0.2s;
   }
   .header {
@@ -74,18 +74,13 @@
   }
 
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; overflow-x: auto; }
-  table { border-collapse: collapse; table-layout: fixed; }
+  table { border-collapse: collapse; }
   .table-wrap table { width: 100%; min-width: 760px; }
-  thead th:nth-child(1) { width: 14%; }
-  thead th:nth-child(2), thead th:nth-child(3), thead th:nth-child(4) { width: 13%; }
-  thead th:nth-child(5) { width: 11%; }
-  thead th:nth-child(6) { width: 12%; }
-  thead th:nth-child(7) { width: 10%; }
 
   thead th {
     font-family: 'Courier New', monospace; font-size: 0.68rem;
     text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
-    padding: 12px 8px; text-align: right; border-bottom: 1px solid var(--border);
+    padding: 12px 16px; text-align: right; border-bottom: 1px solid var(--border);
     background: var(--bg); white-space: nowrap; user-select: none; transition: color 0.15s;
   }
   thead th:first-child { text-align: left; }
@@ -101,7 +96,7 @@
   tbody tr.ibov-row td { background: var(--bg); }
   tbody tr.ibov-row:last-child { border-bottom: none; }
 
-  td { padding: 13px 8px; font-size: 0.84rem; text-align: right; vertical-align: middle; white-space: nowrap; }
+  td { padding: 13px 16px; font-size: 0.84rem; text-align: right; vertical-align: middle; white-space: nowrap; }
   td:first-child { text-align: left; }
 
   .rank {
@@ -115,8 +110,8 @@
   .rank.r3   { background: #9c5c2a; color: #fff; }
   .rank.ibov { background: var(--blue-light); color: var(--blue); font-size: 0.52rem; width: 30px; letter-spacing: -0.02em; }
 
-  .fund-name-cell { display: flex; align-items: center; min-width: 0; max-width: 100%; overflow: hidden; }
-  .fund-name  { font-size: 0.84rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fund-name-cell { display: flex; align-items: center; min-width: 120px; max-width: 160px; }
+  .fund-name  { font-size: 0.84rem; line-height: 1.3; }
   .fund-cnpj  { font-family: 'Courier New', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
   .expand-arrow { font-size: 0.55rem; color: var(--muted); margin-left: 5px; display: inline-block; transition: transform 0.2s; }
 
@@ -1360,7 +1355,7 @@
   .num-updated { animation: numUpdate 0.25s ease; }
 
   /* Fund name in ranking — primary row gets slightly larger sort column value */
-  .sorted-primary .cagr-val { font-size: 0.88rem; }
+  .sorted-primary .cagr-val { font-size: 0.94rem; }
 
   /* Benchmark inline pill */
   .alpha-inline {
@@ -2043,9 +2038,9 @@
     <thead>
       <tr>
         <th>#&nbsp;&nbsp;Fundo</th>
-        <th class="sortable" data-key="cagr12"    id="th-cagr12" data-tip="Retorno ao ano nos últimos 12 meses. Taxa ANUALIZADA — não é o retorno total do período.">12M ↕</th>
-        <th class="sortable" data-key="cagr36"    id="th-cagr36" data-tip="Retorno médio ao ano nos últimos 3 anos. Taxa ANUALIZADA — ex: +18% significa +18% por ano, não +18% no total.">36M ↕</th>
-        <th class="sortable" data-key="cagr60"    id="th-cagr60" data-tip="Retorno médio ao ano nos últimos 5 anos. Taxa ANUALIZADA. Janela mais longa = mais confiável, inclui mais ciclos de mercado.">60M ↕</th>
+        <th class="sortable" data-key="cagr12"    id="th-cagr12" data-tip="Retorno ao ano nos últimos 12 meses. Taxa ANUALIZADA — não é o retorno total do período.">12M · a.a. ↕</th>
+        <th class="sortable" data-key="cagr36"    id="th-cagr36" data-tip="Retorno médio ao ano nos últimos 3 anos. Taxa ANUALIZADA — ex: +18% significa +18% por ano, não +18% no total.">36M · a.a. ↕</th>
+        <th class="sortable" data-key="cagr60"    id="th-cagr60" data-tip="Retorno médio ao ano nos últimos 5 anos. Taxa ANUALIZADA. Janela mais longa = mais confiável, inclui mais ciclos de mercado.">60M · a.a. ↕</th>
         <th class="sortable col-alpha" data-key="alpha" id="th-alpha" data-tip="Excesso de retorno anualizado vs. IBOV no período da coluna de ordenação ativa.&#10;Positivo = gestor superou o índice. Negativo = ficou abaixo.&#10;Medida central de skill do gestor — quanto do retorno veio de decisões ativas, não do mercado.">Alpha ↕</th>
         <th class="sortable" data-key="inception" id="th-inception" data-tip="Retorno médio ao ano desde o início do fundo. Inclui todos os ciclos, crises e altas desde a criação.">Desde início ↕</th>
         <th class="sortable" data-key="tenure"    id="th-tenure" data-tip="Há quanto tempo o fundo existe. Histórico mais longo = estimativas mais confiáveis.">Histórico ↕</th>
