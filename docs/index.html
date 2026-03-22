@@ -76,11 +76,11 @@
   .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; overflow-x: auto; }
   table { border-collapse: collapse; table-layout: fixed; }
   .table-wrap table { width: 100%; min-width: 760px; }
-  thead th:nth-child(1) { width: 30%; }
-  thead th:nth-child(2), thead th:nth-child(3), thead th:nth-child(4) { width: 11%; }
-  thead th:nth-child(5) { width: 9%; }
-  thead th:nth-child(6) { width: 10%; }
-  thead th:nth-child(7) { width: 9%; }
+  thead th:nth-child(1) { width: 18%; }
+  thead th:nth-child(2), thead th:nth-child(3), thead th:nth-child(4) { width: 13%; }
+  thead th:nth-child(5) { width: 11%; }
+  thead th:nth-child(6) { width: 12%; }
+  thead th:nth-child(7) { width: 8%; }
 
   thead th {
     font-family: 'Courier New', monospace; font-size: 0.68rem;
@@ -115,8 +115,8 @@
   .rank.r3   { background: #9c5c2a; color: #fff; }
   .rank.ibov { background: var(--blue-light); color: var(--blue); font-size: 0.52rem; width: 30px; letter-spacing: -0.02em; }
 
-  .fund-name-cell { display: flex; align-items: center; min-width: 120px; max-width: 160px; }
-  .fund-name  { font-size: 0.84rem; line-height: 1.3; }
+  .fund-name-cell { display: flex; align-items: center; min-width: 0; max-width: 100%; overflow: hidden; }
+  .fund-name  { font-size: 0.84rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .fund-cnpj  { font-family: 'Courier New', monospace; font-size: 0.65rem; color: var(--muted); margin-top: 2px; }
   .expand-arrow { font-size: 0.55rem; color: var(--muted); margin-left: 5px; display: inline-block; transition: transform 0.2s; }
 
