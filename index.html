@@ -366,7 +366,8 @@
   }
   .port-horizon-floor {
     font-family: 'Courier New', monospace; font-size: 0.6rem;
-    color: var(--muted); flex-shrink: 0; white-space: nowrap;
+    color: var(--muted); flex-shrink: 1; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; max-width: 340px;
     padding-left: 0.4rem; border-left: 1px solid var(--border);
   }
   @media (max-width: 600px) {
@@ -5534,7 +5535,8 @@ function _updateHorizonFloorLabel(h) {
     const fi = calcFloorRF(h, cdiObs);
     const wCdiPct = Math.round(fi.w_cdi * 100);
     el.textContent = `floor RF ≈ ${fi.floor.toFixed(1)}%`
-      + ` · ${wCdiPct}% CDI + ${100-wCdiPct}% neutro (NTN-B ${fi.ntnbLong.toFixed(1)}% real)`;
+      + ` · ${wCdiPct}%CDI + ${100-wCdiPct}%neutro`
+      + ` (NTN-B ${fi.ntnbLong.toFixed(1)}% real)`;
   } catch (_) { el.textContent = ''; }
 }
 
