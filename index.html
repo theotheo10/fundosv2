@@ -535,8 +535,8 @@
   #portComparePanel.visible { display: block; }
   .compare-header {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 0.6rem 1rem;
-    background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+    padding: 0.65rem 1.2rem;
+    background: color-mix(in srgb, var(--accent) 6%, var(--bg));
     border-bottom: 0.5px solid var(--accent);
   }
   .compare-title {
@@ -548,69 +548,112 @@
     cursor: pointer; color: var(--muted); background: none; border: none; padding: 2px 6px;
   }
   .compare-close:hover { color: var(--red); }
-  .compare-cols {
+
+  /* ── Chips de composição ─────────────────────────────────────── */
+  .compare-chips-row {
     display: grid; grid-template-columns: 1fr 1fr;
     border-bottom: 0.5px solid var(--border);
   }
-  .compare-col-header {
-    padding: 0.5rem 1rem;
-    font-family: 'Courier New', monospace; font-size: 0.6rem;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    border-bottom: 0.5px solid var(--border);
+  .compare-chips-col {
+    padding: 0.55rem 1.2rem 0.45rem;
+    font-family: 'Courier New', monospace;
+    line-height: 1.9;
   }
-  .compare-col-header:first-child {
-    border-right: 0.5px solid var(--border);
-    color: var(--blue);
+  .compare-chips-col:first-child { border-right: 0.5px solid var(--border); }
+  .compare-chips-label {
+    font-size: 0.52rem; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted);
+    display: block; margin-bottom: 0.2rem;
   }
-  .compare-col-header:last-child { color: var(--green); }
-  .compare-body { display: grid; grid-template-columns: 1fr 1fr; }
-  .compare-section { padding: 0.7rem 1rem; }
-  .compare-section:first-child { border-right: 0.5px solid var(--border); }
-  .compare-metric-row {
-    display: flex; justify-content: space-between; align-items: baseline;
-    padding: 0.22rem 0; border-bottom: 0.5px solid var(--border);
-    gap: 0.5rem;
-  }
-  .compare-metric-row:last-child { border-bottom: none; }
-  .compare-metric-label {
-    font-family: 'Courier New', monospace; font-size: 0.54rem;
-    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
-    flex-shrink: 0;
-  }
-  .compare-metric-val {
-    font-family: 'Courier New', monospace; font-size: 0.78rem; font-weight: bold;
-  }
-  .compare-metric-val.pos { color: var(--green); }
-  .compare-metric-val.neg { color: var(--red); }
-  .compare-metric-val.neu { color: var(--text); }
-  .compare-funds {
-    padding: 0.6rem 1rem 0.2rem;
-    font-family: 'Courier New', monospace; font-size: 0.58rem;
-    color: var(--muted); line-height: 1.8;
-  }
+  .compare-chips-label.a { color: var(--blue); }
+  .compare-chips-label.b { color: var(--green); }
   .compare-fund-chip {
-    display: inline-block; padding: 1px 6px; margin: 1px 2px;
+    display: inline-block; padding: 1px 7px; margin: 1px 2px;
     border-radius: 3px; border: 0.5px solid var(--border);
-    background: var(--bg); font-size: 0.58rem;
+    font-size: 0.58rem; white-space: nowrap;
   }
   .compare-fund-chip.added   { border-color: var(--green); color: var(--green); }
-  .compare-fund-chip.removed { border-color: var(--red);   color: var(--red); text-decoration: line-through; }
+  .compare-fund-chip.removed { border-color: var(--red);   color: var(--red); text-decoration: line-through; opacity: 0.7; }
   .compare-fund-chip.same    { color: var(--text); }
-  .compare-delta {
-    font-family: 'Courier New', monospace; font-size: 0.6rem; font-weight: bold;
-    padding: 0 4px; border-radius: 3px;
+
+  /* ── Tabela de métricas alinhada ─────────────────────────────── */
+  .compare-metrics-table {
+    width: 100%;
+    border-collapse: collapse;
+    border-bottom: 0.5px solid var(--border);
   }
-  .compare-delta.better { color: var(--green); }
-  .compare-delta.worse  { color: var(--red); }
-  .compare-stress-grid {
-    display: flex; flex-direction: column; gap: 0;
-    padding: 0 1rem 0.8rem;
-    border-top: 0.5px solid var(--border);
+  .compare-metrics-table thead tr {
+    border-bottom: 0.5px solid var(--border);
+  }
+  .compare-metrics-table tbody tr {
+    border-bottom: 0.5px solid var(--border);
+  }
+  .compare-metrics-table tbody tr:last-child {
+    border-bottom: none;
+  }
+  .compare-metrics-table td {
+    padding: 0.3rem 1.2rem;
+    font-family: 'Courier New', monospace;
+    vertical-align: baseline;
+  }
+  .cmt-label {
+    font-size: 0.52rem; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--muted);
+    width: 28%; white-space: nowrap;
+  }
+  .cmt-val {
+    font-size: 0.82rem; font-weight: bold;
+    text-align: right; width: 25%;
+  }
+  .cmt-val.pos { color: var(--green); }
+  .cmt-val.neg { color: var(--red); }
+  .cmt-val.neu { color: var(--text); }
+  .cmt-sep {
+    width: 0.5px; background: var(--border); padding: 0;
+  }
+  .cmt-delta-cell {
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    font-weight: bold; text-align: right; padding-right: 1.2rem;
+    width: 15%; white-space: nowrap;
+  }
+  .cmt-col-head {
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    text-align: right; padding: 0.3rem 1.2rem;
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  /* ── Resumo em linha ─────────────────────────────────────────── */
+  .compare-summary {
+    padding: 0.4rem 1.2rem;
+    font-family: 'Courier New', monospace; font-size: 0.56rem;
+    color: var(--muted); border-bottom: 0.5px solid var(--border);
+    line-height: 1.8;
+  }
+
+  /* ── Stress grid ─────────────────────────────────────────────── */
+  .compare-stress-label {
+    padding: 0.45rem 1.2rem 0.2rem;
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+    font-weight: bold;
+  }
+  .compare-stress-arrow {
+    font-family: 'Courier New', monospace; font-size: 0.58rem; color: var(--muted);
+  }
+  .cmt-col-head {
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    text-align: right; padding: 0.25rem 1.2rem;
+  }
+  .cmt-delta-cell {
+    font-family: 'Courier New', monospace; font-size: 0.58rem;
+    text-align: center; padding: 0 0.6rem;
   }
   .compare-stress-item {
-    display: grid; grid-template-columns: 110px 1fr;
+    display: grid; grid-template-columns: 100px 1fr;
     align-items: baseline;
-    padding: 0.28rem 0;
+    padding: 0.22rem 0;
     border-bottom: 0.5px solid var(--border);
   }
   .compare-stress-item:last-child { border-bottom: none; }
@@ -622,8 +665,15 @@
     display: flex; gap: 0.4rem; align-items: baseline;
   }
   .compare-stress-val {
-    font-family: 'Courier New', monospace; font-size: 0.7rem; font-weight: bold;
+    font-family: 'Courier New', monospace; font-size: 0.72rem; font-weight: bold;
+    min-width: 52px; text-align: right;
   }
+  .compare-delta {
+    font-family: 'Courier New', monospace; font-size: 0.58rem; font-weight: bold;
+    padding: 0 3px;
+  }
+  .compare-delta.better { color: var(--green); }
+  .compare-delta.worse  { color: var(--red); }
   .corr-table-wrap { overflow-x: auto; }
   .corr-table {
     width: 100%; border-collapse: collapse;
@@ -792,82 +842,179 @@
     opacity: 0;
   }
   .opt-drawer.open {
-    max-height: 900px;
+    max-height: 1100px;
     opacity: 1;
   }
   .opt-drawer-inner {
-    padding: 0 1rem 0.75rem;
+    padding: 0 1rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
   .opt-bar-label {
     font-family: 'Courier New', monospace; font-size: 0.56rem;
     text-transform: uppercase; letter-spacing: 0.1em;
     color: var(--muted); margin-bottom: 0.55rem;
-    display: none; /* label now lives in the toggle button */
+    display: none;
   }
+
+  /* ── Seção de configuração principal (N fundos + objetivos) ── */
+  .opt-config-section {
+    border: 0.5px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    padding: 0.7rem 0.8rem 0.75rem;
+    margin-bottom: 0.55rem;
+  }
+
+  /* ── Linha de tamanho + ação ── */
+  .opt-top-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.6rem; flex-wrap: wrap;
+  }
+  .opt-section-label {
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 0.28rem;
+  }
+
   .opt-controls {
-    display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+    display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: flex-start;
   }
   .opt-size-group, .opt-obj-group {
-    display: flex; gap: 0.3rem;
+    display: flex; gap: 0.3rem; flex-wrap: wrap;
   }
   .opt-divider {
     width: 1px; background: var(--border); margin: 0 0.1rem; align-self: stretch;
   }
   .opt-btn {
     font-family: 'Courier New', monospace; font-size: 0.64rem;
-    padding: 4px 9px; border-radius: 5px; cursor: pointer;
-    border: 1px solid var(--border);
+    padding: 5px 11px; border-radius: 5px; cursor: pointer;
+    border: 0.5px solid var(--border);
     background: transparent; color: var(--muted);
     transition: all 0.12s; white-space: nowrap;
+    letter-spacing: 0.02em;
   }
   .opt-btn:hover  { border-color: var(--accent); color: var(--accent); }
-  .opt-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .opt-btn.active {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+    font-weight: bold;
+  }
+
+  /* ── Linha de ação (Otimizar / Cancelar) ── */
+  .opt-action-row {
+    display: flex; align-items: center; gap: 0.4rem;
+    margin-top: 0.55rem;
+    padding-top: 0.5rem;
+    border-top: 0.5px solid var(--border);
+  }
   .opt-run {
     font-family: 'Courier New', monospace; font-size: 0.64rem;
-    padding: 4px 12px; border-radius: 5px; cursor: pointer;
+    padding: 6px 18px; border-radius: 5px; cursor: pointer;
     background: var(--accent); border: 1px solid var(--accent); color: #fff;
     font-weight: bold; transition: opacity 0.12s; white-space: nowrap;
-    margin-left: auto;
+    letter-spacing: 0.04em;
   }
   .opt-run:hover    { opacity: 0.85; }
-  .opt-run:disabled { opacity: 0.4; cursor: not-allowed; }
+  .opt-run:disabled { opacity: 0.38; cursor: not-allowed; }
+  .opt-run-cancel {
+    font-family: 'Courier New', monospace; font-size: 0.64rem;
+    padding: 6px 14px; border-radius: 5px; cursor: pointer;
+    background: transparent; border: 0.5px solid var(--border);
+    color: var(--muted); transition: all 0.12s; white-space: nowrap;
+  }
+  .opt-run-cancel:hover { border-color: var(--red,#c0392b); color: var(--red,#c0392b); }
+
   .opt-status {
-    font-family: 'Courier New', monospace; font-size: 0.58rem;
-    color: var(--muted); margin-top: 0.4rem; min-height: 1rem;
+    font-family: 'Courier New', monospace; font-size: 0.56rem;
+    color: var(--muted); margin-left: auto; min-height: 1rem;
+  }
+
+  /* ── Restrições: container agrupado ── */
+  .opt-constraints-section {
+    border: 0.5px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    padding: 0.65rem 0.8rem 0.7rem;
+    margin-bottom: 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
   .opt-constraint-row {
-    display: flex; align-items: center; gap: 0.6rem;
-    margin-top: 0.5rem; flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 9rem 1fr 3.2rem 0.9rem;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.32rem 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .opt-constraint-row:last-child { border-bottom: none; }
+  .opt-constraint-row.wide-label {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+  }
+  .opt-constraint-row.wide-label .opt-constraint-row-inner {
+    display: grid;
+    grid-template-columns: 1fr 3.2rem 0.9rem;
+    align-items: center;
+    gap: 0.5rem;
   }
   .opt-constraint-label {
-    font-family: 'Courier New', monospace; font-size: 0.6rem;
+    font-family: 'Courier New', monospace; font-size: 0.59rem;
     color: var(--muted); white-space: nowrap;
+    cursor: default;
   }
   .opt-maxw-slider, .opt-minw-slider {
-    flex: 1; min-width: 80px; max-width: 120px;
+    width: 100%;
     accent-color: var(--accent); height: 3px; cursor: pointer;
-  }
-  .opt-maxw-val, .opt-minw-val {
-    font-family: 'Courier New', monospace; font-size: 0.7rem;
-    font-weight: bold; color: var(--text); min-width: 36px;
+    display: block;
   }
   /* Editable number input that replaces the static span */
   .opt-val-input {
-    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
     font-weight: bold; color: var(--text);
     background: transparent; border: none;
-    width: 46px; text-align: right; padding: 0;
+    width: 100%; text-align: right; padding: 0;
     cursor: text; outline: none;
   }
-  .opt-val-input:focus {
-    color: var(--accent);
-  }
+  .opt-val-input:focus { color: var(--accent); }
   .opt-val-input::-webkit-inner-spin-button,
   .opt-val-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .opt-val-input[type=number] { -moz-appearance: textfield; }
+  .opt-constraint-unit {
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
+    font-weight: bold; color: var(--text);
+  }
+
+  /* beta adj checkbox row */
+  .opt-beta-row {
+    display: flex; align-items: center; gap: 0.45rem;
+    padding: 0.4rem 0 0.1rem;
+    font-family: 'Courier New', monospace; font-size: 0.59rem;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 0.25rem;
+  }
+  .opt-beta-row label { cursor: pointer; }
+  .opt-beta-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
+
   .opt-constraint-warn {
     font-family: 'Courier New', monospace; font-size: 0.58rem;
-    color: var(--red); margin-top: 0.25rem; display: none;
+    color: var(--red,#c0392b); margin-top: 0.3rem; display: none;
+    padding: 0.3rem 0;
+  }
+
+  /* sub-row for prazo estimado inside retorno líquido */
+  .opt-sub-row {
+    display: grid;
+    grid-template-columns: 9rem 1fr 1.8rem 2.2rem;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.28rem 0 0;
+    border-top: 0.5px dashed var(--border);
+    margin-top: 0.1rem;
   }
   /* ── Restrições por classe de ativo ─────────────────────────────────── */
   .opt-class-section {
@@ -977,8 +1124,9 @@
     .opt-drawer-inner { padding: 0 0.75rem 0.6rem; }
     .opt-size-group, .opt-obj-group { flex-wrap: wrap; }
     .opt-btn { font-size: 0.58rem; padding: 4px 8px; }
-    .opt-run { width: 100%; margin-top: 0.3rem; }
-    .opt-constraint-row { flex-wrap: wrap; gap: 4px; }
+    .opt-run { padding: 6px 14px; }
+    .opt-objectives-grid { grid-template-columns: 1fr; }
+    .opt-constraint-row { grid-template-columns: 7.5rem 1fr 2.8rem 0.9rem; }
     .opt-constraint-label { font-size: 0.55rem; }
     .opt-beta-row label { font-size: 0.6rem; }
 
@@ -1276,7 +1424,6 @@
     display: grid; grid-template-columns: 1fr 1fr 1fr;
     gap: 0.7rem 1.5rem; margin-bottom: 1.2rem;
   }
-   }
   .mc-ctrl { display: flex; flex-direction: column; gap: 4px; }
   .mc-ctrl label {
     font-family: 'Courier New', monospace; font-size: 0.58rem;
@@ -1860,7 +2007,7 @@
   .opt-mode-label {
     font-family: 'Courier New', monospace; font-size: 0.52rem;
     text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--muted); margin-bottom: 3px;
+    color: var(--muted); margin-bottom: 4px;
   }
   .opt-btn.mode-classic  { }
   .opt-btn.mode-advanced {
@@ -1868,11 +2015,21 @@
   }
   .opt-btn.mode-advanced.active {
     border-style: solid;
-    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    background: var(--accent);
+    color: #fff;
   }
   /* Separator between classic and advanced modes */
   .opt-mode-sep {
-    width: 0.5px; background: var(--border); margin: 0 2px; align-self: stretch;
+    width: 0.5px; background: var(--border); margin: 0.45rem 0; align-self: stretch;
+  }
+  /* Objetivos side-by-side two-column layout */
+  .opt-objectives-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 0.7rem;
+  }
+  @media (max-width: 500px) {
+    .opt-objectives-grid { grid-template-columns: 1fr; }
   }
 
 
@@ -2319,42 +2476,56 @@
         <div class="opt-drawer" id="optDrawer">
         <div class="opt-drawer-inner">
         <div class="opt-bar-label">Otimizador de carteira</div>
-        <div class="opt-controls">
-          <div class="opt-size-group">
+
+        <!-- ── Seção principal: N fundos + objetivos + ação ── -->
+        <div class="opt-config-section">
+
+          <!-- Tamanho da carteira -->
+          <div class="opt-section-label">Número de fundos</div>
+          <div class="opt-size-group" style="margin-bottom:0.6rem">
             <button class="opt-btn active" id="optN3"  onclick="setOptN(3)">3 fundos</button>
             <button class="opt-btn"        id="optN5"  onclick="setOptN(5)">5 fundos</button>
-            <button class="opt-btn"        id="optN10" onclick="setOptN(10)">10 fundos</button>
+            <button class="opt-btn"        id="optN10" onclick="setOptN(10)" style="min-width:62px">10 fundos</button>
           </div>
-          <div class="opt-divider"></div>
-          <div style="margin-bottom:0.25rem">
-            <div class="opt-mode-label">Objetivo clássico</div>
-            <div class="opt-obj-group">
-              <button class="opt-btn mode-classic active" id="optObjSharpe" onclick="setOptObj('sharpe')"
-                data-tip="Portfólio tangente: maximiza o Índice de Sharpe — (retorno alvo − CDI) ÷ volatilidade total.&#10;Solução analítica exata: w* = Σ⁻¹(μ−CDI) normalizado.&#10;O portfólio mais eficiente em termos de retorno por unidade de TODA a volatilidade.&#10;Referência: Markowitz (1952), Sharpe (1966).">Máx. Sharpe</button>
-              <button class="opt-btn mode-classic" id="optObjVol" onclick="setOptObj('vol')"
-                data-tip="Mínima variância global: minimiza σ²=wᵀΣw sujeito a Σwᵢ=1, wᵢ≥0.&#10;Solução analítica: w* = Σ⁻¹·1 normalizado.&#10;O portfólio de menor oscilação possível — sem considerar retorno.&#10;Útil quando há incerteza elevada sobre retornos esperados.">Mín. variância</button>
-              <button class="opt-btn mode-classic" id="optObjReturn" onclick="setOptObj('return')"
-                data-tip="Maximiza o retorno esperado ponderado dos fundos selecionados.&#10;Usa softmax com temperatura T=3 para diversificar entre os melhores retornos esperados sem concentrar 100% no único melhor.&#10;Não considera risco — portfólio mais agressivo possível.">Máx. retorno</button>
+
+          <!-- Objetivos em grid 2 colunas -->
+          <div class="opt-objectives-grid">
+            <div>
+              <div class="opt-mode-label">Objetivo clássico</div>
+              <div class="opt-obj-group">
+                <button class="opt-btn mode-classic active" id="optObjSharpe" onclick="setOptObj('sharpe')"
+                  data-tip="Portfólio tangente: maximiza o Índice de Sharpe — (retorno alvo − CDI) ÷ volatilidade total.&#10;Solução analítica exata: w* = Σ⁻¹(μ−CDI) normalizado.&#10;O portfólio mais eficiente em termos de retorno por unidade de TODA a volatilidade.&#10;Referência: Markowitz (1952), Sharpe (1966).">Máx. Sharpe</button>
+                <button class="opt-btn mode-classic" id="optObjVol" onclick="setOptObj('vol')"
+                  data-tip="Mínima variância global: minimiza σ²=wᵀΣw sujeito a Σwᵢ=1, wᵢ≥0.&#10;Solução analítica: w* = Σ⁻¹·1 normalizado.&#10;O portfólio de menor oscilação possível — sem considerar retorno.&#10;Útil quando há incerteza elevada sobre retornos esperados.">Mín. variância</button>
+                <button class="opt-btn mode-classic" id="optObjReturn" onclick="setOptObj('return')"
+                  data-tip="Maximiza o retorno esperado ponderado dos fundos selecionados.&#10;Usa softmax com temperatura T=3 para diversificar entre os melhores retornos esperados sem concentrar 100% no único melhor.&#10;Não considera risco — portfólio mais agressivo possível.">Máx. retorno</button>
+              </div>
+            </div>
+            <div>
+              <div class="opt-mode-label" style="display:flex;align-items:center;gap:5px">
+                Objetivo avançado
+                <span style="font-family:'Courier New',monospace;font-size:0.5rem;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue);border:0.5px solid var(--blue)">β</span>
+              </div>
+              <div class="opt-obj-group">
+                <button class="opt-btn mode-advanced" id="optObjSortino" onclick="setOptObj('sortino')"
+                  data-tip="Máx. Sortino: maximiza (retorno alvo − CDI) ÷ semi-desvio descendente do portfólio.&#10;Semi-desvio = volatilidade apenas dos retornos ABAIXO do CDI — ignora volatilidade para cima.&#10;Implementação: semi-covariância Sᵢⱼ = E[min(rᵢ−CDI,0)·min(rⱼ−CDI,0)] × 252.&#10;w* = S⁻¹(μ−CDI) normalizado (análogo ao Sharpe, com Σ substituída por S).&#10;Referência: Estrada (2008), J. Portfolio Management.&#10;Superior ao Sharpe para fundos com assimetria positiva (retornos extremos para cima).">Máx. Sortino</button>
+                <button class="opt-btn mode-advanced" id="optObjCalmar" onclick="setOptObj('calmar')"
+                  data-tip="Máx. Calmar: maximiza CAGR_portfólio ÷ |máx. drawdown histórico do portfólio|.&#10;O max drawdown é calculado sobre a série temporal real dos retornos ponderados — não é a média dos drawdowns individuais.&#10;Metodologia: pesos candidatos gerados por Sharpe; seleção da combinação pelo Calmar real da série.&#10;Encontra o portfólio com melhor retorno por unidade de 'dor máxima' histórica.&#10;Referência: Young (1991); Steinki &amp; Mohammad (SSRN 2662054).">Máx. Calmar</button>
+                <button class="opt-btn mode-advanced" id="optObjIR" onclick="setOptObj('ir')"
+                  data-tip="Máx. Information Ratio: maximiza alpha anualizado vs. IBOV ÷ tracking error.&#10;Tracking error = σ(retorno_portfólio − retorno_IBOV) = volatilidade do excesso de retorno.&#10;Implementação: identical ao Máx. Sharpe, mas usando IBOV como taxa livre de risco em vez do CDI.&#10;Diferença: enquanto Sharpe premia superar o CDI (~12,8%), IR premia superar o IBOV (~19,9%) — critério mais exigente.&#10;Encontra o portfólio mais eficiente em gerar alpha sobre o benchmark de referência.&#10;Referência: Grinold &amp; Kahn (1999), Active Portfolio Management.">Máx. IR vs. IBOV</button>
+                <button class="opt-btn mode-advanced" id="optObjStress" onclick="setOptObj('stress')"
+                  data-tip="Mín. Stress: minimiza a perda máxima estimada do portfólio nos 5 cenários históricos de crise.&#10;&#10;Para cada combinação de fundos e pesos, calcula o retorno estimado em cada cenário usando o modelo de fator:&#10;R_fundo = β_ibov × R_ibov + β_sp500 × R_sp500(BRL), com exposição líquida reduzida em crise.&#10;&#10;Seleciona o portfólio cujo PIOR cenário é o menos negativo — estratégia minimax.&#10;&#10;Favorece fundos com baixo beta, exposição líquida reduzida em crise e benchmark descorrelacionado.&#10;Diferente do Mín. variância: usa cenários extremos reais (2008, 2013, 2015, 2020, 2022) em vez de volatilidade diária histórica.">Mín. Stress</button>
+              </div>
             </div>
           </div>
-          <div>
-            <div class="opt-mode-label" style="display:flex;align-items:center;gap:5px">
-              Objetivo avançado
-              <span style="font-family:'Courier New',monospace;font-size:0.5rem;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue);border:0.5px solid var(--blue)">β</span>
-            </div>
-            <div class="opt-obj-group">
-              <button class="opt-btn mode-advanced" id="optObjSortino" onclick="setOptObj('sortino')"
-                data-tip="Máx. Sortino: maximiza (retorno alvo − CDI) ÷ semi-desvio descendente do portfólio.&#10;Semi-desvio = volatilidade apenas dos retornos ABAIXO do CDI — ignora volatilidade para cima.&#10;Implementação: semi-covariância Sᵢⱼ = E[min(rᵢ−CDI,0)·min(rⱼ−CDI,0)] × 252.&#10;w* = S⁻¹(μ−CDI) normalizado (análogo ao Sharpe, com Σ substituída por S).&#10;Referência: Estrada (2008), J. Portfolio Management.&#10;Superior ao Sharpe para fundos com assimetria positiva (retornos extremos para cima).">Máx. Sortino</button>
-              <button class="opt-btn mode-advanced" id="optObjCalmar" onclick="setOptObj('calmar')"
-                data-tip="Máx. Calmar: maximiza CAGR_portfólio ÷ |máx. drawdown histórico do portfólio|.&#10;O max drawdown é calculado sobre a série temporal real dos retornos ponderados — não é a média dos drawdowns individuais.&#10;Metodologia: pesos candidatos gerados por Sharpe; seleção da combinação pelo Calmar real da série.&#10;Encontra o portfólio com melhor retorno por unidade de 'dor máxima' histórica.&#10;Referência: Young (1991); Steinki &amp; Mohammad (SSRN 2662054).">Máx. Calmar</button>
-              <button class="opt-btn mode-advanced" id="optObjIR" onclick="setOptObj('ir')"
-                data-tip="Máx. Information Ratio: maximiza alpha anualizado vs. IBOV ÷ tracking error.&#10;Tracking error = σ(retorno_portfólio − retorno_IBOV) = volatilidade do excesso de retorno.&#10;Implementação: identical ao Máx. Sharpe, mas usando IBOV como taxa livre de risco em vez do CDI.&#10;Diferença: enquanto Sharpe premia superar o CDI (~12,8%), IR premia superar o IBOV (~19,9%) — critério mais exigente.&#10;Encontra o portfólio mais eficiente em gerar alpha sobre o benchmark de referência.&#10;Referência: Grinold &amp; Kahn (1999), Active Portfolio Management.">Máx. IR vs. IBOV</button>
-              <button class="opt-btn mode-advanced" id="optObjStress" onclick="setOptObj('stress')"
-                data-tip="Mín. Stress: minimiza a perda máxima estimada do portfólio nos 5 cenários históricos de crise.&#10;&#10;Para cada combinação de fundos e pesos, calcula o retorno estimado em cada cenário usando o modelo de fator:&#10;R_fundo = β_ibov × R_ibov + β_sp500 × R_sp500(BRL), com exposição líquida reduzida em crise.&#10;&#10;Seleciona o portfólio cujo PIOR cenário é o menos negativo — estratégia minimax.&#10;&#10;Favorece fundos com baixo beta, exposição líquida reduzida em crise e benchmark descorrelacionado.&#10;Diferente do Mín. variância: usa cenários extremos reais (2008, 2013, 2015, 2020, 2022) em vez de volatilidade diária histórica.">Mín. Stress</button>
-            </div>
+
+          <!-- Ação -->
+          <div class="opt-action-row">
+            <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
+            <button class="opt-run opt-run-cancel" id="optCancelBtn" onclick="cancelOptimizer()" style="display:none">Cancelar</button>
+            <span class="opt-status" id="optStatus">Aguardando dados…</span>
           </div>
-          <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
-          <button class="opt-run" id="optCancelBtn" onclick="cancelOptimizer()" style="display:none;background:var(--border);color:var(--text);margin-left:6px">Cancelar</button>
+        </div>
 
           <!-- ── Universo de fundos ── -->
           <div class="opt-universe" id="optUniverse">
@@ -2463,103 +2634,105 @@
 
             </div><!-- /opt-universe-body -->
           </div><!-- /opt-universe -->
-        </div>
-        <div class="opt-beta-row">
-          <input type="checkbox" id="optBetaAdj" onchange="updateBetaAdjNote()">
-          <label for="optBetaAdj" data-tip="Usa Jensen's alpha como retorno esperado de cada fundo, em vez do CAGR bruto.&#10;Jensen's alpha = CAGR − [CDI + β × (IBOV − CDI)]&#10;Penaliza fundos cujo retorno é explicado pelo beta de mercado, não pela habilidade do gestor.&#10;Favorece gestores que entregam retorno genuíno, independente da exposição direcional ao mercado.&#10;Referência: Jensen (1968), J. of Finance.">Ajustar retornos pelo beta (Jensen's alpha)</label>
-          <span id="betaAdjNote" style="font-family:'Courier New',monospace;font-size:0.55rem;color:var(--accent);display:none">ativo</span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Peso máx. por fundo:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxWSlider"
-            min="10" max="100" value="100" step="5"
-            oninput="onOptMaxWSlider()">
-          <input type="number" class="opt-val-input" id="optMaxWVal"
-            value="100" min="10" max="100" step="5"
-            oninput="onOptMaxWInput(this)" onchange="onOptMaxWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
-          <span class="opt-constraint-label" id="optMaxWNote" style="opacity:0.5"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Peso mín. por fundo:</span>
-          <input type="range" class="opt-minw-slider" id="optMinWSlider"
-            min="10" max="300" value="10" step="1"
-            oninput="onOptMinWSlider()">
-          <input type="number" class="opt-val-input" id="optMinWVal"
-            value="1.0" min="1.0" max="30.0" step="0.1"
-            oninput="onOptMinWInput(this)" onchange="onOptMinWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
-          <span class="opt-constraint-label" id="optMinWNote" style="opacity:0.5"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Beta máx. vs. IBOV:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxBetaIbovSlider"
-            min="0" max="20" value="20" step="1"
-            oninput="onOptMaxBetaSlider('ibov')">
-          <input type="number" class="opt-val-input" id="optMaxBetaIbovVal"
-            value="" min="0.0" max="2.0" step="0.1" placeholder="—"
-            oninput="onOptMaxBetaInput('ibov', this)" onchange="onOptMaxBetaInput('ibov', this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Beta máx. vs. S&P:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxBetaSpSlider"
-            min="0" max="20" value="20" step="1"
-            oninput="onOptMaxBetaSlider('sp')">
-          <input type="number" class="opt-val-input" id="optMaxBetaSpVal"
-            value="" min="0.0" max="2.0" step="0.1" placeholder="—"
-            oninput="onOptMaxBetaInput('sp', this)" onchange="onOptMaxBetaInput('sp', this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label" data-tip="Rejeita qualquer portfólio cujo pior retorno simulado, nos 5 cenários históricos de crise (2008, 2013, 2015, 2020, 2022), seja inferior ao limite definido.&#10;Usa o mesmo modelo de fator do Mín. Stress: R = β_ibov × R_ibov + β_sp500 × R_sp500(BRL) × exposição em crise.&#10;Funciona com qualquer objetivo de otimização — filtra soluções que violam o piso de perda máxima.">Perda máx. em stress:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxStressLossSlider"
-            min="0" max="60" value="60" step="1"
-            oninput="onOptMaxStressLossSlider()">
-          <input type="number" class="opt-val-input" id="optMaxStressLossVal"
-            value="" min="0" max="60" step="1" placeholder="—"
-            oninput="onOptMaxStressLossInput(this)" onchange="onOptMaxStressLossInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMaxStressLossPct"></span>
-          <span class="opt-constraint-label" id="optMaxStressLossNote" style="opacity:0.7"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label" data-tip="Rejeita portfólios com retorno alvo estimado (bruto) abaixo deste piso.&#10;O retorno alvo é a estimativa bayesiana ponderada por √T dos CAGRs históricos — o mesmo valor exibido na coluna 'Retorno alvo' da aba Portfólio.&#10;Útil para garantir que o portfólio otimizado tenha ao menos um nível mínimo de retorno esperado, independente do objetivo de otimização.">Retorno alvo mín. (bruto):</span>
-          <input type="range" class="opt-maxw-slider" id="optMinTargetRetSlider"
-            min="0" max="50" value="0" step="1"
-            oninput="onOptMinTargetRetSlider()">
-          <input type="number" class="opt-val-input" id="optMinTargetRetVal"
-            value="" min="0" max="50" step="1" placeholder="—"
-            oninput="onOptMinTargetRetInput(this)" onchange="onOptMinTargetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMinTargetRetPct"></span>
-          <span class="opt-constraint-label" id="optMinTargetRetNote" style="opacity:0.7"></span>
-        </div>
-        <div class="opt-constraint-row" style="flex-wrap:wrap;gap:4px 8px">
-          <span class="opt-constraint-label" style="width:100%;flex-shrink:0" data-tip="Retorno estimado após imposto de renda, calculado com o mesmo motor exato do Simulador de IR.&#10;&#10;Fundos RV (Renda Variável): IR fixo de 15% sobre o ganho no resgate, sem come-cotas.&#10;&#10;Fundos TR (Tabela Regressiva): simulação evento a evento pelas datas reais de come-cotas (maio e novembro). A cada come-cotas, 15% do rendimento é retirado do patrimônio — o capital perdido deixa de crescer. No resgate: alíquota regressiva sobre o trecho final.&#10;&#10;Consistente com o Monte Carlo e a tabela 'Impacto tributário' da aba Portfólio.">Retorno alvo mín. (líquido):</span>
-          <input type="range" class="opt-maxw-slider" id="optMinNetRetSlider"
-            min="0" max="40" value="0" step="1"
-            oninput="onOptMinNetRetSlider()" style="flex:1;min-width:80px">
-          <input type="number" class="opt-val-input" id="optMinNetRetVal"
-            value="" min="0" max="40" step="1" placeholder="—"
-            oninput="onOptMinNetRetInput(this)" onchange="onOptMinNetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMinNetRetPct"></span>
-          <span class="opt-constraint-label" id="optMinNetRetNote" style="opacity:0.7"></span>
-          <div style="width:100%;display:flex;align-items:center;gap:8px;margin-top:3px" id="optNetRetTimeRow">
-            <span class="opt-constraint-label" style="white-space:nowrap">Prazo estimado:</span>
-            <input type="range" class="opt-maxw-slider" id="optNetRetYearsSlider"
-              min="1" max="10" value="5" step="1"
-              oninput="onOptNetRetYearsSlider()" style="flex:1;min-width:60px">
-            <input type="number" id="optNetRetYearsVal"
-              value="5" min="1" max="10" step="1"
-              oninput="onOptNetRetYearsInput(this)" onchange="onOptNetRetYearsInput(this)" onkeydown="if(event.key==='Enter')this.blur()"
-              style="font-family:'Courier New',monospace;font-size:0.72rem;font-weight:bold;color:var(--text);
-                     background:transparent;border:none;
-                     width:24px;text-align:center;padding:0;outline:none;cursor:text;"
-              onfocus="this.style.color='var(--accent)'"
-              onblur="this.style.color='var(--text)'">
-            <span style="font-family:'Courier New',monospace;font-size:0.72rem;color:var(--muted)">anos</span>
-            <span style="display:none" id="optNetRetYearsLabel">5 anos</span>
+
+        <!-- ── Restrições agrupadas ── -->
+        <div class="opt-constraints-section">
+          <!-- beta adj -->
+          <div class="opt-beta-row">
+            <input type="checkbox" id="optBetaAdj" onchange="updateBetaAdjNote()">
+            <label for="optBetaAdj" data-tip="Usa Jensen's alpha como retorno esperado de cada fundo, em vez do CAGR bruto.&#10;Jensen's alpha = CAGR − [CDI + β × (IBOV − CDI)]&#10;Penaliza fundos cujo retorno é explicado pelo beta de mercado, não pela habilidade do gestor.&#10;Favorece gestores que entregam retorno genuíno, independente da exposição direcional ao mercado.&#10;Referência: Jensen (1968), J. of Finance.">Ajustar retornos pelo beta (Jensen's alpha)</label>
+            <span id="betaAdjNote" style="font-family:'Courier New',monospace;font-size:0.55rem;color:var(--accent);display:none;margin-left:auto">ativo</span>
           </div>
-        </div>
+
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label">Peso máx. por fundo:</span>
+            <input type="range" class="opt-maxw-slider" id="optMaxWSlider"
+              min="10" max="100" value="100" step="5"
+              oninput="onOptMaxWSlider()">
+            <input type="number" class="opt-val-input" id="optMaxWVal"
+              value="100" min="10" max="100" step="5"
+              oninput="onOptMaxWInput(this)" onchange="onOptMaxWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit">%</span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label">Peso mín. por fundo:</span>
+            <input type="range" class="opt-minw-slider" id="optMinWSlider"
+              min="10" max="300" value="10" step="1"
+              oninput="onOptMinWSlider()">
+            <input type="number" class="opt-val-input" id="optMinWVal"
+              value="1.0" min="1.0" max="30.0" step="0.1"
+              oninput="onOptMinWInput(this)" onchange="onOptMinWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit">%</span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label">Beta máx. vs. IBOV:</span>
+            <input type="range" class="opt-maxw-slider" id="optMaxBetaIbovSlider"
+              min="0" max="20" value="20" step="1"
+              oninput="onOptMaxBetaSlider('ibov')">
+            <input type="number" class="opt-val-input" id="optMaxBetaIbovVal"
+              value="" min="0.0" max="2.0" step="0.1" placeholder="—"
+              oninput="onOptMaxBetaInput('ibov', this)" onchange="onOptMaxBetaInput('ibov', this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit" id="optMaxBetaIbovNote"></span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label">Beta máx. vs. S&amp;P:</span>
+            <input type="range" class="opt-maxw-slider" id="optMaxBetaSpSlider"
+              min="0" max="20" value="20" step="1"
+              oninput="onOptMaxBetaSlider('sp')">
+            <input type="number" class="opt-val-input" id="optMaxBetaSpVal"
+              value="" min="0.0" max="2.0" step="0.1" placeholder="—"
+              oninput="onOptMaxBetaInput('sp', this)" onchange="onOptMaxBetaInput('sp', this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit" id="optMaxBetaSpNote"></span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label" data-tip="Rejeita qualquer portfólio cujo pior retorno simulado, nos 5 cenários históricos de crise (2008, 2013, 2015, 2020, 2022), seja inferior ao limite definido.&#10;Usa o mesmo modelo de fator do Mín. Stress: R = β_ibov × R_ibov + β_sp500 × R_sp500(BRL) × exposição em crise.&#10;Funciona com qualquer objetivo de otimização — filtra soluções que violam o piso de perda máxima.">Perda máx. em stress:</span>
+            <input type="range" class="opt-maxw-slider" id="optMaxStressLossSlider"
+              min="0" max="60" value="60" step="1"
+              oninput="onOptMaxStressLossSlider()">
+            <input type="number" class="opt-val-input" id="optMaxStressLossVal"
+              value="" min="0" max="60" step="1" placeholder="—"
+              oninput="onOptMaxStressLossInput(this)" onchange="onOptMaxStressLossInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit" id="optMaxStressLossPct"></span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label" data-tip="Rejeita portfólios com retorno alvo estimado (bruto) abaixo deste piso.&#10;O retorno alvo é a estimativa bayesiana ponderada por √T dos CAGRs históricos — o mesmo valor exibido na coluna 'Retorno alvo' da aba Portfólio.&#10;Útil para garantir que o portfólio otimizado tenha ao menos um nível mínimo de retorno esperado, independente do objetivo de otimização.">Ret. alvo mín. (bruto):</span>
+            <input type="range" class="opt-maxw-slider" id="optMinTargetRetSlider"
+              min="0" max="50" value="0" step="1"
+              oninput="onOptMinTargetRetSlider()">
+            <input type="number" class="opt-val-input" id="optMinTargetRetVal"
+              value="" min="0" max="50" step="1" placeholder="—"
+              oninput="onOptMinTargetRetInput(this)" onchange="onOptMinTargetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit" id="optMinTargetRetPct"></span>
+          </div>
+          <div class="opt-constraint-row" style="display:block;padding:0.32rem 0">
+            <div style="display:grid;grid-template-columns:9rem 1fr 3.2rem 0.9rem;align-items:center;gap:0.5rem">
+              <span class="opt-constraint-label" data-tip="Retorno estimado após imposto de renda, calculado com o mesmo motor exato do Simulador de IR.&#10;&#10;Fundos RV (Renda Variável): IR fixo de 15% sobre o ganho no resgate, sem come-cotas.&#10;&#10;Fundos TR (Tabela Regressiva): simulação evento a evento pelas datas reais de come-cotas (maio e novembro). A cada come-cotas, 15% do rendimento é retirado do patrimônio — o capital perdido deixa de crescer. No resgate: alíquota regressiva sobre o trecho final.&#10;&#10;Consistente com o Monte Carlo e a tabela 'Impacto tributário' da aba Portfólio.">Ret. alvo mín. (líquido):</span>
+              <input type="range" class="opt-maxw-slider" id="optMinNetRetSlider"
+                min="0" max="40" value="0" step="1"
+                oninput="onOptMinNetRetSlider()">
+              <input type="number" class="opt-val-input" id="optMinNetRetVal"
+                value="" min="0" max="40" step="1" placeholder="—"
+                oninput="onOptMinNetRetInput(this)" onchange="onOptMinNetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+              <span class="opt-constraint-unit" id="optMinNetRetPct"></span>
+            </div>
+            <div class="opt-sub-row" id="optNetRetTimeRow">
+              <span class="opt-constraint-label" style="white-space:nowrap">Prazo estimado:</span>
+              <input type="range" class="opt-maxw-slider" id="optNetRetYearsSlider"
+                min="1" max="10" value="5" step="1"
+                oninput="onOptNetRetYearsSlider()">
+              <input type="number" id="optNetRetYearsVal"
+                value="5" min="1" max="10" step="1"
+                oninput="onOptNetRetYearsInput(this)" onchange="onOptNetRetYearsInput(this)" onkeydown="if(event.key==='Enter')this.blur()"
+                style="font-family:'Courier New',monospace;font-size:0.72rem;font-weight:bold;color:var(--text);
+                       background:transparent;border:none;
+                       width:100%;text-align:right;padding:0;outline:none;cursor:text;"
+                onfocus="this.style.color='var(--accent)'"
+                onblur="this.style.color='var(--text)'">
+              <span style="font-family:'Courier New',monospace;font-size:0.72rem;color:var(--muted)">anos</span>
+              <span style="display:none" id="optNetRetYearsLabel">5 anos</span>
+            </div>
+          </div>
+        </div><!-- /opt-constraints-section -->
         <!-- ── Restrições por classe de ativo ─────────────────────────────── -->
         <div class="opt-class-section">
           <div class="opt-class-header">
@@ -2614,7 +2787,6 @@
         <div class="opt-constraint-warn" id="optConstraintWarn">
           ⚠ restrições incompatíveis para este tamanho de carteira
         </div>
-        <div class="opt-status" id="optStatus">Aguardando dados…</div>
         </div><!-- /opt-drawer-inner -->
         </div><!-- /opt-drawer -->
       </div>
@@ -5399,21 +5571,18 @@ function _updateScenarioUI() {
 }
 
 function _renderCompare(A, B) {
-  const fmtPct = (v, decimals=1) => v == null ? '—'
-    : `${v >= 0 ? '+' : ''}${v.toFixed(decimals)}%`;
-  const fmtVal = (v, suffix='') => v == null ? '—' : `${v.toFixed(2)}${suffix}`;
+  const fmtPct = (v) => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+  const fmtVal = (v) => v == null ? '—' : v.toFixed(2);
 
-  // Delta: B - A, positive = B better for return/sharpe, negative = B worse
-  function delta(vA, vB, higherIsBetter=true) {
+  function deltaHtml(vA, vB, higherBetter=true) {
     if (vA == null || vB == null) return '';
     const d = vB - vA;
     if (Math.abs(d) < 0.05) return '';
-    const better = higherIsBetter ? d > 0 : d < 0;
+    const better = higherBetter ? d > 0 : d < 0;
     const sign = d > 0 ? '+' : '';
-    return `<span class="compare-delta ${better ? 'better' : 'worse'}">${sign}${d.toFixed(1)}</span>`;
+    return `<span class="compare-delta ${better?'better':'worse'}">${sign}${d.toFixed(1)}</span>`;
   }
 
-  // Fund chips: highlight added/removed/same
   function fundChips(snap, other) {
     const setOther = new Set(other.selected);
     return snap.selected.map(c => {
@@ -5424,87 +5593,82 @@ function _renderCompare(A, B) {
     }).join('');
   }
 
-  // Stress comparison
-  const stressHtml = (() => {
-    if (!A.stressRows.length && !B.stressRows.length) return '';
-    const allNames = [...new Set([...A.stressRows.map(s=>s.name), ...B.stressRows.map(s=>s.name)])];
-    const shortName = n => ({
-      '2008':'Crise 2008', '2013':'Taper 2013', '2015':'Dilma 2015',
-      'Covid':'Covid 2020', '2022':'Brasil 2022',
-    }[n] || n);
-    const items = allNames.map(name => {
-      const sA = A.stressRows.find(s => s.name === name);
-      const sB = B.stressRows.find(s => s.name === name);
-      const rA = sA?.ret;
-      const rB = sB?.ret;
-      const clsA = rA == null ? 'neu' : rA >= 0 ? 'pos' : rA >= -10 ? '' : 'neg';
-      const clsB = rB == null ? 'neu' : rB >= 0 ? 'pos' : rB >= -10 ? '' : 'neg';
-      const d = rA != null && rB != null
-        ? (() => {
-            const diff = rB - rA;
-            if (Math.abs(diff) < 0.3) return '';
-            const better = diff > 0;
-            return `<span class="compare-delta ${better?'better':'worse'}" style="font-size:0.54rem">${diff>0?'+':''}${diff.toFixed(1)}</span>`;
-          })()
-        : '';
-      return `<div class="compare-stress-item">
-        <div class="compare-stress-name">${shortName(name)}</div>
-        <div class="compare-stress-vals">
-          <span class="compare-stress-val ${clsA}" style="color:var(--blue)">${fmtPct(rA)}</span>
-          <span style="font-family:'Courier New',monospace;font-size:0.6rem;color:var(--muted)">→</span>
-          <span class="compare-stress-val ${clsB}" style="color:var(--green)">${fmtPct(rB)}</span>
-          ${d}
-        </div>
-      </div>`;
-    }).join('');
-    return `<div style="padding:0.5rem 1rem 0.3rem;font-family:'Courier New',monospace;font-size:0.54rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Stress test por cenário (azul=A · verde=B)</div>
-    <div class="compare-stress-grid">${items}</div>`;
-  })();
+  const worstA = A.stressRows.length ? Math.min(...A.stressRows.map(s=>s.ret)) : null;
+  const worstB = B.stressRows.length ? Math.min(...B.stressRows.map(s=>s.ret)) : null;
+  const hA = A.horizonte ? `${A.horizonte}a` : '—';
+  const hB = B.horizonte ? `${B.horizonte}a` : '—';
 
-  function metricBlock(snap) {
-    const h = snap.horizonte ? `${snap.horizonte}a` : '—';
-    return `
-      <div class="compare-funds">${fundChips(snap, snap === A ? B : A)}</div>
-      <div class="compare-section">
-        <div class="compare-metric-row">
-          <span class="compare-metric-label">Retorno alvo</span>
-          <span class="compare-metric-val ${snap.expReturn >= 0 ? 'pos' : 'neg'}">${fmtPct(snap.expReturn)}</span>
-        </div>
-        <div class="compare-metric-row">
-          <span class="compare-metric-label">Volatilidade</span>
-          <span class="compare-metric-val neu">${snap.vol != null ? snap.vol.toFixed(1)+'%' : '—'}</span>
-        </div>
-        <div class="compare-metric-row">
-          <span class="compare-metric-label">Sharpe</span>
-          <span class="compare-metric-val neu">${fmtVal(snap.sharpe)}</span>
-        </div>
-        <div class="compare-metric-row">
-          <span class="compare-metric-label">Horizonte RF</span>
-          <span class="compare-metric-val neu">${h}</span>
-        </div>
-        <div class="compare-metric-row">
-          <span class="compare-metric-label">Pior stress</span>
-          ${(() => {
-            const worst = snap.stressRows.length ? Math.min(...snap.stressRows.map(s=>s.ret)) : null;
-            return `<span class="compare-metric-val ${worst != null && worst < 0 ? 'neg' : 'pos'}">${fmtPct(worst)}</span>`;
-          })()}
-        </div>
-      </div>`;
+  // Metric row: label | val A | val B | delta
+  function metRow(label, vA, vB, fmtFn, higherBetter=true, colorFn=null) {
+    const colorA = colorFn ? colorFn(vA) : (vA == null ? 'neu' : vA < 0 ? 'neg' : vA > 0 ? 'pos' : 'neu');
+    const colorB = colorFn ? colorFn(vB) : (vB == null ? 'neu' : vB < 0 ? 'neg' : vB > 0 ? 'pos' : 'neu');
+    const d = deltaHtml(vA, vB, higherBetter);
+    return `<tr>
+      <td class="cmt-label">${label}</td>
+      <td class="cmt-val ${colorA}">${fmtFn(vA)}</td>
+      <td class="cmt-val ${colorB}">${fmtFn(vB)}</td>
+      <td class="cmt-delta-cell">${d}</td>
+    </tr>`;
   }
 
+  // Stress section
+  const stressHtml = (() => {
+    if (!A.stressRows.length && !B.stressRows.length) return '';
+    const names = [...new Set([...A.stressRows.map(s=>s.name), ...B.stressRows.map(s=>s.name)])];
+    const sName = n => ({'2008':'2008','2013':'2013','2015':'2015','Covid':'Covid','2022':'2022'}[n]||n);
+    const fullName = n => ({'2008':'Crise financeira (2008)','2013':'Taper tantrum (2013)','2015':'Dilma/Petrolão (2015)','Covid':'Covid (mar/2020)','2022':'Crise Brasil (jun/2022)'}[n]||n);
+    const items = names.map(name => {
+      const sA = A.stressRows.find(s=>s.name===name);
+      const sB = B.stressRows.find(s=>s.name===name);
+      const rA = sA?.ret, rB = sB?.ret;
+      const diff = rA!=null&&rB!=null ? rB-rA : null;
+      const dHtml = diff!=null&&Math.abs(diff)>=0.3
+        ? `<span class="compare-delta ${diff>0?'better':'worse'}">${diff>0?'+':''}${diff.toFixed(1)}</span>` : '';
+      const clsA = rA==null?'neu':rA<0?'neg':'pos';
+      const clsB = rB==null?'neu':rB<0?'neg':'pos';
+      return `<tr>
+        <td class="cmt-label" style="color:var(--muted)">${fullName(name)}</td>
+        <td class="cmt-val ${clsA}" style="color:var(--blue)">${fmtPct(rA)}</td>
+        <td class="cmt-val ${clsB}" style="color:var(--green)">${fmtPct(rB)}</td>
+        <td class="cmt-delta-cell">${dHtml}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="compare-stress-label">Stress por cenário <span style="opacity:0.55;font-weight:normal;text-transform:none;letter-spacing:0">(azul=A · verde=B)</span></div>
+    <table class="compare-metrics-table" style="border-top:none">
+      <tbody>${items}</tbody>
+    </table>`;
+  })();
+
   const html = `
-    <div class="compare-cols">
-      <div class="compare-col-header">Cenário A — baseline</div>
-      <div class="compare-col-header">Cenário B — atual</div>
+    <div class="compare-chips-row">
+      <div class="compare-chips-col">
+        <span class="compare-chips-label a">A — baseline</span>
+        ${fundChips(A, B)}
+      </div>
+      <div class="compare-chips-col">
+        <span class="compare-chips-label b">B — atual</span>
+        ${fundChips(B, A)}
+      </div>
     </div>
-    <div class="compare-body">
-      <div>${metricBlock(A)}</div>
-      <div>${metricBlock(B)}</div>
-    </div>
-    <div style="padding:0.4rem 1rem 0.3rem;font-family:'Courier New',monospace;font-size:0.58rem;color:var(--muted);border-top:0.5px solid var(--border)">
-      Retorno: ${fmtPct(A.expReturn)} → ${fmtPct(B.expReturn)} ${delta(A.expReturn, B.expReturn)} ·
-      Sharpe: ${fmtVal(A.sharpe)} → ${fmtVal(B.sharpe)} ${delta(A.sharpe, B.sharpe)} ·
-      Stress (pior): ${fmtPct(A.stressRows.length?Math.min(...A.stressRows.map(s=>s.ret)):null)} → ${fmtPct(B.stressRows.length?Math.min(...B.stressRows.map(s=>s.ret)):null)} ${delta(A.stressRows.length?Math.min(...A.stressRows.map(s=>s.ret)):null, B.stressRows.length?Math.min(...B.stressRows.map(s=>s.ret)):null)}
+    <table class="compare-metrics-table">
+      <thead><tr>
+        <td class="cmt-label"></td>
+        <td class="cmt-col-head" style="color:var(--blue)">A</td>
+        <td class="cmt-col-head" style="color:var(--green)">B</td>
+        <td class="cmt-col-head" style="color:var(--muted)">Δ</td>
+      </tr></thead>
+      <tbody>
+        ${metRow('Retorno alvo',  A.expReturn, B.expReturn, fmtPct)}
+        ${metRow('Volatilidade',  A.vol, B.vol, v=>v!=null?v.toFixed(1)+'%':'—', false, v=>v==null?'neu':'neu')}
+        ${metRow('Sharpe',        A.sharpe,    B.sharpe,    fmtVal,              true,  v=>v==null?'neu':'neu')}
+        <tr><td class="cmt-label">Horizonte RF</td><td class="cmt-val neu">${hA}</td><td class="cmt-val neu">${hB}</td><td class="cmt-delta-cell"></td></tr>
+        ${metRow('Pior stress',   worstA, worstB, fmtPct, false)}
+      </tbody>
+    </table>
+    <div class="compare-summary">
+      Retorno: ${fmtPct(A.expReturn)} → ${fmtPct(B.expReturn)} ${deltaHtml(A.expReturn,B.expReturn)} &nbsp;·&nbsp;
+      Sharpe: ${fmtVal(A.sharpe)} → ${fmtVal(B.sharpe)} ${deltaHtml(A.sharpe,B.sharpe)} &nbsp;·&nbsp;
+      Stress: ${fmtPct(worstA)} → ${fmtPct(worstB)} ${deltaHtml(worstA,worstB,false)}
     </div>
     ${stressHtml}`;
 
@@ -11353,7 +11517,7 @@ function renderFundProfile() {
           + `  Vol idio: ${modelDiag.volIdio}% a.a. · k=${modelDiag.kIdioCrise}× · ρ̄=${modelDiag.rhoBar}`;
       }
       html += `<div class="fp-stress-item" data-tip="${tipText}">
-        <div class="fp-stress-name" title="${s.label}">${s.name}</div>
+        <div class="fp-stress-name" data-tip="${s.label}">${s.name}</div>
         <div class="fp-stress-val" style="color:${cls}">${s.ret >= 0 ? '+' : ''}${s.ret.toFixed(1)}%</div>
       </div>`;
     });
@@ -11382,7 +11546,7 @@ function renderFundProfile() {
     const canvasId = `metricsHistChart_${cnpj.replace(/\D/g,'')}_${Date.now()}`;
     html += `
       <div class="fp-section-title" style="margin-top:1.4rem"
-           data-tip="Evolução das métricas nos últimos 12 meses, sem lookahead.&#10;Eixo esquerdo (verde): retorno alvo estimado.&#10;Eixo direito (vermelho, zero no topo): pior cenário de stress estimado.&#10;Ambos crescem em precisão conforme mais histórico acumula.">Evolução histórica das métricas ⓘ</div>
+           data-tip="Evolução das métricas nos últimos 12 meses, sem lookahead — cada ponto usa apenas os dados disponíveis naquela data.&#10;Eixo esquerdo (verde): retorno alvo estimado.&#10;Eixo direito (vermelho, zero no topo): pior cenário de stress estimado.&#10;&#10;Nota: fundos mais jovens (&lt;5 anos) tendem a oscilar mais — o modelo precisa de histórico para calibrar. A estabilidade aumenta com o tempo.">Evolução histórica das métricas ⓘ</div>
       <div style="position:relative;height:180px;margin-bottom:0.4rem">
         <canvas id="${canvasId}"></canvas>
       </div>
