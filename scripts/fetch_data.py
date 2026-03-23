@@ -429,7 +429,14 @@ def fetch_ibov(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a6
 
 
 def fetch_cdi(anchor: datetime.date, a12: datetime.date, a36: datetime.date, a60: datetime.date) -> dict:
-    start = a60 - datetime.timedelta(days=10)
+    # Busca 84 meses (7 anos) de histórico para cobrir o backfill de metricsHistory:
+    # compute_metrics_history calcula CDI 60M a partir de ref_dates de 12 meses atrás,
+    # precisando de dados até anchor - 60M - 12M = anchor - 72M. 84M dá margem.
+    _y, _m = anchor.year, anchor.month - 84
+    while _m <= 0: _m += 12; _y -= 1
+    import calendar as _cal
+    _d = min(anchor.day, _cal.monthrange(_y, _m)[1])
+    start = datetime.date(_y, _m, _d) - datetime.timedelta(days=5)
     url   = (f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados"
              f"?formato=json"
              f"&dataInicial={start.strftime('%d/%m/%Y')}"
