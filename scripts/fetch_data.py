@@ -1879,29 +1879,23 @@ def compute_metrics_history(
         crise_mask   = [ibov_rets_slice[i] < CRISE_THRESHOLD for i in range(n)]
         n_dias_ruins = sum(crise_mask)
 
-        # β_crise: OLS com intercepto implícito — fórmula exata do JS:
-        # b = (nC*sXY - sX*sY) / (nC*sXX - sX*sX)
-        # Exige mínimo 20 dias ruins para OLS estável.
         b_ibov_crise = beta_ibov_n
         b_sp_crise   = beta_sp_n
-        if n_dias_ruins >= 20:
-            sXX = sXY = sX = sY = 0.0
-            nC = 0
+        expo = FUND_EXPOSURE_PY.get(cnpj, {})
+        primary = expo.get("primary", "ibov")
+        # Só recalcula β_crise para fundos cujo benchmark primário é IBOV.
+        # Para fundos internacionais (sp500), o IBOV é proxy ruim em crises externas.
+        if n_dias_ruins >= 20 and primary in ("ibov", "mixed"):
+            sXX=sXY=sX=sY=nC_=0
             for i in range(n):
-                if not crise_mask[i]:
-                    continue
-                ri = ibov_rets_slice[i]
-                rf = fund_rets[i]
-                sXX += ri * ri; sXY += ri * rf
-                sX  += ri;      sY  += rf
-                nC  += 1
-            denom = nC * sXX - sX * sX
+                if not crise_mask[i]: continue
+                ri=ibov_rets_slice[i]; rf=fund_rets[i]
+                sXX+=ri*ri; sXY+=ri*rf; sX+=ri; sY+=rf; nC_+=1
+            denom = nC_*sXX - sX*sX
             if abs(denom) > 1e-12:
-                b_ibov_crise = (nC * sXY - sX * sY) / denom
-                expo = FUND_EXPOSURE_PY.get(cnpj, {})
-                if expo.get("primary") == "ibov":
-                    b_ibov_crise = max(0.0, min(3.0, b_ibov_crise))
-                b_sp_crise = b_ibov_crise * (beta_sp_n / max(abs(beta_ibov_n), 1e-6))
+                b_ibov_crise = (nC_*sXY - sX*sY)/denom
+                b_ibov_crise = max(0.0, min(3.0, b_ibov_crise))
+                b_sp_crise   = b_ibov_crise * (beta_sp_n / max(abs(beta_ibov_n), 1e-6))
 
         # CVaR 15% dos resíduos dos dias de crise — espelho exato do JS:
         # criseIdx.map(i => residuos[i]).sort().slice(0, p15n)
@@ -2059,7 +2053,7 @@ def compute_metrics_history(
     # Quando a versão muda, todo o metricsHistory é recalculado do zero.
     # Quando a versão é a mesma, só adiciona datas novas (incremental).
     # Isso garante: histórico imutável + consistência quando o modelo evolui.
-    MODEL_VERSION = "v3"  # T² weights, CVaR 15% crisis-only, N_MIN=80, beta_crise OLS intercept
+    MODEL_VERSION = "v4"  # T² weights, CVaR 15% crisis-only, N_MIN=80, beta_crise ibov-only
 
     saved_version = hist.get("metricsHistoryVersion")
     if saved_version != MODEL_VERSION:
