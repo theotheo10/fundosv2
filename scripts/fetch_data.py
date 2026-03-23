@@ -1425,24 +1425,349 @@ def compute_metrics_history(
                 return d
         return None
 
-    # Parâmetros do modelo de floor (mesmos do JavaScript)
-    NTNB_HAIRCUT  = 0.35
-    TAU_ANOS      = 10.0
-    META_CMN      = 3.0
-    W_META        = 0.30
-    W_5A          = 0.50
-    W_12M         = 0.20
-    # IPCA Focus longo prazo (valor único — em produção viria do Focus histórico;
-    # aqui usamos 4.0% como proxy estável para o backfill)
-    IPCA_FOCUS_5A = 4.0
-    IPCA_FOCUS_12M = 4.8
-    # Calcular floor para um dado CDI observado e NTN-B longa
-    def calc_floor_rf(cdi_obs: float, ntnb_long: float, horizonte: float = 5.0) -> float:
-        ipca_estr    = W_META * META_CMN + W_5A * IPCA_FOCUS_5A + W_12M * IPCA_FOCUS_12M
-        neutro_real  = ntnb_long * (1 - NTNB_HAIRCUT)
-        neutral_nom  = ((1 + neutro_real / 100) * (1 + ipca_estr / 100) - 1) * 100
-        w_cdi        = math.exp(-horizonte / TAU_ANOS)
-        return w_cdi * cdi_obs + (1 - w_cdi) * neutral_nom
+    # ════════════════════════════════════════════════════════════════════════════
+    # PORT FIEL DO JAVASCRIPT — calcFloorRF e calcTargetReturn
+    # Cada linha espelha exatamente o código em index.html.
+    # Sem aproximações, sem simplificações.
+    # ════════════════════════════════════════════════════════════════════════════
+
+    # Parâmetros globais do calcFloorRF (espelho exato do JS)
+    NTNB_HAIRCUT = 0.35
+    TAU_ANOS     = 10.0
+    META_CMN     = 3.0
+    W_META_CMN   = 0.30
+    W_FOCUS_5A   = 0.50
+    W_FOCUS_12M  = 0.20
+
+    # Valores de NTN-B e Focus IPCA: lidos do data.json (mesmos globals do browser)
+    # Em produção estes são atualizados diariamente pelo fetch_data.py
+    data_json_path = hist_path.parent / "data.json"
+    try:
+        data_json = json.loads(data_json_path.read_text())
+    except Exception:
+        data_json = {}
+
+    ntnb_global     = data_json.get("ntnb", {})
+    ipca_focus_glob = data_json.get("ipca_focus", {})
+    ibov_global     = data_json.get("ibov", {})
+    cdi_global      = data_json.get("cdi", {})
+    fund_betas_glob = data_json.get("fund_betas", betas_data)
+    funds_data_glob = data_json.get("funds", [])  # lista de fundos do data.json
+
+    ntnb_rate_long = ntnb_global.get("ntnb_rate_long") or 7.05
+    focus_12m      = ipca_focus_glob.get("ipca_12m") or 4.8
+    focus_5a       = ipca_focus_glob.get("ipca_longo_prazo") or 4.0
+
+    # Port fiel de calcFloorRF(horizonte, cdiObservado)
+    def calc_floor_rf_full(horizonte: float, cdi_observado: float,
+                           ntnb_long: float, f12m: float, f5a: float) -> dict:
+        ipca_estr      = W_META_CMN * META_CMN + W_FOCUS_5A * f5a + W_FOCUS_12M * f12m
+        neutro_real    = ntnb_long * (1 - NTNB_HAIRCUT)
+        neutral_nom    = ((1 + neutro_real / 100) * (1 + ipca_estr / 100) - 1) * 100
+        h              = max(0.5, horizonte)
+        w_cdi          = math.exp(-h / TAU_ANOS)
+        floor          = w_cdi * cdi_observado + (1 - w_cdi) * neutral_nom
+        return {
+            "floor": floor, "neutralNominal": neutral_nom,
+            "ntnbLong": ntnb_long, "ipcaEstr": ipca_estr,
+            "w_cdi": w_cdi, "horizonte": h,
+        }
+
+    # FUND_META em Python — espelho exato do JS (inception, initialQuota, tipo, trib)
+    FUND_META_PY: dict[str, dict] = {
+        "22.232.927/0001-90": {"inception":"2010-07-12","initialQuota":1.2136, "tipo":"Long Only",    "trib":"RV"},
+        "17.400.251/0001-66": {"inception":"2013-02-22","initialQuota":1.0000, "tipo":"Long Only",    "trib":"RV"},
+        "18.302.338/0001-63": {"inception":"2013-06-27","initialQuota":0.7647, "tipo":"Long Only",    "trib":"RV"},
+        "37.495.383/0001-26": {"inception":"2021-04-30","initialQuota":1.0000, "tipo":"Long Biased",  "trib":"RV"},
+        "42.698.666/0001-05": {"inception":"2022-05-31","initialQuota":1.0000, "tipo":"Multimercado", "trib":"RV"},
+        "24.623.392/0001-03": {"inception":"2016-07-11","initialQuota":1.0000, "tipo":"Long Biased",  "trib":"RV"},
+        "28.747.685/0001-53": {"inception":"2017-11-06","initialQuota":1.0000, "tipo":"Long Biased",  "trib":"RV"},
+        "10.500.884/0001-05": {"inception":"2012-02-29","initialQuota":3.6300, "tipo":"Long Only",    "trib":"RV"},
+        "35.744.790/0001-02": {"inception":"2020-04-01","initialQuota":1.0000, "tipo":"Multimercado", "trib":"TR"},
+        "38.954.217/0001-03": {"inception":"2020-10-30","initialQuota":1.0000, "tipo":"Long Biased",  "trib":"RV"},
+        "32.073.525/0001-43": {"inception":"2018-12-27","initialQuota":1.0000, "tipo":"Long Only",    "trib":"RV"},
+        "21.689.246/0001-92": {"inception":"2015-03-23","initialQuota":1.0000, "tipo":"Long Only",    "trib":"RV"},
+        "14.438.229/0001-17": {"inception":"2011-11-07","initialQuota":1.0000, "tipo":"Long Only",    "trib":"RV"},
+        "17.397.315/0001-17": {"inception":"2012-09-17","initialQuota":1.0000, "tipo":"Long Biased",  "trib":"RV"},
+        "46.351.969/0001-08": {"inception":"2022-12-16","initialQuota":1.0000, "tipo":"Long Only",    "trib":"RV"},
+        "15.334.585/0001-53": {"inception":"2013-01-02","initialQuota":1.0000, "tipo":"Long Only",    "trib":"RV"},
+        "47.511.351/0001-20": {"inception":"2022-08-31","initialQuota":100.00, "tipo":"Long Only",    "trib":"RV"},
+        "52.116.227/0001-09": {"inception":"2023-09-29","initialQuota":1.0000, "tipo":"Multimercado", "trib":"TR"},
+        "47.612.105/0001-65": {"inception":"2022-11-30","initialQuota":1.0000, "tipo":"Multimercado", "trib":"TR"},
+        "29.726.133/0001-21": {"inception":"2018-05-16","initialQuota":1.0000, "tipo":"Multimercado", "trib":"TR"},
+        "35.828.684/0001-07": {"inception":"2020-06-30","initialQuota":1.0000, "tipo":"Multimercado", "trib":"TR"},
+        "16.876.874/0001-47": {"inception":"2019-01-02","initialQuota":1.0000, "tipo":"Long Only",    "trib":"RV"},
+        "52.239.457/0001-57": {"inception":"2023-09-29","initialQuota":1.0000, "tipo":"Renda Fixa - Pós-fixado Global","trib":"TR"},
+        "51.253.495/0001-00": {"inception":"2023-08-01","initialQuota":1.0000, "tipo":"Renda Fixa - Crédito Privado",  "trib":"TR"},
+        "52.969.671/0001-69": {"inception":"2023-11-30","initialQuota":1.0000, "tipo":"Renda Fixa - Debêntures Incentivadas","trib":"Isento"},
+    }
+
+    # Port fiel de cagrInception(f) — usa cota inicial e cota na data de referência
+    def cagr_inception_py(cnpj: str, latest_quota: float | None,
+                          latest_date_iso: str) -> float | None:
+        meta = FUND_META_PY.get(cnpj)
+        if not meta or not meta.get("inception") or not latest_quota:
+            return None
+        inc_quota = meta["initialQuota"]
+        inc_date  = datetime.date.fromisoformat(meta["inception"])
+        lat_date  = datetime.date.fromisoformat(latest_date_iso)
+        years = (lat_date - inc_date).days / 365.25
+        if years <= 0:
+            return None
+        return (math.pow(latest_quota / inc_quota, 1.0 / years) - 1) * 100
+
+    # Port fiel de alphaVsIbov e alphaVsCdi desde inception
+    # Usa ibovReturns do history.json (mesmo que o browser usa) e cdi_price_map
+    ibov_returns_map_full: dict[str, float] = hist.get("ibovReturns", {})
+
+    def alpha_vs_ibov_inception(cnpj: str, fund_rets: list,
+                                 fund_dates: list, inception_iso: str) -> float | None:
+        """Replica alphaVsIbov: CAGR_fund_inception - CAGR_ibov_inception."""
+        if not inception_iso or not fund_rets or not fund_dates:
+            return None
+        # Retornos do fundo desde inception
+        cum_fund = 1.0
+        cum_ibov = 1.0
+        n_days = 0
+        for i, d in enumerate(fund_dates):
+            if d < inception_iso:
+                continue
+            if i >= len(fund_rets) or fund_rets[i] is None:
+                continue
+            r_fund = fund_rets[i]
+            r_ibov = ibov_returns_map_full.get(d, 0.0)
+            cum_fund *= (1 + r_fund)
+            cum_ibov *= (1 + r_ibov)
+            n_days += 1
+        if n_days < 30:
+            return None
+        years = n_days / 252
+        cagr_fund = (math.pow(cum_fund, 1.0 / years) - 1) * 100
+        cagr_ibov = (math.pow(cum_ibov, 1.0 / years) - 1) * 100
+        return round(cagr_fund - cagr_ibov, 4)
+
+    def alpha_vs_cdi_inception(cnpj: str, fund_rets: list,
+                                fund_dates: list, inception_iso: str,
+                                cdi_pm: dict) -> float | None:
+        """Replica alphaVsCdi: CAGR_fund_inception - CAGR_cdi_inception."""
+        if not inception_iso or not fund_rets or not fund_dates:
+            return None
+        cum_fund = 1.0
+        n_days = 0
+        first_date = None
+        last_date  = None
+        for i, d in enumerate(fund_dates):
+            if d < inception_iso:
+                continue
+            if i >= len(fund_rets) or fund_rets[i] is None:
+                continue
+            cum_fund *= (1 + fund_rets[i])
+            n_days += 1
+            if first_date is None:
+                first_date = d
+            last_date = d
+        if n_days < 30 or first_date is None:
+            return None
+        years = n_days / 252
+        cagr_fund = (math.pow(cum_fund, 1.0 / years) - 1) * 100
+        # CDI entre primeira e última data
+        p_start = cdi_pm.get(first_date)
+        p_end   = cdi_pm.get(last_date)
+        if not p_start or not p_end or p_start <= 0:
+            return None
+        cagr_cdi = (math.pow(p_end / p_start, 1.0 / years) - 1) * 100
+        return round(cagr_fund - cagr_cdi, 4)
+
+    # Port fiel do IR e propensity (compute_fund_metrics) — sobre retornos até ref_date
+    def compute_ir_and_propensity(fund_rets: list, fund_dates: list,
+                                   ibov_rets_map: dict, cdi_ann: float) -> dict:
+        """Porta exatamente compute_fund_metrics: IR vs IBOV e propensity (beat%)."""
+        n = len(fund_rets)
+        if n < 60:
+            return {"ir": None, "propensity": None, "alpha_ann": None}
+
+        cdi_daily        = math.pow(1 + cdi_ann / 100, 1 / 252) - 1
+        ibov_proxy_daily = math.pow(1 + (ibov_global.get("cagr36") or 15.0) / 100, 1 / 252) - 1
+
+        def ibov_ret_d(d: str) -> float:
+            r = ibov_rets_map.get(d)
+            return r if r is not None else ibov_proxy_daily
+
+        # IR vs IBOV — espelho exato do compute_fund_metrics JS-side
+        ibov_excess_d = [fund_rets[i] - ibov_ret_d(fund_dates[i]) for i in range(n)]
+        alpha_d_daily = sum(ibov_excess_d) / n
+        alpha_ann     = (math.pow(1 + alpha_d_daily, 252) - 1) * 100
+        te_d_vals     = [(e - alpha_d_daily) ** 2 for e in ibov_excess_d]
+        te_d          = math.sqrt(sum(te_d_vals) / (n - 1)) if n > 1 else 0
+        te_ann        = te_d * math.sqrt(252) * 100
+        ir            = alpha_ann / te_ann if te_ann > 0 else None
+
+        # propensity: beat IBOV em janelas de 63 pregões, passo 21
+        beats = 0
+        total = 0
+        for i in range(0, n - 62, 21):
+            cf = ci = 1.0
+            for j in range(i, i + 63):
+                cf *= (1 + fund_rets[j])
+                ci *= (1 + ibov_ret_d(fund_dates[j]))
+            if cf > ci:
+                beats += 1
+            total += 1
+        propensity = round(beats / total * 100, 1) if total > 0 else None
+
+        return {
+            "ir":         round(ir, 4) if ir is not None else None,
+            "propensity": propensity,
+            "alpha_ann":  round(alpha_ann, 4),
+        }
+
+    # Port fiel de calcTargetReturn(f, globalFunds, globalCdiTarget, horizonte)
+    def calc_target_return_py(
+        cnpj: str,
+        cagr12: float | None,
+        cagr36: float | None,
+        cagr60: float | None,
+        latest_quota: float | None,
+        latest_date_iso: str,
+        fund_rets_to_ref: list,        # retornos do fundo até ref_date
+        fund_dates_to_ref: list,       # datas correspondentes
+        cdi_observado: float,          # CDI ponderado naquela data
+        ibov_rets_map: dict,           # ibovReturns do history.json
+        cdi_pm: dict,                  # cdi_price_map
+        all_funds_snapshot: list,      # lista de {cnpj, cagr12, cagr36, cagr60, ci, alpha, ir, propensity}
+        ntnb_long_val: float,
+        f12m_val: float,
+        f5a_val: float,
+        horizonte: float | None = None,
+    ) -> float | None:
+        """
+        Port completo e fiel de calcTargetReturn do JS.
+        Sem nenhuma aproximação — cada linha é um espelho direto do JavaScript.
+        """
+        meta   = FUND_META_PY.get(cnpj, {})
+        tipo   = (meta.get("tipo") or "").lower()
+        is_multi = "multimercado" in tipo
+        is_rf    = "renda fixa" in tipo
+
+        # ── Sinal próprio ──────────────────────────────────────────────────────
+        # 1. Amostras ponderadas por √T (espelho exato do JS)
+        samples: list[tuple[float, float]] = []
+        if cagr12 is not None: samples.append((1.0, cagr12))
+        if cagr36 is not None: samples.append((3.0, cagr36))
+        if cagr60 is not None: samples.append((5.0, cagr60))
+
+        inception_iso = meta.get("inception")
+        age_years: float = 10.0
+        if inception_iso and latest_date_iso:
+            inc_d = datetime.date.fromisoformat(inception_iso)
+            lat_d = datetime.date.fromisoformat(latest_date_iso)
+            age_years = (lat_d - inc_d).days / 365.25
+
+        # cagrInception — fiel ao JS: usa initialQuota e cota na ref_date
+        ci = cagr_inception_py(cnpj, latest_quota, latest_date_iso)
+        if ci is not None and age_years > 5.5:
+            samples.append((age_years, ci))
+
+        if not samples:
+            return None
+
+        sqrt_weights = [math.sqrt(T) for T, _ in samples]
+        total_w      = sum(sqrt_weights)
+        raw_avg      = sum(sqrt_weights[i] * v for i, (_, v) in enumerate(samples)) / total_w
+
+        # 2. Penalidade de dispersão ciclical — exato do JS
+        variance = sum(sqrt_weights[i] * (v - raw_avg) ** 2
+                       for i, (_, v) in enumerate(samples)) / total_w
+        sigma   = math.sqrt(variance)
+        penalty = min(sigma * 0.30, abs(raw_avg) * 0.15)
+        adjusted = raw_avg - penalty if raw_avg >= 0 else raw_avg + penalty
+
+        # 3. Pull de reversão à média → 60M — exato do JS
+        anchor60   = cagr60 if cagr60 is not None else (ci if ci is not None else raw_avg)
+        pull_force = max(0.10, 0.25 - max(0, age_years - 5) * 0.01)
+        sinal_proprio = adjusted * (1 - pull_force) + anchor60 * pull_force
+
+        # ── Prior ──────────────────────────────────────────────────────────────
+        # ibovLong: mesmo fallback do JS
+        ibov_long = (ibov_global.get("cagr60") or ibov_global.get("cagr36") or
+                     ibov_global.get("cagr12") or 12.0)
+        benchmark = cdi_observado if (is_multi or is_rf) else ibov_long
+
+        # alphaObservado — usa alphaVsCdi ou alphaVsIbov, exatamente como JS
+        if is_multi or is_rf:
+            alpha_obs = alpha_vs_cdi_inception(cnpj, fund_rets_to_ref,
+                                               fund_dates_to_ref, inception_iso, cdi_pm) or 0.0
+        else:
+            alpha_obs = alpha_vs_ibov_inception(cnpj, fund_rets_to_ref,
+                                                fund_dates_to_ref, inception_iso) or 0.0
+
+        # alphaDiferencial vs peers contemporâneos — exato do JS
+        alpha_dif = alpha_obs
+        peers = [
+            p for p in all_funds_snapshot
+            if p["cnpj"] != cnpj and p.get("age_years", 0) >= 5
+            and (
+                (is_multi and "multimercado" in (FUND_META_PY.get(p["cnpj"], {}).get("tipo") or "").lower()) or
+                (is_rf    and "renda fixa"   in (FUND_META_PY.get(p["cnpj"], {}).get("tipo") or "").lower()) or
+                (not is_multi and not is_rf and
+                 "multimercado" not in (FUND_META_PY.get(p["cnpj"], {}).get("tipo") or "").lower() and
+                 "renda fixa"   not in (FUND_META_PY.get(p["cnpj"], {}).get("tipo") or "").lower())
+            )
+        ]
+        if peers:
+            peer_alphas = [p["alpha_obs"] for p in peers if p.get("alpha_obs") is not None]
+            if peer_alphas:
+                group_alpha = sum(peer_alphas) / len(peer_alphas)
+                alpha_dif   = alpha_obs - group_alpha
+
+        prior = benchmark + alpha_dif * 0.5
+
+        # ── λ trifatorial — exato do JS ────────────────────────────────────────
+        # λ_hist
+        n_efetivo = (min(age_years, 3) * (1 if cagr36 is not None else 0.5)
+                    + min(max(age_years - 3, 0), 2) * (1 if cagr60 is not None else 0)
+                    + max(age_years - 5, 0) * 0.5)
+        lambda_hist = math.exp(-n_efetivo / 6)
+
+        # λ_consist: usa IR e propensity calculados sobre retornos até ref_date
+        metrics_snap = compute_ir_and_propensity(
+            fund_rets_to_ref, fund_dates_to_ref, ibov_rets_map, cdi_observado)
+        ir_val       = metrics_snap["ir"]
+        propensity   = metrics_snap["propensity"]
+
+        ir_score   = 0.5
+        beat_score = 0.5
+        if ir_val is not None:
+            ir_score = min(1.0, max(0.0, (ir_val + 0.5) / 1.5))
+        if propensity is not None:
+            beat_score = min(1.0, max(0.0, (propensity - 40) / 40))
+        consist_score  = 0.6 * ir_score + 0.4 * beat_score
+        lambda_consist = 1.0 - consist_score
+
+        # λ_recente
+        lambda_recente = 0.5
+        if ci is not None and age_years > 3:
+            recente = cagr36 if cagr36 is not None else (cagr12 if cagr12 is not None else ci)
+            decay   = (ci - recente) / (abs(ci) + 1)
+            lambda_recente = min(0.9, max(0.1, 0.5 + decay * 0.5))
+
+        lam = lambda_hist * lambda_consist * lambda_recente
+
+        # ── Blending final ─────────────────────────────────────────────────────
+        blended = (1 - lam) * sinal_proprio + lam * prior
+
+        # Teto: E[R] ≤ cagrInception
+        capped = min(blended, ci) if ci is not None else blended
+
+        # ── Floor estrutural ───────────────────────────────────────────────────
+        if is_rf:
+            h = horizonte if horizonte is not None else min(max(age_years, 2), 10)
+            floor_info = calc_floor_rf_full(h, cdi_observado, ntnb_long_val, f12m_val, f5a_val)
+            cdi_floor  = floor_info["floor"]
+        else:
+            cdi_floor = cdi_observado
+
+        return max(capped, cdi_floor)
 
     # ── Modelo de stress completo — espelho fiel do buildFundPanel JS ─────────
     #
@@ -1706,10 +2031,34 @@ def compute_metrics_history(
         return TRIB_MAP.get(cnpj, "RV")  # ações/multi → RV
 
     # Carrega histórico existente para não recalcular datas já presentes
-    existing = hist.get("metricsHistory", {})
+    existing     = hist.get("metricsHistory", {})
     new_entries: dict[str, dict[str, dict]] = {cnpj: {} for cnpj in funds_hist}
-
     total_computed = 0
+
+    # ── Pré-computar stress params por fundo sobre o histórico COMPLETO ──────
+    # O modelo de stress (CVaR, β_crise, rhoBar, kIdioCrise) é calculado UMA VEZ
+    # sobre todo o histórico disponível — exatamente como o JS faz no buildFundPanel.
+    # Reutilizar esses parâmetros fixos para todas as datas do backfill garante
+    # que worstStress seja estável (só varia pelo cdi_weighted do carry RF).
+    stress_params_by_fund: dict[str, dict] = {}
+    for cnpj, fd in funds_hist.items():
+        returns_all = fd.get("returns", [])
+        rets_full   = [r for r in returns_all if r is not None]
+        if len(rets_full) < 60:
+            continue
+        dates_full = [common_dates[i] for i in range(len(returns_all))
+                      if i < len(returns_all) and returns_all[i] is not None]
+        beta_ibov_n = float(fund_betas_glob.get(cnpj, {}).get("beta_ibov") or 0.0)
+        beta_sp_n   = float(fund_betas_glob.get(cnpj, {}).get("beta_sp500") or 0.0)
+        r2_val      = float(fund_betas_glob.get(cnpj, {}).get("r2") or 0.0)
+        stress_params_by_fund[cnpj] = _compute_fund_stress_params(
+            cnpj               = cnpj,
+            fund_rets          = rets_full,
+            common_dates_slice = dates_full,
+            beta_ibov_n        = beta_ibov_n,
+            beta_sp_n          = beta_sp_n,
+            r2                 = r2_val,
+        )
     for ref_date in ref_dates:
         ref_iso = ref_date.isoformat()
         # Encontra o índice da data de referência em commonDates
@@ -1750,7 +2099,40 @@ def compute_metrics_history(
             ntnb_long = next((ntnb_hist[d] for d in sorted(ntnb_hist.keys(), reverse=True)
                               if d <= ref_iso_eff), 7.05)
 
-        cdi_floor_5a = calc_floor_rf(cdi_weighted, ntnb_long, horizonte=5.0)
+        cdi_floor_5a = calc_floor_rf_full(5.0, cdi_weighted, ntnb_long,
+                                           focus_12m, focus_5a)["floor"]
+
+        # ── Peer snapshot para esta data de referência ──────────────────────
+        # Necessário para alphaDiferencial no calcTargetReturn — exatamente como o
+        # JS usa globalFunds no momento do render. Para cada peer, calculamos
+        # alpha_obs (vs IBOV ou CDI) sobre os retornos disponíveis até ref_date.
+        peer_snapshot: list[dict] = []
+        for p_cnpj, p_fd in funds_hist.items():
+            p_returns = p_fd.get("returns", [])
+            p_valid   = [i for i, d in enumerate(common_dates)
+                         if d <= ref_iso_eff and i < len(p_returns) and p_returns[i] is not None]
+            if len(p_valid) < 60:
+                continue
+            p_rets  = [p_returns[i] for i in p_valid]
+            p_dates = [common_dates[i] for i in p_valid]
+            p_meta  = FUND_META_PY.get(p_cnpj, {})
+            p_tipo  = (p_meta.get("tipo") or "").lower()
+            p_inc   = p_meta.get("inception")
+            p_age   = 0.0
+            if p_inc and ref_iso_eff:
+                p_age = (datetime.date.fromisoformat(ref_iso_eff) -
+                         datetime.date.fromisoformat(p_inc)).days / 365.25
+            p_is_multi = "multimercado" in p_tipo
+            p_is_rf    = "renda fixa"   in p_tipo
+            if p_is_multi or p_is_rf:
+                p_alpha = alpha_vs_cdi_inception(p_cnpj, p_rets, p_dates, p_inc, cdi_price_map)
+            else:
+                p_alpha = alpha_vs_ibov_inception(p_cnpj, p_rets, p_dates, p_inc)
+            peer_snapshot.append({
+                "cnpj":      p_cnpj,
+                "age_years": p_age,
+                "alpha_obs": p_alpha,
+            })
 
         for cnpj, fd in funds_hist.items():
             # Skip se já calculado
@@ -1768,16 +2150,23 @@ def compute_metrics_history(
             if len(valid_idx) < 20:
                 continue
 
-            # Retornos do fundo até ref_date
-            rets_to_ref = [returns[i] for i in valid_idx if returns[i] is not None]
+            # Retornos e datas do fundo até ref_date (apenas não-None)
+            rets_to_ref  = [returns[i] for i in valid_idx if returns[i] is not None]
+            dates_to_ref = [common_dates[i] for i in valid_idx if returns[i] is not None]
             if len(rets_to_ref) < 20:
                 continue
 
-            # CAGR nas janelas disponíveis até ref_date
+            # Cota na ref_date (para cagrInception)
+            latest_quota_at_ref = None
+            for i in reversed(valid_idx):
+                if i < len(quotas) and quotas[i] is not None:
+                    latest_quota_at_ref = quotas[i]
+                    break
+
+            # CAGR nas janelas disponíveis até ref_date (para calcTargetReturn)
             def fund_cagr_window(months: int) -> float | None:
                 target_start = subtract_months_date(ref_date, months)
                 start_iso = target_start.isoformat()
-                # Encontra índice de início
                 start_idx = next((i for i, d in enumerate(common_dates)
                                   if d >= start_iso and i in set(valid_idx)), None)
                 if start_idx is None or start_idx >= ref_idx:
@@ -1796,19 +2185,25 @@ def compute_metrics_history(
             c36 = fund_cagr_window(36)
             c60 = fund_cagr_window(60)
 
-            samples = [(T, v) for T, v in [(1.0, c12), (3.0, c36), (5.0, c60)] if v is not None]
-            if not samples:
-                continue
-
-            # Estimativa de retorno alvo (versão simplificada do modelo bayesiano)
-            # — usa apenas a média ponderada por √T sem o prior completo (sem FUND_META disponível aqui)
-            sqrt_w = [math.sqrt(T) for T, _ in samples]
-            total_w = sum(sqrt_w)
-            raw_avg = sum(sqrt_w[i] * v for i, (_, v) in enumerate(samples)) / total_w
-
-            # Floor RF simples (sem isRF check — aplica a todos conservadoramente)
-            # O frontend filtra por tipo de fundo
-            target = max(raw_avg, cdi_floor_5a)
+            # targetReturn — port completo e fiel de calcTargetReturn
+            target = calc_target_return_py(
+                cnpj              = cnpj,
+                cagr12            = c12,
+                cagr36            = c36,
+                cagr60            = c60,
+                latest_quota      = latest_quota_at_ref,
+                latest_date_iso   = ref_iso_eff,
+                fund_rets_to_ref  = rets_to_ref,
+                fund_dates_to_ref = dates_to_ref,
+                cdi_observado     = cdi_weighted,
+                ibov_rets_map     = ibov_returns_map_full,
+                cdi_pm            = cdi_price_map,
+                all_funds_snapshot= peer_snapshot,
+                ntnb_long_val     = ntnb_long,
+                f12m_val          = focus_12m,
+                f5a_val           = focus_5a,
+                horizonte         = None,  # usa ageYears como proxy, igual ao JS na tabela
+            )
 
             # Max drawdown histórico até ref_date
             cum = 1.0
@@ -1822,34 +2217,16 @@ def compute_metrics_history(
                 if dd < max_dd:
                     max_dd = dd
 
-            trib = get_trib(cnpj, fd)
+            # worstStress — params calculados sobre histórico COMPLETO (estável)
+            worst_stress = calc_worst_stress(
+                cnpj, stress_params_by_fund.get(cnpj, {}), cdi_weighted)
 
-            # Parâmetros de stress — modelo completo fiel ao JS
-            # Usa os retornos até ref_date e os betas do data.json (estáticos no backfill)
-            # Os betas variam pouco mês a mês; usar o atual é boa aproximação sem lookahead
-            # (alternativa: recalcular OLS por data, mas seria muito mais lento)
-            beta_ibov_n = float(betas_data.get(cnpj, {}).get("beta_ibov") or 0.0)
-            beta_sp_n   = float(betas_data.get(cnpj, {}).get("beta_sp500") or 0.0)
-            r2_val      = float(betas_data.get(cnpj, {}).get("r2") or 0.0)
-            dates_slice = [common_dates[i] for i in valid_idx]
-
-            stress_params = _compute_fund_stress_params(
-                cnpj          = cnpj,
-                fund_rets     = rets_to_ref,
-                common_dates_slice = dates_slice,
-                beta_ibov_n   = beta_ibov_n,
-                beta_sp_n     = beta_sp_n,
-                r2            = r2_val,
-            )
-            worst_stress = calc_worst_stress(cnpj, stress_params, cdi_weighted)
             entry = {
-                "targetReturn": round(target, 2),
-                "netReturn5":   round(net_return(target, 5,  trib), 2),
-                "netReturn10":  round(net_return(target, 10, trib), 2),
+                "targetReturn": round(target, 2) if target is not None else None,
                 "cdiWeighted":  round(cdi_weighted, 2),
                 "ntnbLong":     round(ntnb_long, 2),
                 "maxDD":        round(max_dd * 100, 2),
-                "worstStress":  worst_stress,   # pior cenário de crise estimado (%)
+                "worstStress":  worst_stress,
             }
             new_entries[cnpj][ref_iso] = entry
             total_computed += 1
