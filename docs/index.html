@@ -2695,7 +2695,7 @@
             <span class="opt-constraint-unit" id="optMaxStressLossPct"></span>
           </div>
           <div class="opt-constraint-row">
-            <span class="opt-constraint-label" data-tip="Rejeita portfólios com retorno alvo estimado (bruto) abaixo deste piso.&#10;O retorno alvo é a estimativa bayesiana ponderada por √T dos CAGRs históricos — o mesmo valor exibido na coluna 'Retorno alvo' da aba Portfólio.&#10;Útil para garantir que o portfólio otimizado tenha ao menos um nível mínimo de retorno esperado, independente do objetivo de otimização.">Retorno alvo mín. (bruto):</span>
+            <span class="opt-constraint-label" data-tip="Rejeita portfólios com retorno alvo estimado (bruto) abaixo deste piso.&#10;O retorno alvo é a estimativa bayesiana ponderada por √T dos CAGRs históricos — o mesmo valor exibido na coluna 'Retorno alvo' da aba Portfólio.&#10;Útil para garantir que o portfólio otimizado tenha ao menos um nível mínimo de retorno esperado, independente do objetivo de otimização.">Ret. alvo mín. (bruto):</span>
             <input type="range" class="opt-maxw-slider" id="optMinTargetRetSlider"
               min="0" max="50" value="0" step="1"
               oninput="onOptMinTargetRetSlider()">
@@ -2706,7 +2706,7 @@
           </div>
           <div class="opt-constraint-row" style="display:block;padding:0.32rem 0">
             <div style="display:grid;grid-template-columns:9rem 1fr 3.2rem 0.9rem;align-items:center;gap:0.5rem">
-              <span class="opt-constraint-label" data-tip="Retorno estimado após imposto de renda, calculado com o mesmo motor exato do Simulador de IR.&#10;&#10;Fundos RV (Renda Variável): IR fixo de 15% sobre o ganho no resgate, sem come-cotas.&#10;&#10;Fundos TR (Tabela Regressiva): simulação evento a evento pelas datas reais de come-cotas (maio e novembro). A cada come-cotas, 15% do rendimento é retirado do patrimônio — o capital perdido deixa de crescer. No resgate: alíquota regressiva sobre o trecho final.&#10;&#10;Consistente com o Monte Carlo e a tabela 'Impacto tributário' da aba Portfólio.">Retorno alvo mín. (líquido):</span>
+              <span class="opt-constraint-label" data-tip="Retorno estimado após imposto de renda, calculado com o mesmo motor exato do Simulador de IR.&#10;&#10;Fundos RV (Renda Variável): IR fixo de 15% sobre o ganho no resgate, sem come-cotas.&#10;&#10;Fundos TR (Tabela Regressiva): simulação evento a evento pelas datas reais de come-cotas (maio e novembro). A cada come-cotas, 15% do rendimento é retirado do patrimônio — o capital perdido deixa de crescer. No resgate: alíquota regressiva sobre o trecho final.&#10;&#10;Consistente com o Monte Carlo e a tabela 'Impacto tributário' da aba Portfólio.">Ret. alvo mín. (líquido):</span>
               <input type="range" class="opt-maxw-slider" id="optMinNetRetSlider"
                 min="0" max="40" value="0" step="1"
                 oninput="onOptMinNetRetSlider()">
