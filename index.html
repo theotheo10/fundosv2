@@ -10941,19 +10941,24 @@ function renderFundProfile() {
     nDiasRuins = criseIdx.length;
 
     if (nDiasRuins >= 20) {  // 20 em vez de 10 — OLS mais estável com mais pontos
-      let sXX = 0, sXY = 0, sX = 0, sY = 0, nC = criseIdx.length;
-      for (const i of criseIdx) {
-        const ri = ibovDay(dates[i + 1] || '');
-        const rf = fundRets[i];
-        sXX += ri*ri; sXY += ri*rf; sX += ri; sY += rf;
+      // Só recalcula β_crise para fundos cujo benchmark primário é o IBOV.
+      // Para fundos internacionais (sp500/mixed), o IBOV é proxy ruim em dias ruins —
+      // o S&P pode subir enquanto o IBOV cai. Usar β_normal como fallback é mais estável.
+      if (exposure.primary === 'ibov' || exposure.primary === 'mixed') {
+        let sXX = 0, sXY = 0, sX = 0, sY = 0, nC = criseIdx.length;
+        for (const i of criseIdx) {
+          const ri = ibovDay(dates[i + 1] || '');
+          const rf = fundRets[i];
+          sXX += ri*ri; sXY += ri*rf; sX += ri; sY += rf;
+        }
+        const denom = nC*sXX - sX*sX;
+        if (Math.abs(denom) > 1e-12) {
+          b_ibov_crise = (nC*sXY - sX*sY) / denom;
+          b_ibov_crise = Math.max(0, Math.min(3, b_ibov_crise));
+          b_sp_crise   = b_ibov_crise * (b_sp_n / (Math.abs(b_ibov_n) + 1e-6));
+        }
       }
-      const denom = nC*sXX - sX*sX;
-      if (Math.abs(denom) > 1e-12) {
-        b_ibov_crise = (nC*sXY - sX*sY) / denom;
-        // Clamp: β_crise não deve ser negativo para long-only, nem > 3
-        if (exposure.primary === 'ibov') b_ibov_crise = Math.max(0, Math.min(3, b_ibov_crise));
-        b_sp_crise = b_ibov_crise * (b_sp_n / (Math.abs(b_ibov_n) + 1e-6));
-      }
+      // sp500: mantém β_normal — IBOV não é benchmark relevante em crises externas
     }
 
     // 3. CVaR do resíduo (15% piores dias de crise — mais robusto que 10% a outliers)
