@@ -1865,38 +1865,52 @@ def compute_metrics_history(
         var_   = sum((r - mean_r) ** 2 for r in fund_rets) / (n - 1)
         vol_ann = math.sqrt(var_ * 252)  # decimal, não %
 
-        # Resíduos do modelo normal: ε = r_fundo − β_ibov_n × r_ibov
-        # (β_sp contribui pouco para fundos Brasil; usa ibov como proxy para ambos)
-        ibov_rets_slice = [ibov_returns_map.get(d, 0.0) for d in common_dates_slice]
+        # JS usa dates[i+1] para o retorno IBOV do pregão i:
+        # fund_rets[i] = quota[i+1]/quota[i]-1, cuja "data de chegada" é dates[i+1].
+        # Espelho exato: ibovDay(dates[i+1 || ''])
+        def ibov_at(i: int) -> float:
+            d = common_dates_slice[i + 1] if i + 1 < len(common_dates_slice) else ''
+            return ibov_returns_map.get(d, 0.0)
+
+        ibov_rets_slice = [ibov_at(i) for i in range(n)]
         residuos        = [fund_rets[i] - beta_ibov_n * ibov_rets_slice[i] for i in range(n)]
 
-        # Identificar dias de crise (IBOV < threshold)
+        # Identificar dias de crise (IBOV < threshold) — espelho do JS
         crise_mask   = [ibov_rets_slice[i] < CRISE_THRESHOLD for i in range(n)]
         n_dias_ruins = sum(crise_mask)
 
-        # β_crise: OLS nos dias ruins — exige mínimo 20 dias para OLS estável.
-        # Com <20 dias ruins, β_normal é melhor estimativa que OLS ruidoso.
+        # β_crise: OLS com intercepto implícito — fórmula exata do JS:
+        # b = (nC*sXY - sX*sY) / (nC*sXX - sX*sX)
+        # Exige mínimo 20 dias ruins para OLS estável.
         b_ibov_crise = beta_ibov_n
         b_sp_crise   = beta_sp_n
-        if n_dias_ruins >= 20:  # 20 em vez de 10 — OLS mais estável
-            x  = [ibov_rets_slice[i] for i in range(n) if crise_mask[i]]
-            y  = [fund_rets[i]        for i in range(n) if crise_mask[i]]
-            nx = len(x)
-            mx, my = sum(x)/nx, sum(y)/nx
-            denom = sum((xi - mx)**2 for xi in x)
-            if denom > 1e-12:
-                b_ibov_crise = sum((x[i]-mx)*(y[i]-my) for i in range(nx)) / denom
+        if n_dias_ruins >= 20:
+            sXX = sXY = sX = sY = 0.0
+            nC = 0
+            for i in range(n):
+                if not crise_mask[i]:
+                    continue
+                ri = ibov_rets_slice[i]
+                rf = fund_rets[i]
+                sXX += ri * ri; sXY += ri * rf
+                sX  += ri;      sY  += rf
+                nC  += 1
+            denom = nC * sXX - sX * sX
+            if abs(denom) > 1e-12:
+                b_ibov_crise = (nC * sXY - sX * sY) / denom
                 expo = FUND_EXPOSURE_PY.get(cnpj, {})
                 if expo.get("primary") == "ibov":
                     b_ibov_crise = max(0.0, min(3.0, b_ibov_crise))
                 b_sp_crise = b_ibov_crise * (beta_sp_n / max(abs(beta_ibov_n), 1e-6))
 
-        # CVaR 15% dos resíduos (em vez de 10%) — menos sensível a outliers individuais.
-        # Justificativa: com 10%, um único dia extremo pode mover muito o CVaR.
-        # Com 15%, a estimativa é mais robusta e estável ao longo do tempo.
-        sorted_res  = sorted(residuos)
-        n15         = max(1, n * 15 // 100)  # 15% em vez de 10%
-        cvar_resid  = sum(sorted_res[:n15]) / n15
+        # CVaR 15% dos resíduos dos dias de crise — espelho exato do JS:
+        # criseIdx.map(i => residuos[i]).sort().slice(0, p15n)
+        crise_residuos = sorted([residuos[i] for i in range(n) if crise_mask[i]])
+        if crise_residuos:
+            n15        = max(1, len(crise_residuos) * 15 // 100)
+            cvar_resid = sum(crise_residuos[:n15]) / n15
+        else:
+            cvar_resid = None
 
         # Autocorrelação dos resíduos, lags 1–3 — sem mudança
         rho_sum = 0.0
