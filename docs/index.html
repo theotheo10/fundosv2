@@ -3361,7 +3361,10 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget, horizonte) {
 
   // ── Sinal próprio ─────────────────────────────────────────────────────────
 
-  // 1. Amostras ponderadas por √T
+  // 1. Amostras ponderadas por T² (em vez de √T)
+  // Justificativa: o retorno alvo é âncora de longo prazo — c12 (ruidoso) deve ser
+  // ajuste marginal, não sinal dominante. T² amplifica fortemente c60 e cagrInception.
+  // c12: peso 1, c36: peso 9, c60: peso 25, cagrInception(13a): peso 169.
   const samples = [];
   if (f.cagr12 != null) samples.push([1.0, f.cagr12]);
   if (f.cagr36 != null) samples.push([3.0, f.cagr36]);
@@ -3376,22 +3379,22 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget, horizonte) {
 
   if (samples.length === 0) return null;
 
-  const sqrtWeights = samples.map(([T]) => Math.sqrt(T));
-  const totalW      = sqrtWeights.reduce((a, b) => a + b, 0);
-  const rawAvg      = samples.reduce((s, [, v], i) => s + sqrtWeights[i] * v, 0) / totalW;
+  const t2Weights = samples.map(([T]) => T * T);
+  const totalW    = t2Weights.reduce((a, b) => a + b, 0);
+  const rawAvg    = samples.reduce((s, [, v], i) => s + t2Weights[i] * v, 0) / totalW;
 
   // 2. Penalidade de dispersão ciclical (σ entre períodos)
   const variance = samples.reduce((s, [, v], i) =>
-    s + sqrtWeights[i] * (v - rawAvg) ** 2, 0) / totalW;
+    s + t2Weights[i] * (v - rawAvg) ** 2, 0) / totalW;
   const sigma   = Math.sqrt(variance);
   const penalty = Math.min(sigma * 0.30, Math.abs(rawAvg) * 0.15);
   const adjusted = rawAvg >= 0 ? rawAvg - penalty : rawAvg + penalty;
 
-  // 3. Pull de reversão à média → 60M (âncora de longo prazo)
-  // Pull menor para fundos muito maduros com histórico consistente
-  const anchor60  = f.cagr60 ?? ci ?? rawAvg;
-  const pullForce = Math.max(0.10, 0.25 - Math.max(0, ageYears - 5) * 0.01);
-  const sinalProprio = adjusted * (1 - pullForce) + anchor60 * pullForce;
+  // 3. Pull de reversão à média — âncora é cagrInception (se disponível) ou c60.
+  // cagrInception incorpora todo o histórico do fundo — muito mais estável que c60.
+  const anchorLP  = ci ?? f.cagr60 ?? rawAvg;
+  const pullForce = Math.max(0.20, 0.30 - Math.max(0, ageYears - 5) * 0.005);
+  const sinalProprio = adjusted * (1 - pullForce) + anchorLP * pullForce;
 
   // ── Prior ─────────────────────────────────────────────────────────────────
   //
@@ -3488,12 +3491,12 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget, horizonte) {
 
   // λ_recente: relevância da performance recente vs. histórico longo
   // Fundo antigo com 36M muito abaixo do cagrInception → prior ganha peso
+  // decay amortecido a 0.25 (em vez de 0.5): sinal recente informa mas não domina
   let lambdaRecente = 0.5;  // neutro default
   if (ci != null && ageYears > 3) {
     const recente = f.cagr36 ?? f.cagr12 ?? ci;
     const decay   = (ci - recente) / (Math.abs(ci) + 1);  // normalizado, positivo = decaindo
-    // decay=0 → 0.5; decay=+0.5 → 0.75 (punido); decay=-0.5 → 0.25 (acelerando)
-    lambdaRecente = Math.min(0.9, Math.max(0.1, 0.5 + decay * 0.5));
+    lambdaRecente = Math.min(0.9, Math.max(0.1, 0.5 + decay * 0.25));  // 0.25 em vez de 0.5
   }
 
   // λ final: produto dos três fatores
@@ -10884,7 +10887,7 @@ function renderFundProfile() {
 
   // ── Calcular β_crise e estatísticas dos resíduos ─────────────────────────
   const CRISE_THRESHOLD = -0.015;  // pregões com IBOV < −1.5%
-  const N_MIN           = 40;      // dias ruins mínimos para confiança empírica total
+  const N_MIN           = 80;      // dias ruins para confiança empírica total (80 = ~8 meses de crises)
 
   let b_ibov_crise = b_ibov_n;  // fallback: β_normal
   let b_sp_crise   = b_sp_n;
@@ -10937,7 +10940,7 @@ function renderFundProfile() {
     }
     nDiasRuins = criseIdx.length;
 
-    if (nDiasRuins >= 10) {
+    if (nDiasRuins >= 20) {  // 20 em vez de 10 — OLS mais estável com mais pontos
       let sXX = 0, sXY = 0, sX = 0, sY = 0, nC = criseIdx.length;
       for (const i of criseIdx) {
         const ri = ibovDay(dates[i + 1] || '');
@@ -10953,12 +10956,12 @@ function renderFundProfile() {
       }
     }
 
-    // 3. CVaR do resíduo (10% piores dias)
+    // 3. CVaR do resíduo (15% piores dias — mais robusto que 10% a outliers individuais)
     const epsArray = criseIdx.map(i => residuos[i]).filter(e => isFinite(e));
     if (epsArray.length >= 5) {
       epsArray.sort((a,b) => a-b);
-      const p10n = Math.max(1, Math.floor(epsArray.length * 0.10));
-      cvarResiduo = epsArray.slice(0, p10n).reduce((s,v) => s+v, 0) / p10n;
+      const p15n = Math.max(1, Math.floor(epsArray.length * 0.15));
+      cvarResiduo = epsArray.slice(0, p15n).reduce((s,v) => s+v, 0) / p15n;
     }
 
     // 4. Autocorrelação dos resíduos lag 1–3 (para correção do scaling √T)
@@ -11364,50 +11367,34 @@ function renderFundProfile() {
   }
 
   // ── Evolução histórica das métricas ──────────────────────────────────────
-  // Eixo esquerdo: retorno alvo bruto e líquido (referência positiva)
-  // Eixo direito:  pior cenário de stress + drawdown histórico (negativo, zero no topo)
   const metricsHist = historyData?.metricsHistory?.[cnpj];
   if (metricsHist && Object.keys(metricsHist).length >= 2) {
-    const sortedDates  = Object.keys(metricsHist).sort();
-    const labels       = sortedDates.map(d => { const [y,m] = d.split('-'); return `${m}/${y.slice(2)}`; });
-    const tgtData      = sortedDates.map(d => metricsHist[d].targetReturn  ?? null);
-    const net5Data     = sortedDates.map(d => metricsHist[d].netReturn5    ?? null);
-    const cdiData      = sortedDates.map(d => metricsHist[d].cdiWeighted   ?? null);
-    // Eixo direito — valores negativos, zero no topo
-    const stressData   = sortedDates.map(d => metricsHist[d].worstStress   ?? null);
-    const maxDDData    = sortedDates.map(d => {
-      const v = metricsHist[d].maxDD;
-      return v != null ? -Math.abs(v) : null;  // garantir negativo
-    });
+    const sortedDates = Object.keys(metricsHist).sort();
+    const labels      = sortedDates.map(d => { const [y,m] = d.split('-'); return `${m}/${y.slice(2)}`; });
+    const tgtData     = sortedDates.map(d => metricsHist[d].targetReturn ?? null);
+    const stressData  = sortedDates.map(d => metricsHist[d].worstStress  ?? null);
 
     const canvasId = `metricsHistChart_${cnpj.replace(/\D/g,'')}_${Date.now()}`;
     html += `
       <div class="fp-section-title" style="margin-top:1.4rem"
-           data-tip="Evolução das métricas-chave nos últimos 12 meses, calculadas sem lookahead.&#10;Eixo esquerdo (positivo): retorno alvo bruto e líquido 5a vs CDI.&#10;Eixo direito (negativo, zero no topo): pior cenário de stress estimado e max drawdown histórico acumulado.">Evolução histórica das métricas ⓘ</div>
-      <div style="position:relative;height:190px;margin-bottom:0.5rem">
+           data-tip="Evolução das métricas nos últimos 12 meses, sem lookahead.&#10;Eixo esquerdo (verde): retorno alvo estimado.&#10;Eixo direito (vermelho, zero no topo): pior cenário de stress estimado.&#10;Ambos crescem em precisão conforme mais histórico acumula.">Evolução histórica das métricas ⓘ</div>
+      <div style="position:relative;height:180px;margin-bottom:0.4rem">
         <canvas id="${canvasId}"></canvas>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:0.5rem 1.2rem;font-family:'Courier New',monospace;font-size:0.54rem;color:var(--muted);margin-bottom:0.5rem">
-        <span><span style="display:inline-block;width:18px;height:2px;background:var(--accent);vertical-align:middle;margin-right:4px"></span>Retorno alvo</span>
-        <span><span style="display:inline-block;width:18px;height:2px;background:var(--green);vertical-align:middle;margin-right:4px;border-bottom:2px dashed"></span>Líquido 5a</span>
-        <span><span style="display:inline-block;width:18px;height:2px;background:var(--blue);vertical-align:middle;margin-right:4px;opacity:0.55"></span>CDI pond.</span>
-        <span style="margin-left:0.5rem"><span style="display:inline-block;width:18px;height:2px;background:#ef4444;vertical-align:middle;margin-right:4px"></span>Pior stress ⟶</span>
-        <span><span style="display:inline-block;width:18px;height:2px;background:#f97316;vertical-align:middle;margin-right:4px;border-bottom:2px dashed"></span>Max DD hist. ⟶</span>
+      <div style="display:flex;gap:1.2rem;font-family:'Courier New',monospace;font-size:0.54rem;margin-bottom:0.5rem">
+        <span style="color:var(--green)"><span style="display:inline-block;width:18px;height:2px;background:var(--green);vertical-align:middle;margin-right:4px"></span>Retorno alvo</span>
+        <span style="color:#ef4444"><span style="display:inline-block;width:18px;height:2px;background:#ef4444;vertical-align:middle;margin-right:4px"></span>Pior stress ⟶</span>
       </div>`;
 
     setTimeout(function() {
       const ctx = document.getElementById(canvasId);
       if (!ctx || typeof Chart === 'undefined') return;
-      const isDark      = document.documentElement.getAttribute('data-theme') === 'dark';
-      const gridColor   = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-      const textColor   = isDark ? '#888' : '#aaa';
-      const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#2563eb';
-
-      // Compute right-axis max: 0 at top, min is the worst value
-      const rightVals = [...stressData, ...maxDDData].filter(v => v != null);
-      const rightMin  = rightVals.length ? Math.min(...rightVals) : -60;
-      // Round down to nearest 10
-      const rightMinRounded = Math.floor(rightMin / 10) * 10;
+      const isDark     = document.documentElement.getAttribute('data-theme') === 'dark';
+      const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+      const textColor  = isDark ? '#888' : '#aaa';
+      const greenColor = getComputedStyle(document.documentElement).getPropertyValue('--green').trim() || '#16a34a';
+      const redColor   = '#ef4444';
+      const rightMin   = Math.floor(Math.min(...stressData.filter(v => v != null), -10) / 10) * 10;
 
       new Chart(ctx, {
         type: 'line',
@@ -11417,40 +11404,16 @@ function renderFundProfile() {
             {
               label: 'Retorno alvo',
               data: tgtData,
-              borderColor: accentColor, borderWidth: 2,
+              borderColor: greenColor, borderWidth: 2,
               pointRadius: 2, pointHoverRadius: 4,
               tension: 0.35, fill: false, yAxisID: 'y',
             },
             {
-              label: 'Líquido 5a',
-              data: net5Data,
-              borderColor: '#16a34a', borderWidth: 1.5,
-              borderDash: [4, 3],
-              pointRadius: 0, tension: 0.35, fill: false, yAxisID: 'y',
-            },
-            {
-              label: 'CDI pond.',
-              data: cdiData,
-              borderColor: '#3b82f6', borderWidth: 1,
-              borderDash: [2, 4],
-              pointRadius: 0, tension: 0.2, fill: false, yAxisID: 'y',
-            },
-            {
               label: 'Pior stress',
               data: stressData,
-              borderColor: '#ef4444', borderWidth: 1.5,
+              borderColor: redColor, borderWidth: 1.5,
               pointRadius: 2, pointHoverRadius: 4,
               tension: 0.2, fill: false, yAxisID: 'y2',
-            },
-            {
-              label: 'Max DD hist.',
-              data: maxDDData,
-              borderColor: '#f97316', borderWidth: 1.5,
-              borderDash: [4, 3],
-              pointRadius: 0, tension: 0.3,
-              fill: { target: 'origin', above: 'transparent',
-                      below: 'rgba(249,115,22,0.08)' },
-              yAxisID: 'y2',
             },
           ],
         },
@@ -11470,8 +11433,7 @@ function renderFundProfile() {
                 label: function(c) {
                   const v = c.parsed.y;
                   if (v == null) return null;
-                  const sign = v >= 0 ? '+' : '';
-                  return `${c.dataset.label}: ${sign}${v.toFixed(1)}%`;
+                  return `${c.dataset.label}: ${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
                 },
               },
             },
@@ -11483,19 +11445,16 @@ function renderFundProfile() {
             },
             y: {
               position: 'left',
-              ticks: { font: { family: 'Courier New', size: 9 }, color: textColor,
+              ticks: { font: { family: 'Courier New', size: 9 }, color: greenColor,
                        callback: v => `${v.toFixed(0)}%` },
               grid: { color: gridColor },
             },
             y2: {
               position: 'right',
-              // Zero no topo: max=0, min=rightMinRounded (negativo)
               max: 0,
-              min: rightMinRounded,
-              ticks: {
-                font: { family: 'Courier New', size: 9 }, color: '#ef4444',
-                callback: v => `${v.toFixed(0)}%`,
-              },
+              min: rightMin,
+              ticks: { font: { family: 'Courier New', size: 9 }, color: redColor,
+                       callback: v => `${v.toFixed(0)}%` },
               grid: { drawOnChartArea: false },
             },
           },
