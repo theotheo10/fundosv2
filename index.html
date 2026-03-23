@@ -603,21 +603,23 @@
   .compare-delta.better { color: var(--green); }
   .compare-delta.worse  { color: var(--red); }
   .compare-stress-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 0.3rem; padding: 0.5rem 1rem 0.8rem;
+    display: flex; flex-direction: column; gap: 0;
+    padding: 0 1rem 0.8rem;
     border-top: 0.5px solid var(--border);
   }
   .compare-stress-item {
-    padding: 0.3rem 0.5rem;
-    border: 0.5px solid var(--border); border-radius: 4px;
-    background: var(--bg);
+    display: grid; grid-template-columns: 110px 1fr;
+    align-items: baseline;
+    padding: 0.28rem 0;
+    border-bottom: 0.5px solid var(--border);
   }
+  .compare-stress-item:last-child { border-bottom: none; }
   .compare-stress-name {
-    font-family: 'Courier New', monospace; font-size: 0.5rem;
-    color: var(--muted); margin-bottom: 0.2rem;
+    font-family: 'Courier New', monospace; font-size: 0.54rem;
+    color: var(--muted);
   }
   .compare-stress-vals {
-    display: flex; gap: 0.5rem; align-items: baseline;
+    display: flex; gap: 0.4rem; align-items: baseline;
   }
   .compare-stress-val {
     font-family: 'Courier New', monospace; font-size: 0.7rem; font-weight: bold;
@@ -2626,7 +2628,7 @@
       <div class="port-horizon-panel" id="portHorizonPanel">
         <div class="port-horizon-row">
           <span class="port-horizon-icon">⏱</span>
-          <span class="port-horizon-label" data-tip="Horizonte de investimento esperado. Para fundos de Renda Fixa, o retorno alvo é ajustado: no curto prazo o CDI atual domina; no longo prazo, o juro real neutro estrutural (derivado da NTN-B) ganha peso. Fundos de ações e multimercado não são afetados.">Horizonte de investimento</span>
+          <span class="port-horizon-label" data-tip="Prazo do investimento. Afeta o retorno alvo de fundos de Renda Fixa: no curto prazo domina o CDI atual; no longo prazo, o juro real neutro (NTN-B) ganha peso. Ações e multimercado: sem efeito.">Horizonte</span>
           <input type="range" class="port-horizon-slider" id="portHorizonSlider"
                  min="1" max="20" value="5" step="1"
                  oninput="onPortHorizonSlider()">
@@ -4811,23 +4813,20 @@ function updatePortfolio() {
     ? '<span class="port-metric-val na">N/D</span>'
     : `<span class="port-metric-val neu" style="font-size:0.95rem">${v.toFixed(2)}</span>`;
 
-  // Retorno líquido ponderado do portfólio
-  let portNetReturn5  = null;
-  let portNetReturn10 = null;
+  // Retorno líquido ponderado do portfólio — horizonte = slider RF (ou 5a como fallback)
+  let portNetReturn = null;
+  const netHorizonte = hasRF ? (portHorizonte || 5) : 5;
   if (portTarget?.expReturn != null) {
-    // Calcula média ponderada do retorno líquido usando trib de cada fundo
-    let netSum5 = 0, netSum10 = 0;
+    let netSum = 0;
     for (const cnpj of selected) {
-      const meta    = FUND_META[cnpj] || {};
-      const trib    = meta.trib || 'RV';
-      const fDataI  = funds.find(f => f.cnpjFmt === cnpj);
-      const tgtI    = fDataI ? calcTargetReturn(fDataI, undefined, undefined, portHorizonte) : null;
-      const gross   = tgtI ? tgtI.value : portTarget.expReturn;
-      netSum5  += wNorm[cnpj] * calcNetReturn(gross, 5,  trib);
-      netSum10 += wNorm[cnpj] * calcNetReturn(gross, 10, trib);
+      const meta   = FUND_META[cnpj] || {};
+      const trib   = meta.trib || 'RV';
+      const fDataI = funds.find(f => f.cnpjFmt === cnpj);
+      const tgtI   = fDataI ? calcTargetReturn(fDataI, undefined, undefined, portHorizonte) : null;
+      const gross  = tgtI ? tgtI.value : portTarget.expReturn;
+      netSum += wNorm[cnpj] * calcNetReturn(gross, netHorizonte, trib);
     }
-    portNetReturn5  = netSum5;
-    portNetReturn10 = netSum10;
+    portNetReturn = netSum;
   }
 
   // Métricas — grid 3 colunas, altura fixa
@@ -4841,17 +4840,11 @@ function updatePortfolio() {
     ? `<div style="font-family:'Courier New',monospace;font-size:0.68rem;line-height:1.75;color:var(--text);margin-bottom:0.8rem;padding:0.6rem 0.8rem;background:var(--bg);border-left:2px solid var(--accent);border-radius:0 5px 5px 0">${synthParts.join(' · ')}.</div>`
     : '';
 
-  // Net return row HTML
-  const netRetHtml = (portNetReturn5 != null) ? `
-      <div class="port-metric" style="border-top:0.5px solid var(--border);padding-top:0.65rem;margin-top:0.1rem;grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:0">
-        <div>
-          <div class="port-metric-label" data-tip="Retorno estimado após imposto de renda em um horizonte de 5 anos, calculado com o mesmo motor exato do Simulador de IR. Fundos RV: IR 15% sobre o ganho total no resgate, sem come-cotas. Fundos TR: simulação evento a evento pelas datas reais de come-cotas (maio/novembro) — o capital antecipado ao Fisco deixa de crescer, o custo de oportunidade está embutido no número.">Retorno líquido* <span style="font-size:0.52rem;opacity:0.65">(após I.R. · 5 anos)</span></div>
-          <span class="port-metric-val ${portNetReturn5 >= 0 ? 'pos' : 'neg'}">${portNetReturn5 >= 0 ? '+' : ''}${portNetReturn5.toFixed(1)}%</span>
-        </div>
-        <div>
-          <div class="port-metric-label" data-tip="Retorno estimado após imposto de renda em um horizonte de 10 anos, calculado com o mesmo motor exato do Simulador de IR. Fundos RV: IR 15% sobre o ganho total no resgate, sem come-cotas. Fundos TR: simulação evento a evento pelas datas reais de come-cotas (maio/novembro) — o capital antecipado ao Fisco deixa de crescer, o custo de oportunidade está embutido no número.">Retorno líquido* <span style="font-size:0.52rem;opacity:0.65">(após I.R. · 10 anos)</span></div>
-          <span class="port-metric-val ${portNetReturn10 >= 0 ? 'pos' : 'neg'}">${portNetReturn10 >= 0 ? '+' : ''}${portNetReturn10.toFixed(1)}%</span>
-        </div>
+  // Net return card — horizonte dinâmico do slider
+  const netRetHtml = (portNetReturn != null) ? `
+      <div class="port-metric" style="border-top:0.5px solid var(--border);padding-top:0.65rem;margin-top:0.1rem;grid-column:1/-1">
+        <div class="port-metric-label" data-tip="Retorno estimado após imposto de renda no horizonte definido pelo slider, calculado com o motor exato do Simulador IR. Fundos RV: IR 15% no resgate, sem come-cotas. Fundos TR: come-cotas semestrais (maio/novembro) simulados evento a evento.">Retorno líquido* <span style="font-size:0.52rem;opacity:0.65">(após I.R. · ${netHorizonte} ${netHorizonte === 1 ? 'ano' : 'anos'})</span></div>
+        <span class="port-metric-val ${portNetReturn >= 0 ? 'pos' : 'neg'}" style="font-size:1.35rem">${portNetReturn >= 0 ? '+' : ''}${portNetReturn.toFixed(1)}%</span>
       </div>` : '';
 
   document.getElementById('portMetrics').innerHTML = `${missingWarning}${synthVerd}
@@ -5432,6 +5425,10 @@ function _renderCompare(A, B) {
   const stressHtml = (() => {
     if (!A.stressRows.length && !B.stressRows.length) return '';
     const allNames = [...new Set([...A.stressRows.map(s=>s.name), ...B.stressRows.map(s=>s.name)])];
+    const shortName = n => ({
+      '2008':'Crise 2008', '2013':'Taper 2013', '2015':'Dilma 2015',
+      'Covid':'Covid 2020', '2022':'Brasil 2022',
+    }[n] || n);
     const items = allNames.map(name => {
       const sA = A.stressRows.find(s => s.name === name);
       const sB = B.stressRows.find(s => s.name === name);
@@ -5448,7 +5445,7 @@ function _renderCompare(A, B) {
           })()
         : '';
       return `<div class="compare-stress-item">
-        <div class="compare-stress-name">${name}</div>
+        <div class="compare-stress-name">${shortName(name)}</div>
         <div class="compare-stress-vals">
           <span class="compare-stress-val ${clsA}" style="color:var(--blue)">${fmtPct(rA)}</span>
           <span style="font-family:'Courier New',monospace;font-size:0.6rem;color:var(--muted)">→</span>
@@ -5535,8 +5532,7 @@ function _updateHorizonFloorLabel(h) {
     const fi = calcFloorRF(h, cdiObs);
     const wCdiPct = Math.round(fi.w_cdi * 100);
     el.textContent = `floor RF ≈ ${fi.floor.toFixed(1)}%`
-      + ` · ${wCdiPct}%CDI + ${100-wCdiPct}%neutro`
-      + ` (NTN-B ${fi.ntnbLong.toFixed(1)}% real)`;
+      + ` · ${wCdiPct}% CDI + ${100-wCdiPct}% neutro`;
   } catch (_) { el.textContent = ''; }
 }
 
