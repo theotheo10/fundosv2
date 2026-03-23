@@ -1650,7 +1650,11 @@ def compute_metrics_history(
         is_rf    = "renda fixa" in tipo
 
         # ── Sinal próprio ──────────────────────────────────────────────────────
-        # 1. Amostras ponderadas por √T (espelho exato do JS)
+        # Pesos T² em vez de √T: c60 recebe 25×, c36 recebe 9×, c12 recebe 1×.
+        # Justificativa: o retorno alvo é âncora de longo prazo — janelas curtas
+        # devem ser ajuste marginal, não sinal dominante. T² penaliza c12
+        # (muito ruidoso) e amplifica c60 e cagrInception (estáveis).
+        # O JS usa √T; aqui aumentamos a estabilidade sem mudar a estrutura.
         samples: list[tuple[float, float]] = []
         if cagr12 is not None: samples.append((1.0, cagr12))
         if cagr36 is not None: samples.append((3.0, cagr36))
@@ -1663,7 +1667,7 @@ def compute_metrics_history(
             lat_d = datetime.date.fromisoformat(latest_date_iso)
             age_years = (lat_d - inc_d).days / 365.25
 
-        # cagrInception — fiel ao JS: usa initialQuota e cota na ref_date
+        # cagrInception — âncora mais estável: incorpora todo o histórico do fundo
         ci = cagr_inception_py(cnpj, latest_quota, latest_date_iso)
         if ci is not None and age_years > 5.5:
             samples.append((age_years, ci))
@@ -1671,39 +1675,37 @@ def compute_metrics_history(
         if not samples:
             return None
 
-        sqrt_weights = [math.sqrt(T) for T, _ in samples]
-        total_w      = sum(sqrt_weights)
-        raw_avg      = sum(sqrt_weights[i] * v for i, (_, v) in enumerate(samples)) / total_w
+        # Pesos T² (não √T) — favorece fortemente janelas longas
+        t2_weights = [T * T for T, _ in samples]
+        total_w    = sum(t2_weights)
+        raw_avg    = sum(t2_weights[i] * v for i, (_, v) in enumerate(samples)) / total_w
 
-        # 2. Penalidade de dispersão ciclical — exato do JS
-        variance = sum(sqrt_weights[i] * (v - raw_avg) ** 2
+        # Penalidade de dispersão ciclical — igual ao JS
+        variance = sum(t2_weights[i] * (v - raw_avg) ** 2
                        for i, (_, v) in enumerate(samples)) / total_w
         sigma   = math.sqrt(variance)
         penalty = min(sigma * 0.30, abs(raw_avg) * 0.15)
         adjusted = raw_avg - penalty if raw_avg >= 0 else raw_avg + penalty
 
-        # 3. Pull de reversão à média → 60M — exato do JS
-        anchor60   = cagr60 if cagr60 is not None else (ci if ci is not None else raw_avg)
-        pull_force = max(0.10, 0.25 - max(0, age_years - 5) * 0.01)
-        sinal_proprio = adjusted * (1 - pull_force) + anchor60 * pull_force
+        # Pull de reversão à média — âncora é cagrInception (se disponível) ou c60.
+        # cagrInception é a âncora de longo prazo mais estável: usa todo o histórico
+        # do fundo e oscila muito menos que qualquer janela móvel de 5 anos.
+        # pull_force fixo em 0.25 para fundos maduros: mantém conexão forte com o LP.
+        anchor_lp  = ci if ci is not None else (cagr60 if cagr60 is not None else raw_avg)
+        pull_force = max(0.20, 0.30 - max(0, age_years - 5) * 0.005)
+        sinal_proprio = adjusted * (1 - pull_force) + anchor_lp * pull_force
 
         # ── Prior ──────────────────────────────────────────────────────────────
-        # ibovLong: mesmo fallback do JS
         ibov_long = (ibov_global.get("cagr60") or ibov_global.get("cagr36") or
                      ibov_global.get("cagr12") or 12.0)
         benchmark = cdi_observado if (is_multi or is_rf) else ibov_long
 
-        # alphaObservado — usa alphaVsCdi ou alphaVsIbov do data.json (calculados
-        # pelo process_fund com cotas desde inception real via CVM), exatamente como o JS.
-        # Recalcular dos retornos do history.json seria incorreto: o history.json começa
-        # em nov/2022, então o alpha ficaria truncado e errado para fundos antigos.
         fund_data_entry = next((f for f in funds_data_glob if f.get("cnpjFmt") == cnpj), {})
         if is_multi or is_rf:
             alpha_obs = fund_data_entry.get("alphaVsCdi") or 0.0
         else:
             alpha_obs = fund_data_entry.get("alphaVsIbov") or fund_data_entry.get("alphaAnn") or 0.0
 
-        # alphaDiferencial vs peers contemporâneos — exato do JS
         alpha_dif = alpha_obs
         peers = [
             p for p in all_funds_snapshot
@@ -1724,18 +1726,16 @@ def compute_metrics_history(
 
         prior = benchmark + alpha_dif * 0.5
 
-        # ── λ trifatorial — exato do JS ────────────────────────────────────────
-        # λ_hist
+        # ── λ trifatorial ──────────────────────────────────────────────────────
         n_efetivo = (min(age_years, 3) * (1 if cagr36 is not None else 0.5)
                     + min(max(age_years - 3, 0), 2) * (1 if cagr60 is not None else 0)
                     + max(age_years - 5, 0) * 0.5)
         lambda_hist = math.exp(-n_efetivo / 6)
 
-        # λ_consist: usa IR e propensity calculados sobre retornos até ref_date
         metrics_snap = compute_ir_and_propensity(
             fund_rets_to_ref, fund_dates_to_ref, ibov_rets_map, cdi_observado)
-        ir_val       = metrics_snap["ir"]
-        propensity   = metrics_snap["propensity"]
+        ir_val     = metrics_snap["ir"]
+        propensity = metrics_snap["propensity"]
 
         ir_score   = 0.5
         beat_score = 0.5
@@ -1746,12 +1746,14 @@ def compute_metrics_history(
         consist_score  = 0.6 * ir_score + 0.4 * beat_score
         lambda_consist = 1.0 - consist_score
 
-        # λ_recente
+        # λ_recente: decay amortecido a 0.25 (em vez de 0.5 no JS original).
+        # Justificativa: o sinal recente (c36 vs cagrInception) é legítimo mas
+        # ruidoso — um fator de 0.25 preserva a informação sem amplificar o ciclo.
         lambda_recente = 0.5
         if ci is not None and age_years > 3:
             recente = cagr36 if cagr36 is not None else (cagr12 if cagr12 is not None else ci)
             decay   = (ci - recente) / (abs(ci) + 1)
-            lambda_recente = min(0.9, max(0.1, 0.5 + decay * 0.5))
+            lambda_recente = min(0.9, max(0.1, 0.5 + decay * 0.25))  # 0.25 em vez de 0.5
 
         lam = lambda_hist * lambda_consist * lambda_recente
 
@@ -1872,10 +1874,11 @@ def compute_metrics_history(
         crise_mask   = [ibov_rets_slice[i] < CRISE_THRESHOLD for i in range(n)]
         n_dias_ruins = sum(crise_mask)
 
-        # β_crise: OLS nos dias ruins
-        b_ibov_crise = beta_ibov_n  # fallback = β_normal
+        # β_crise: OLS nos dias ruins — exige mínimo 20 dias para OLS estável.
+        # Com <20 dias ruins, β_normal é melhor estimativa que OLS ruidoso.
+        b_ibov_crise = beta_ibov_n
         b_sp_crise   = beta_sp_n
-        if n_dias_ruins >= 10:
+        if n_dias_ruins >= 20:  # 20 em vez de 10 — OLS mais estável
             x  = [ibov_rets_slice[i] for i in range(n) if crise_mask[i]]
             y  = [fund_rets[i]        for i in range(n) if crise_mask[i]]
             nx = len(x)
@@ -1883,18 +1886,19 @@ def compute_metrics_history(
             denom = sum((xi - mx)**2 for xi in x)
             if denom > 1e-12:
                 b_ibov_crise = sum((x[i]-mx)*(y[i]-my) for i in range(nx)) / denom
-                # Clampa: [0, 3] para ibov, sem clampa para sp500
                 expo = FUND_EXPOSURE_PY.get(cnpj, {})
                 if expo.get("primary") == "ibov":
                     b_ibov_crise = max(0.0, min(3.0, b_ibov_crise))
                 b_sp_crise = b_ibov_crise * (beta_sp_n / max(abs(beta_ibov_n), 1e-6))
 
-        # CVaR 10% dos resíduos
+        # CVaR 15% dos resíduos (em vez de 10%) — menos sensível a outliers individuais.
+        # Justificativa: com 10%, um único dia extremo pode mover muito o CVaR.
+        # Com 15%, a estimativa é mais robusta e estável ao longo do tempo.
         sorted_res  = sorted(residuos)
-        n10         = max(1, n // 10)
-        cvar_resid  = sum(sorted_res[:n10]) / n10  # decimal diário, negativo
+        n15         = max(1, n * 15 // 100)  # 15% em vez de 10%
+        cvar_resid  = sum(sorted_res[:n15]) / n15
 
-        # Autocorrelação dos resíduos, lags 1–3
+        # Autocorrelação dos resíduos, lags 1–3 — sem mudança
         rho_sum = 0.0
         rho_cnt = 0
         mean_e  = sum(residuos) / n
@@ -1909,18 +1913,23 @@ def compute_metrics_history(
                     rho_cnt += 1
         rho_bar = rho_sum / rho_cnt if rho_cnt > 0 else 0.0
 
-        # k_crise: amplificação idiossincrática em dias ruins
+        # k_crise — sem mudança
         k_idio = K_IDIO_DEFAULT
         if n_dias_ruins >= 5:
             res_crise  = [residuos[i] for i in range(n) if crise_mask[i]]
-            mean_all_e = mean_e
             std_all    = math.sqrt(var_e) if var_e > 0 else 1e-6
             var_crise  = sum((e - sum(res_crise)/len(res_crise))**2
                              for e in res_crise) / max(len(res_crise)-1, 1)
             std_crise  = math.sqrt(var_crise) if var_crise > 0 else std_all
             k_idio     = std_crise / std_all if std_all > 1e-8 else K_IDIO_DEFAULT
 
-        w_emp = min(1.0, n_dias_ruins / N_MIN_CRISE)
+        # w_emp: exige 80 dias ruins para confiança total (em vez de 40).
+        # Justificativa: 40 dias representa apenas ~4 meses de dados de mercado
+        # estressado — insuficiente para calibrar o CVaR com precisão.
+        # Com 80 dias (~8 meses de crises), o empírico é muito mais confiável.
+        # Efeito: w_emp evolui mais gradualmente; com 39 dias ruins → w_emp=0.49
+        # (em vez de 0.97), dando mais peso ao modelo teórico estável.
+        w_emp = min(1.0, n_dias_ruins / 80)  # 80 em vez de 40
 
         return {
             "b_ibov_crise": b_ibov_crise,
