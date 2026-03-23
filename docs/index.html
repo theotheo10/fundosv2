@@ -842,82 +842,179 @@
     opacity: 0;
   }
   .opt-drawer.open {
-    max-height: 900px;
+    max-height: 1100px;
     opacity: 1;
   }
   .opt-drawer-inner {
-    padding: 0 1rem 0.75rem;
+    padding: 0 1rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
   .opt-bar-label {
     font-family: 'Courier New', monospace; font-size: 0.56rem;
     text-transform: uppercase; letter-spacing: 0.1em;
     color: var(--muted); margin-bottom: 0.55rem;
-    display: none; /* label now lives in the toggle button */
+    display: none;
   }
+
+  /* ── Seção de configuração principal (N fundos + objetivos) ── */
+  .opt-config-section {
+    border: 0.5px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    padding: 0.7rem 0.8rem 0.75rem;
+    margin-bottom: 0.55rem;
+  }
+
+  /* ── Linha de tamanho + ação ── */
+  .opt-top-row {
+    display: flex; align-items: center; gap: 0.5rem;
+    margin-bottom: 0.6rem; flex-wrap: wrap;
+  }
+  .opt-section-label {
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--muted); margin-bottom: 0.28rem;
+  }
+
   .opt-controls {
-    display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
+    display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: flex-start;
   }
   .opt-size-group, .opt-obj-group {
-    display: flex; gap: 0.3rem;
+    display: flex; gap: 0.3rem; flex-wrap: wrap;
   }
   .opt-divider {
     width: 1px; background: var(--border); margin: 0 0.1rem; align-self: stretch;
   }
   .opt-btn {
     font-family: 'Courier New', monospace; font-size: 0.64rem;
-    padding: 4px 9px; border-radius: 5px; cursor: pointer;
-    border: 1px solid var(--border);
+    padding: 5px 11px; border-radius: 5px; cursor: pointer;
+    border: 0.5px solid var(--border);
     background: transparent; color: var(--muted);
     transition: all 0.12s; white-space: nowrap;
+    letter-spacing: 0.02em;
   }
   .opt-btn:hover  { border-color: var(--accent); color: var(--accent); }
-  .opt-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .opt-btn.active {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+    font-weight: bold;
+  }
+
+  /* ── Linha de ação (Otimizar / Cancelar) ── */
+  .opt-action-row {
+    display: flex; align-items: center; gap: 0.4rem;
+    margin-top: 0.55rem;
+    padding-top: 0.5rem;
+    border-top: 0.5px solid var(--border);
+  }
   .opt-run {
     font-family: 'Courier New', monospace; font-size: 0.64rem;
-    padding: 4px 12px; border-radius: 5px; cursor: pointer;
+    padding: 6px 18px; border-radius: 5px; cursor: pointer;
     background: var(--accent); border: 1px solid var(--accent); color: #fff;
     font-weight: bold; transition: opacity 0.12s; white-space: nowrap;
-    margin-left: auto;
+    letter-spacing: 0.04em;
   }
   .opt-run:hover    { opacity: 0.85; }
-  .opt-run:disabled { opacity: 0.4; cursor: not-allowed; }
+  .opt-run:disabled { opacity: 0.38; cursor: not-allowed; }
+  .opt-run-cancel {
+    font-family: 'Courier New', monospace; font-size: 0.64rem;
+    padding: 6px 14px; border-radius: 5px; cursor: pointer;
+    background: transparent; border: 0.5px solid var(--border);
+    color: var(--muted); transition: all 0.12s; white-space: nowrap;
+  }
+  .opt-run-cancel:hover { border-color: var(--red,#c0392b); color: var(--red,#c0392b); }
+
   .opt-status {
-    font-family: 'Courier New', monospace; font-size: 0.58rem;
-    color: var(--muted); margin-top: 0.4rem; min-height: 1rem;
+    font-family: 'Courier New', monospace; font-size: 0.56rem;
+    color: var(--muted); margin-left: auto; min-height: 1rem;
+  }
+
+  /* ── Restrições: container agrupado ── */
+  .opt-constraints-section {
+    border: 0.5px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    padding: 0.65rem 0.8rem 0.7rem;
+    margin-bottom: 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
   }
   .opt-constraint-row {
-    display: flex; align-items: center; gap: 0.6rem;
-    margin-top: 0.5rem; flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 9rem 1fr 3.2rem 0.9rem;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.32rem 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .opt-constraint-row:last-child { border-bottom: none; }
+  .opt-constraint-row.wide-label {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+  }
+  .opt-constraint-row.wide-label .opt-constraint-row-inner {
+    display: grid;
+    grid-template-columns: 1fr 3.2rem 0.9rem;
+    align-items: center;
+    gap: 0.5rem;
   }
   .opt-constraint-label {
-    font-family: 'Courier New', monospace; font-size: 0.6rem;
+    font-family: 'Courier New', monospace; font-size: 0.59rem;
     color: var(--muted); white-space: nowrap;
+    cursor: default;
   }
   .opt-maxw-slider, .opt-minw-slider {
-    flex: 1; min-width: 80px; max-width: 120px;
+    width: 100%;
     accent-color: var(--accent); height: 3px; cursor: pointer;
-  }
-  .opt-maxw-val, .opt-minw-val {
-    font-family: 'Courier New', monospace; font-size: 0.7rem;
-    font-weight: bold; color: var(--text); min-width: 36px;
+    display: block;
   }
   /* Editable number input that replaces the static span */
   .opt-val-input {
-    font-family: 'Courier New', monospace; font-size: 0.7rem;
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
     font-weight: bold; color: var(--text);
     background: transparent; border: none;
-    width: 46px; text-align: right; padding: 0;
+    width: 100%; text-align: right; padding: 0;
     cursor: text; outline: none;
   }
-  .opt-val-input:focus {
-    color: var(--accent);
-  }
+  .opt-val-input:focus { color: var(--accent); }
   .opt-val-input::-webkit-inner-spin-button,
   .opt-val-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .opt-val-input[type=number] { -moz-appearance: textfield; }
+  .opt-constraint-unit {
+    font-family: 'Courier New', monospace; font-size: 0.72rem;
+    font-weight: bold; color: var(--text);
+  }
+
+  /* beta adj checkbox row */
+  .opt-beta-row {
+    display: flex; align-items: center; gap: 0.45rem;
+    padding: 0.4rem 0 0.1rem;
+    font-family: 'Courier New', monospace; font-size: 0.59rem;
+    color: var(--muted);
+    cursor: pointer;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 0.25rem;
+  }
+  .opt-beta-row label { cursor: pointer; }
+  .opt-beta-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
+
   .opt-constraint-warn {
     font-family: 'Courier New', monospace; font-size: 0.58rem;
-    color: var(--red); margin-top: 0.25rem; display: none;
+    color: var(--red,#c0392b); margin-top: 0.3rem; display: none;
+    padding: 0.3rem 0;
+  }
+
+  /* sub-row for prazo estimado inside retorno líquido */
+  .opt-sub-row {
+    display: grid;
+    grid-template-columns: 9rem 1fr 1.8rem 2.2rem;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.28rem 0 0;
+    border-top: 0.5px dashed var(--border);
+    margin-top: 0.1rem;
   }
   /* ── Restrições por classe de ativo ─────────────────────────────────── */
   .opt-class-section {
@@ -1027,8 +1124,9 @@
     .opt-drawer-inner { padding: 0 0.75rem 0.6rem; }
     .opt-size-group, .opt-obj-group { flex-wrap: wrap; }
     .opt-btn { font-size: 0.58rem; padding: 4px 8px; }
-    .opt-run { width: 100%; margin-top: 0.3rem; }
-    .opt-constraint-row { flex-wrap: wrap; gap: 4px; }
+    .opt-run { padding: 6px 14px; }
+    .opt-objectives-grid { grid-template-columns: 1fr; }
+    .opt-constraint-row { grid-template-columns: 7.5rem 1fr 2.8rem 0.9rem; }
     .opt-constraint-label { font-size: 0.55rem; }
     .opt-beta-row label { font-size: 0.6rem; }
 
@@ -1326,7 +1424,6 @@
     display: grid; grid-template-columns: 1fr 1fr 1fr;
     gap: 0.7rem 1.5rem; margin-bottom: 1.2rem;
   }
-   }
   .mc-ctrl { display: flex; flex-direction: column; gap: 4px; }
   .mc-ctrl label {
     font-family: 'Courier New', monospace; font-size: 0.58rem;
@@ -1910,7 +2007,7 @@
   .opt-mode-label {
     font-family: 'Courier New', monospace; font-size: 0.52rem;
     text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--muted); margin-bottom: 3px;
+    color: var(--muted); margin-bottom: 4px;
   }
   .opt-btn.mode-classic  { }
   .opt-btn.mode-advanced {
@@ -1918,11 +2015,21 @@
   }
   .opt-btn.mode-advanced.active {
     border-style: solid;
-    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    background: var(--accent);
+    color: #fff;
   }
   /* Separator between classic and advanced modes */
   .opt-mode-sep {
-    width: 0.5px; background: var(--border); margin: 0 2px; align-self: stretch;
+    width: 0.5px; background: var(--border); margin: 0.45rem 0; align-self: stretch;
+  }
+  /* Objetivos side-by-side two-column layout */
+  .opt-objectives-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 0.7rem;
+  }
+  @media (max-width: 500px) {
+    .opt-objectives-grid { grid-template-columns: 1fr; }
   }
 
 
@@ -2369,42 +2476,56 @@
         <div class="opt-drawer" id="optDrawer">
         <div class="opt-drawer-inner">
         <div class="opt-bar-label">Otimizador de carteira</div>
-        <div class="opt-controls">
-          <div class="opt-size-group">
+
+        <!-- ── Seção principal: N fundos + objetivos + ação ── -->
+        <div class="opt-config-section">
+
+          <!-- Tamanho da carteira -->
+          <div class="opt-section-label">Número de fundos</div>
+          <div class="opt-size-group" style="margin-bottom:0.6rem">
             <button class="opt-btn active" id="optN3"  onclick="setOptN(3)">3 fundos</button>
             <button class="opt-btn"        id="optN5"  onclick="setOptN(5)">5 fundos</button>
-            <button class="opt-btn"        id="optN10" onclick="setOptN(10)">10 fundos</button>
+            <button class="opt-btn"        id="optN10" onclick="setOptN(10)" style="min-width:62px">10 fundos</button>
           </div>
-          <div class="opt-divider"></div>
-          <div style="margin-bottom:0.25rem">
-            <div class="opt-mode-label">Objetivo clássico</div>
-            <div class="opt-obj-group">
-              <button class="opt-btn mode-classic active" id="optObjSharpe" onclick="setOptObj('sharpe')"
-                data-tip="Portfólio tangente: maximiza o Índice de Sharpe — (retorno alvo − CDI) ÷ volatilidade total.&#10;Solução analítica exata: w* = Σ⁻¹(μ−CDI) normalizado.&#10;O portfólio mais eficiente em termos de retorno por unidade de TODA a volatilidade.&#10;Referência: Markowitz (1952), Sharpe (1966).">Máx. Sharpe</button>
-              <button class="opt-btn mode-classic" id="optObjVol" onclick="setOptObj('vol')"
-                data-tip="Mínima variância global: minimiza σ²=wᵀΣw sujeito a Σwᵢ=1, wᵢ≥0.&#10;Solução analítica: w* = Σ⁻¹·1 normalizado.&#10;O portfólio de menor oscilação possível — sem considerar retorno.&#10;Útil quando há incerteza elevada sobre retornos esperados.">Mín. variância</button>
-              <button class="opt-btn mode-classic" id="optObjReturn" onclick="setOptObj('return')"
-                data-tip="Maximiza o retorno esperado ponderado dos fundos selecionados.&#10;Usa softmax com temperatura T=3 para diversificar entre os melhores retornos esperados sem concentrar 100% no único melhor.&#10;Não considera risco — portfólio mais agressivo possível.">Máx. retorno</button>
+
+          <!-- Objetivos em grid 2 colunas -->
+          <div class="opt-objectives-grid">
+            <div>
+              <div class="opt-mode-label">Objetivo clássico</div>
+              <div class="opt-obj-group">
+                <button class="opt-btn mode-classic active" id="optObjSharpe" onclick="setOptObj('sharpe')"
+                  data-tip="Portfólio tangente: maximiza o Índice de Sharpe — (retorno alvo − CDI) ÷ volatilidade total.&#10;Solução analítica exata: w* = Σ⁻¹(μ−CDI) normalizado.&#10;O portfólio mais eficiente em termos de retorno por unidade de TODA a volatilidade.&#10;Referência: Markowitz (1952), Sharpe (1966).">Máx. Sharpe</button>
+                <button class="opt-btn mode-classic" id="optObjVol" onclick="setOptObj('vol')"
+                  data-tip="Mínima variância global: minimiza σ²=wᵀΣw sujeito a Σwᵢ=1, wᵢ≥0.&#10;Solução analítica: w* = Σ⁻¹·1 normalizado.&#10;O portfólio de menor oscilação possível — sem considerar retorno.&#10;Útil quando há incerteza elevada sobre retornos esperados.">Mín. variância</button>
+                <button class="opt-btn mode-classic" id="optObjReturn" onclick="setOptObj('return')"
+                  data-tip="Maximiza o retorno esperado ponderado dos fundos selecionados.&#10;Usa softmax com temperatura T=3 para diversificar entre os melhores retornos esperados sem concentrar 100% no único melhor.&#10;Não considera risco — portfólio mais agressivo possível.">Máx. retorno</button>
+              </div>
+            </div>
+            <div>
+              <div class="opt-mode-label" style="display:flex;align-items:center;gap:5px">
+                Objetivo avançado
+                <span style="font-family:'Courier New',monospace;font-size:0.5rem;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue);border:0.5px solid var(--blue)">β</span>
+              </div>
+              <div class="opt-obj-group">
+                <button class="opt-btn mode-advanced" id="optObjSortino" onclick="setOptObj('sortino')"
+                  data-tip="Máx. Sortino: maximiza (retorno alvo − CDI) ÷ semi-desvio descendente do portfólio.&#10;Semi-desvio = volatilidade apenas dos retornos ABAIXO do CDI — ignora volatilidade para cima.&#10;Implementação: semi-covariância Sᵢⱼ = E[min(rᵢ−CDI,0)·min(rⱼ−CDI,0)] × 252.&#10;w* = S⁻¹(μ−CDI) normalizado (análogo ao Sharpe, com Σ substituída por S).&#10;Referência: Estrada (2008), J. Portfolio Management.&#10;Superior ao Sharpe para fundos com assimetria positiva (retornos extremos para cima).">Máx. Sortino</button>
+                <button class="opt-btn mode-advanced" id="optObjCalmar" onclick="setOptObj('calmar')"
+                  data-tip="Máx. Calmar: maximiza CAGR_portfólio ÷ |máx. drawdown histórico do portfólio|.&#10;O max drawdown é calculado sobre a série temporal real dos retornos ponderados — não é a média dos drawdowns individuais.&#10;Metodologia: pesos candidatos gerados por Sharpe; seleção da combinação pelo Calmar real da série.&#10;Encontra o portfólio com melhor retorno por unidade de 'dor máxima' histórica.&#10;Referência: Young (1991); Steinki &amp; Mohammad (SSRN 2662054).">Máx. Calmar</button>
+                <button class="opt-btn mode-advanced" id="optObjIR" onclick="setOptObj('ir')"
+                  data-tip="Máx. Information Ratio: maximiza alpha anualizado vs. IBOV ÷ tracking error.&#10;Tracking error = σ(retorno_portfólio − retorno_IBOV) = volatilidade do excesso de retorno.&#10;Implementação: identical ao Máx. Sharpe, mas usando IBOV como taxa livre de risco em vez do CDI.&#10;Diferença: enquanto Sharpe premia superar o CDI (~12,8%), IR premia superar o IBOV (~19,9%) — critério mais exigente.&#10;Encontra o portfólio mais eficiente em gerar alpha sobre o benchmark de referência.&#10;Referência: Grinold &amp; Kahn (1999), Active Portfolio Management.">Máx. IR vs. IBOV</button>
+                <button class="opt-btn mode-advanced" id="optObjStress" onclick="setOptObj('stress')"
+                  data-tip="Mín. Stress: minimiza a perda máxima estimada do portfólio nos 5 cenários históricos de crise.&#10;&#10;Para cada combinação de fundos e pesos, calcula o retorno estimado em cada cenário usando o modelo de fator:&#10;R_fundo = β_ibov × R_ibov + β_sp500 × R_sp500(BRL), com exposição líquida reduzida em crise.&#10;&#10;Seleciona o portfólio cujo PIOR cenário é o menos negativo — estratégia minimax.&#10;&#10;Favorece fundos com baixo beta, exposição líquida reduzida em crise e benchmark descorrelacionado.&#10;Diferente do Mín. variância: usa cenários extremos reais (2008, 2013, 2015, 2020, 2022) em vez de volatilidade diária histórica.">Mín. Stress</button>
+              </div>
             </div>
           </div>
-          <div>
-            <div class="opt-mode-label" style="display:flex;align-items:center;gap:5px">
-              Objetivo avançado
-              <span style="font-family:'Courier New',monospace;font-size:0.5rem;padding:1px 5px;border-radius:3px;background:var(--blue-light);color:var(--blue);border:0.5px solid var(--blue)">β</span>
-            </div>
-            <div class="opt-obj-group">
-              <button class="opt-btn mode-advanced" id="optObjSortino" onclick="setOptObj('sortino')"
-                data-tip="Máx. Sortino: maximiza (retorno alvo − CDI) ÷ semi-desvio descendente do portfólio.&#10;Semi-desvio = volatilidade apenas dos retornos ABAIXO do CDI — ignora volatilidade para cima.&#10;Implementação: semi-covariância Sᵢⱼ = E[min(rᵢ−CDI,0)·min(rⱼ−CDI,0)] × 252.&#10;w* = S⁻¹(μ−CDI) normalizado (análogo ao Sharpe, com Σ substituída por S).&#10;Referência: Estrada (2008), J. Portfolio Management.&#10;Superior ao Sharpe para fundos com assimetria positiva (retornos extremos para cima).">Máx. Sortino</button>
-              <button class="opt-btn mode-advanced" id="optObjCalmar" onclick="setOptObj('calmar')"
-                data-tip="Máx. Calmar: maximiza CAGR_portfólio ÷ |máx. drawdown histórico do portfólio|.&#10;O max drawdown é calculado sobre a série temporal real dos retornos ponderados — não é a média dos drawdowns individuais.&#10;Metodologia: pesos candidatos gerados por Sharpe; seleção da combinação pelo Calmar real da série.&#10;Encontra o portfólio com melhor retorno por unidade de 'dor máxima' histórica.&#10;Referência: Young (1991); Steinki &amp; Mohammad (SSRN 2662054).">Máx. Calmar</button>
-              <button class="opt-btn mode-advanced" id="optObjIR" onclick="setOptObj('ir')"
-                data-tip="Máx. Information Ratio: maximiza alpha anualizado vs. IBOV ÷ tracking error.&#10;Tracking error = σ(retorno_portfólio − retorno_IBOV) = volatilidade do excesso de retorno.&#10;Implementação: identical ao Máx. Sharpe, mas usando IBOV como taxa livre de risco em vez do CDI.&#10;Diferença: enquanto Sharpe premia superar o CDI (~12,8%), IR premia superar o IBOV (~19,9%) — critério mais exigente.&#10;Encontra o portfólio mais eficiente em gerar alpha sobre o benchmark de referência.&#10;Referência: Grinold &amp; Kahn (1999), Active Portfolio Management.">Máx. IR vs. IBOV</button>
-              <button class="opt-btn mode-advanced" id="optObjStress" onclick="setOptObj('stress')"
-                data-tip="Mín. Stress: minimiza a perda máxima estimada do portfólio nos 5 cenários históricos de crise.&#10;&#10;Para cada combinação de fundos e pesos, calcula o retorno estimado em cada cenário usando o modelo de fator:&#10;R_fundo = β_ibov × R_ibov + β_sp500 × R_sp500(BRL), com exposição líquida reduzida em crise.&#10;&#10;Seleciona o portfólio cujo PIOR cenário é o menos negativo — estratégia minimax.&#10;&#10;Favorece fundos com baixo beta, exposição líquida reduzida em crise e benchmark descorrelacionado.&#10;Diferente do Mín. variância: usa cenários extremos reais (2008, 2013, 2015, 2020, 2022) em vez de volatilidade diária histórica.">Mín. Stress</button>
-            </div>
+
+          <!-- Ação -->
+          <div class="opt-action-row">
+            <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
+            <button class="opt-run opt-run-cancel" id="optCancelBtn" onclick="cancelOptimizer()" style="display:none">Cancelar</button>
+            <span class="opt-status" id="optStatus">Aguardando dados…</span>
           </div>
-          <button class="opt-run" id="optRunBtn" onclick="runOptimizer()" disabled>Otimizar</button>
-          <button class="opt-run" id="optCancelBtn" onclick="cancelOptimizer()" style="display:none;background:var(--border);color:var(--text);margin-left:6px">Cancelar</button>
+        </div>
 
           <!-- ── Universo de fundos ── -->
           <div class="opt-universe" id="optUniverse">
@@ -2513,103 +2634,105 @@
 
             </div><!-- /opt-universe-body -->
           </div><!-- /opt-universe -->
-        </div>
-        <div class="opt-beta-row">
-          <input type="checkbox" id="optBetaAdj" onchange="updateBetaAdjNote()">
-          <label for="optBetaAdj" data-tip="Usa Jensen's alpha como retorno esperado de cada fundo, em vez do CAGR bruto.&#10;Jensen's alpha = CAGR − [CDI + β × (IBOV − CDI)]&#10;Penaliza fundos cujo retorno é explicado pelo beta de mercado, não pela habilidade do gestor.&#10;Favorece gestores que entregam retorno genuíno, independente da exposição direcional ao mercado.&#10;Referência: Jensen (1968), J. of Finance.">Ajustar retornos pelo beta (Jensen's alpha)</label>
-          <span id="betaAdjNote" style="font-family:'Courier New',monospace;font-size:0.55rem;color:var(--accent);display:none">ativo</span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Peso máx. por fundo:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxWSlider"
-            min="10" max="100" value="100" step="5"
-            oninput="onOptMaxWSlider()">
-          <input type="number" class="opt-val-input" id="optMaxWVal"
-            value="100" min="10" max="100" step="5"
-            oninput="onOptMaxWInput(this)" onchange="onOptMaxWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
-          <span class="opt-constraint-label" id="optMaxWNote" style="opacity:0.5"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Peso mín. por fundo:</span>
-          <input type="range" class="opt-minw-slider" id="optMinWSlider"
-            min="10" max="300" value="10" step="1"
-            oninput="onOptMinWSlider()">
-          <input type="number" class="opt-val-input" id="optMinWVal"
-            value="1.0" min="1.0" max="30.0" step="0.1"
-            oninput="onOptMinWInput(this)" onchange="onOptMinWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)">%</span>
-          <span class="opt-constraint-label" id="optMinWNote" style="opacity:0.5"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Beta máx. vs. IBOV:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxBetaIbovSlider"
-            min="0" max="20" value="20" step="1"
-            oninput="onOptMaxBetaSlider('ibov')">
-          <input type="number" class="opt-val-input" id="optMaxBetaIbovVal"
-            value="" min="0.0" max="2.0" step="0.1" placeholder="—"
-            oninput="onOptMaxBetaInput('ibov', this)" onchange="onOptMaxBetaInput('ibov', this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span class="opt-constraint-label" id="optMaxBetaIbovNote" style="opacity:0.5"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label">Beta máx. vs. S&P:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxBetaSpSlider"
-            min="0" max="20" value="20" step="1"
-            oninput="onOptMaxBetaSlider('sp')">
-          <input type="number" class="opt-val-input" id="optMaxBetaSpVal"
-            value="" min="0.0" max="2.0" step="0.1" placeholder="—"
-            oninput="onOptMaxBetaInput('sp', this)" onchange="onOptMaxBetaInput('sp', this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span class="opt-constraint-label" id="optMaxBetaSpNote" style="opacity:0.5"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label" data-tip="Rejeita qualquer portfólio cujo pior retorno simulado, nos 5 cenários históricos de crise (2008, 2013, 2015, 2020, 2022), seja inferior ao limite definido.&#10;Usa o mesmo modelo de fator do Mín. Stress: R = β_ibov × R_ibov + β_sp500 × R_sp500(BRL) × exposição em crise.&#10;Funciona com qualquer objetivo de otimização — filtra soluções que violam o piso de perda máxima.">Perda máx. em stress:</span>
-          <input type="range" class="opt-maxw-slider" id="optMaxStressLossSlider"
-            min="0" max="60" value="60" step="1"
-            oninput="onOptMaxStressLossSlider()">
-          <input type="number" class="opt-val-input" id="optMaxStressLossVal"
-            value="" min="0" max="60" step="1" placeholder="—"
-            oninput="onOptMaxStressLossInput(this)" onchange="onOptMaxStressLossInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMaxStressLossPct"></span>
-          <span class="opt-constraint-label" id="optMaxStressLossNote" style="opacity:0.7"></span>
-        </div>
-        <div class="opt-constraint-row">
-          <span class="opt-constraint-label" data-tip="Rejeita portfólios com retorno alvo estimado (bruto) abaixo deste piso.&#10;O retorno alvo é a estimativa bayesiana ponderada por √T dos CAGRs históricos — o mesmo valor exibido na coluna 'Retorno alvo' da aba Portfólio.&#10;Útil para garantir que o portfólio otimizado tenha ao menos um nível mínimo de retorno esperado, independente do objetivo de otimização.">Retorno alvo mín. (bruto):</span>
-          <input type="range" class="opt-maxw-slider" id="optMinTargetRetSlider"
-            min="0" max="50" value="0" step="1"
-            oninput="onOptMinTargetRetSlider()">
-          <input type="number" class="opt-val-input" id="optMinTargetRetVal"
-            value="" min="0" max="50" step="1" placeholder="—"
-            oninput="onOptMinTargetRetInput(this)" onchange="onOptMinTargetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMinTargetRetPct"></span>
-          <span class="opt-constraint-label" id="optMinTargetRetNote" style="opacity:0.7"></span>
-        </div>
-        <div class="opt-constraint-row" style="flex-wrap:wrap;gap:4px 8px">
-          <span class="opt-constraint-label" style="width:100%;flex-shrink:0" data-tip="Retorno estimado após imposto de renda, calculado com o mesmo motor exato do Simulador de IR.&#10;&#10;Fundos RV (Renda Variável): IR fixo de 15% sobre o ganho no resgate, sem come-cotas.&#10;&#10;Fundos TR (Tabela Regressiva): simulação evento a evento pelas datas reais de come-cotas (maio e novembro). A cada come-cotas, 15% do rendimento é retirado do patrimônio — o capital perdido deixa de crescer. No resgate: alíquota regressiva sobre o trecho final.&#10;&#10;Consistente com o Monte Carlo e a tabela 'Impacto tributário' da aba Portfólio.">Retorno alvo mín. (líquido):</span>
-          <input type="range" class="opt-maxw-slider" id="optMinNetRetSlider"
-            min="0" max="40" value="0" step="1"
-            oninput="onOptMinNetRetSlider()" style="flex:1;min-width:80px">
-          <input type="number" class="opt-val-input" id="optMinNetRetVal"
-            value="" min="0" max="40" step="1" placeholder="—"
-            oninput="onOptMinNetRetInput(this)" onchange="onOptMinNetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
-          <span style="font-family:'Courier New',monospace;font-size:0.7rem;font-weight:bold;color:var(--text)" id="optMinNetRetPct"></span>
-          <span class="opt-constraint-label" id="optMinNetRetNote" style="opacity:0.7"></span>
-          <div style="width:100%;display:flex;align-items:center;gap:8px;margin-top:3px" id="optNetRetTimeRow">
-            <span class="opt-constraint-label" style="white-space:nowrap">Prazo estimado:</span>
-            <input type="range" class="opt-maxw-slider" id="optNetRetYearsSlider"
-              min="1" max="10" value="5" step="1"
-              oninput="onOptNetRetYearsSlider()" style="flex:1;min-width:60px">
-            <input type="number" id="optNetRetYearsVal"
-              value="5" min="1" max="10" step="1"
-              oninput="onOptNetRetYearsInput(this)" onchange="onOptNetRetYearsInput(this)" onkeydown="if(event.key==='Enter')this.blur()"
-              style="font-family:'Courier New',monospace;font-size:0.72rem;font-weight:bold;color:var(--text);
-                     background:transparent;border:none;
-                     width:24px;text-align:center;padding:0;outline:none;cursor:text;"
-              onfocus="this.style.color='var(--accent)'"
-              onblur="this.style.color='var(--text)'">
-            <span style="font-family:'Courier New',monospace;font-size:0.72rem;color:var(--muted)">anos</span>
-            <span style="display:none" id="optNetRetYearsLabel">5 anos</span>
+
+        <!-- ── Restrições agrupadas ── -->
+        <div class="opt-constraints-section">
+          <!-- beta adj -->
+          <div class="opt-beta-row">
+            <input type="checkbox" id="optBetaAdj" onchange="updateBetaAdjNote()">
+            <label for="optBetaAdj" data-tip="Usa Jensen's alpha como retorno esperado de cada fundo, em vez do CAGR bruto.&#10;Jensen's alpha = CAGR − [CDI + β × (IBOV − CDI)]&#10;Penaliza fundos cujo retorno é explicado pelo beta de mercado, não pela habilidade do gestor.&#10;Favorece gestores que entregam retorno genuíno, independente da exposição direcional ao mercado.&#10;Referência: Jensen (1968), J. of Finance.">Ajustar retornos pelo beta (Jensen's alpha)</label>
+            <span id="betaAdjNote" style="font-family:'Courier New',monospace;font-size:0.55rem;color:var(--accent);display:none;margin-left:auto">ativo</span>
           </div>
-        </div>
+
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label">Peso máx. por fundo:</span>
+            <input type="range" class="opt-maxw-slider" id="optMaxWSlider"
+              min="10" max="100" value="100" step="5"
+              oninput="onOptMaxWSlider()">
+            <input type="number" class="opt-val-input" id="optMaxWVal"
+              value="100" min="10" max="100" step="5"
+              oninput="onOptMaxWInput(this)" onchange="onOptMaxWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit">%</span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label">Peso mín. por fundo:</span>
+            <input type="range" class="opt-minw-slider" id="optMinWSlider"
+              min="10" max="300" value="10" step="1"
+              oninput="onOptMinWSlider()">
+            <input type="number" class="opt-val-input" id="optMinWVal"
+              value="1.0" min="1.0" max="30.0" step="0.1"
+              oninput="onOptMinWInput(this)" onchange="onOptMinWInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit">%</span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label">Beta máx. vs. IBOV:</span>
+            <input type="range" class="opt-maxw-slider" id="optMaxBetaIbovSlider"
+              min="0" max="20" value="20" step="1"
+              oninput="onOptMaxBetaSlider('ibov')">
+            <input type="number" class="opt-val-input" id="optMaxBetaIbovVal"
+              value="" min="0.0" max="2.0" step="0.1" placeholder="—"
+              oninput="onOptMaxBetaInput('ibov', this)" onchange="onOptMaxBetaInput('ibov', this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit" id="optMaxBetaIbovNote"></span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label">Beta máx. vs. S&amp;P:</span>
+            <input type="range" class="opt-maxw-slider" id="optMaxBetaSpSlider"
+              min="0" max="20" value="20" step="1"
+              oninput="onOptMaxBetaSlider('sp')">
+            <input type="number" class="opt-val-input" id="optMaxBetaSpVal"
+              value="" min="0.0" max="2.0" step="0.1" placeholder="—"
+              oninput="onOptMaxBetaInput('sp', this)" onchange="onOptMaxBetaInput('sp', this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit" id="optMaxBetaSpNote"></span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label" data-tip="Rejeita qualquer portfólio cujo pior retorno simulado, nos 5 cenários históricos de crise (2008, 2013, 2015, 2020, 2022), seja inferior ao limite definido.&#10;Usa o mesmo modelo de fator do Mín. Stress: R = β_ibov × R_ibov + β_sp500 × R_sp500(BRL) × exposição em crise.&#10;Funciona com qualquer objetivo de otimização — filtra soluções que violam o piso de perda máxima.">Perda máx. em stress:</span>
+            <input type="range" class="opt-maxw-slider" id="optMaxStressLossSlider"
+              min="0" max="60" value="60" step="1"
+              oninput="onOptMaxStressLossSlider()">
+            <input type="number" class="opt-val-input" id="optMaxStressLossVal"
+              value="" min="0" max="60" step="1" placeholder="—"
+              oninput="onOptMaxStressLossInput(this)" onchange="onOptMaxStressLossInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit" id="optMaxStressLossPct"></span>
+          </div>
+          <div class="opt-constraint-row">
+            <span class="opt-constraint-label" data-tip="Rejeita portfólios com retorno alvo estimado (bruto) abaixo deste piso.&#10;O retorno alvo é a estimativa bayesiana ponderada por √T dos CAGRs históricos — o mesmo valor exibido na coluna 'Retorno alvo' da aba Portfólio.&#10;Útil para garantir que o portfólio otimizado tenha ao menos um nível mínimo de retorno esperado, independente do objetivo de otimização.">Retorno alvo mín. (bruto):</span>
+            <input type="range" class="opt-maxw-slider" id="optMinTargetRetSlider"
+              min="0" max="50" value="0" step="1"
+              oninput="onOptMinTargetRetSlider()">
+            <input type="number" class="opt-val-input" id="optMinTargetRetVal"
+              value="" min="0" max="50" step="1" placeholder="—"
+              oninput="onOptMinTargetRetInput(this)" onchange="onOptMinTargetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+            <span class="opt-constraint-unit" id="optMinTargetRetPct"></span>
+          </div>
+          <div class="opt-constraint-row" style="display:block;padding:0.32rem 0">
+            <div style="display:grid;grid-template-columns:9rem 1fr 3.2rem 0.9rem;align-items:center;gap:0.5rem">
+              <span class="opt-constraint-label" data-tip="Retorno estimado após imposto de renda, calculado com o mesmo motor exato do Simulador de IR.&#10;&#10;Fundos RV (Renda Variável): IR fixo de 15% sobre o ganho no resgate, sem come-cotas.&#10;&#10;Fundos TR (Tabela Regressiva): simulação evento a evento pelas datas reais de come-cotas (maio e novembro). A cada come-cotas, 15% do rendimento é retirado do patrimônio — o capital perdido deixa de crescer. No resgate: alíquota regressiva sobre o trecho final.&#10;&#10;Consistente com o Monte Carlo e a tabela 'Impacto tributário' da aba Portfólio.">Retorno alvo mín. (líquido):</span>
+              <input type="range" class="opt-maxw-slider" id="optMinNetRetSlider"
+                min="0" max="40" value="0" step="1"
+                oninput="onOptMinNetRetSlider()">
+              <input type="number" class="opt-val-input" id="optMinNetRetVal"
+                value="" min="0" max="40" step="1" placeholder="—"
+                oninput="onOptMinNetRetInput(this)" onchange="onOptMinNetRetInput(this)" onkeydown="if(event.key==='Enter')this.blur()">
+              <span class="opt-constraint-unit" id="optMinNetRetPct"></span>
+            </div>
+            <div class="opt-sub-row" id="optNetRetTimeRow">
+              <span class="opt-constraint-label" style="white-space:nowrap">Prazo estimado:</span>
+              <input type="range" class="opt-maxw-slider" id="optNetRetYearsSlider"
+                min="1" max="10" value="5" step="1"
+                oninput="onOptNetRetYearsSlider()">
+              <input type="number" id="optNetRetYearsVal"
+                value="5" min="1" max="10" step="1"
+                oninput="onOptNetRetYearsInput(this)" onchange="onOptNetRetYearsInput(this)" onkeydown="if(event.key==='Enter')this.blur()"
+                style="font-family:'Courier New',monospace;font-size:0.72rem;font-weight:bold;color:var(--text);
+                       background:transparent;border:none;
+                       width:100%;text-align:right;padding:0;outline:none;cursor:text;"
+                onfocus="this.style.color='var(--accent)'"
+                onblur="this.style.color='var(--text)'">
+              <span style="font-family:'Courier New',monospace;font-size:0.72rem;color:var(--muted)">anos</span>
+              <span style="display:none" id="optNetRetYearsLabel">5 anos</span>
+            </div>
+          </div>
+        </div><!-- /opt-constraints-section -->
         <!-- ── Restrições por classe de ativo ─────────────────────────────── -->
         <div class="opt-class-section">
           <div class="opt-class-header">
@@ -2664,7 +2787,6 @@
         <div class="opt-constraint-warn" id="optConstraintWarn">
           ⚠ restrições incompatíveis para este tamanho de carteira
         </div>
-        <div class="opt-status" id="optStatus">Aguardando dados…</div>
         </div><!-- /opt-drawer-inner -->
         </div><!-- /opt-drawer -->
       </div>
