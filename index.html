@@ -10956,7 +10956,7 @@ function renderFundProfile() {
       }
     }
 
-    // 3. CVaR do resíduo (15% piores dias — mais robusto que 10% a outliers individuais)
+    // 3. CVaR do resíduo (15% piores dias de crise — mais robusto que 10% a outliers)
     const epsArray = criseIdx.map(i => residuos[i]).filter(e => isFinite(e));
     if (epsArray.length >= 5) {
       epsArray.sort((a,b) => a-b);
