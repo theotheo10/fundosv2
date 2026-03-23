@@ -1693,13 +1693,15 @@ def compute_metrics_history(
                      ibov_global.get("cagr12") or 12.0)
         benchmark = cdi_observado if (is_multi or is_rf) else ibov_long
 
-        # alphaObservado — usa alphaVsCdi ou alphaVsIbov, exatamente como JS
+        # alphaObservado — usa alphaVsCdi ou alphaVsIbov do data.json (calculados
+        # pelo process_fund com cotas desde inception real via CVM), exatamente como o JS.
+        # Recalcular dos retornos do history.json seria incorreto: o history.json começa
+        # em nov/2022, então o alpha ficaria truncado e errado para fundos antigos.
+        fund_data_entry = next((f for f in funds_data_glob if f.get("cnpjFmt") == cnpj), {})
         if is_multi or is_rf:
-            alpha_obs = alpha_vs_cdi_inception(cnpj, fund_rets_to_ref,
-                                               fund_dates_to_ref, inception_iso, cdi_pm) or 0.0
+            alpha_obs = fund_data_entry.get("alphaVsCdi") or 0.0
         else:
-            alpha_obs = alpha_vs_ibov_inception(cnpj, fund_rets_to_ref,
-                                                fund_dates_to_ref, inception_iso) or 0.0
+            alpha_obs = fund_data_entry.get("alphaVsIbov") or fund_data_entry.get("alphaAnn") or 0.0
 
         # alphaDiferencial vs peers contemporâneos — exato do JS
         alpha_dif = alpha_obs
@@ -2035,30 +2037,6 @@ def compute_metrics_history(
     new_entries: dict[str, dict[str, dict]] = {cnpj: {} for cnpj in funds_hist}
     total_computed = 0
 
-    # ── Pré-computar stress params por fundo sobre o histórico COMPLETO ──────
-    # O modelo de stress (CVaR, β_crise, rhoBar, kIdioCrise) é calculado UMA VEZ
-    # sobre todo o histórico disponível — exatamente como o JS faz no buildFundPanel.
-    # Reutilizar esses parâmetros fixos para todas as datas do backfill garante
-    # que worstStress seja estável (só varia pelo cdi_weighted do carry RF).
-    stress_params_by_fund: dict[str, dict] = {}
-    for cnpj, fd in funds_hist.items():
-        returns_all = fd.get("returns", [])
-        rets_full   = [r for r in returns_all if r is not None]
-        if len(rets_full) < 60:
-            continue
-        dates_full = [common_dates[i] for i in range(len(returns_all))
-                      if i < len(returns_all) and returns_all[i] is not None]
-        beta_ibov_n = float(fund_betas_glob.get(cnpj, {}).get("beta_ibov") or 0.0)
-        beta_sp_n   = float(fund_betas_glob.get(cnpj, {}).get("beta_sp500") or 0.0)
-        r2_val      = float(fund_betas_glob.get(cnpj, {}).get("r2") or 0.0)
-        stress_params_by_fund[cnpj] = _compute_fund_stress_params(
-            cnpj               = cnpj,
-            fund_rets          = rets_full,
-            common_dates_slice = dates_full,
-            beta_ibov_n        = beta_ibov_n,
-            beta_sp_n          = beta_sp_n,
-            r2                 = r2_val,
-        )
     for ref_date in ref_dates:
         ref_iso = ref_date.isoformat()
         # Encontra o índice da data de referência em commonDates
@@ -2124,10 +2102,12 @@ def compute_metrics_history(
                          datetime.date.fromisoformat(p_inc)).days / 365.25
             p_is_multi = "multimercado" in p_tipo
             p_is_rf    = "renda fixa"   in p_tipo
+            # alpha do data.json — calculado desde inception real via CVM
+            p_data_entry = next((f for f in funds_data_glob if f.get("cnpjFmt") == p_cnpj), {})
             if p_is_multi or p_is_rf:
-                p_alpha = alpha_vs_cdi_inception(p_cnpj, p_rets, p_dates, p_inc, cdi_price_map)
+                p_alpha = p_data_entry.get("alphaVsCdi")
             else:
-                p_alpha = alpha_vs_ibov_inception(p_cnpj, p_rets, p_dates, p_inc)
+                p_alpha = p_data_entry.get("alphaVsIbov") or p_data_entry.get("alphaAnn")
             peer_snapshot.append({
                 "cnpj":      p_cnpj,
                 "age_years": p_age,
@@ -2156,34 +2136,50 @@ def compute_metrics_history(
             if len(rets_to_ref) < 20:
                 continue
 
-            # Cota na ref_date (para cagrInception)
-            latest_quota_at_ref = None
-            for i in reversed(valid_idx):
-                if i < len(quotas) and quotas[i] is not None:
-                    latest_quota_at_ref = quotas[i]
-                    break
+            # CAGR nas janelas até ref_date — usa quota_on_or_before exatamente
+            # como process_fund faz, buscando cotas reais da CVM (com cache).
+            # Isso garante que os CAGRs históricos são idênticos ao que o site mostra,
+            # incluindo janelas que precedem o início do history.json.
+            fund_spec = next((f for f in FUNDS if f["cnpjFmt"] == cnpj), None)
+            if fund_spec is None:
+                continue
 
-            # CAGR nas janelas disponíveis até ref_date (para calcTargetReturn)
-            def fund_cagr_window(months: int) -> float | None:
-                target_start = subtract_months_date(ref_date, months)
-                start_iso = target_start.isoformat()
-                start_idx = next((i for i, d in enumerate(common_dates)
-                                  if d >= start_iso and i in set(valid_idx)), None)
-                if start_idx is None or start_idx >= ref_idx:
-                    return None
-                rets_slice = [returns[i] for i in range(start_idx, ref_idx + 1)
-                              if i < len(returns) and returns[i] is not None]
-                if len(rets_slice) < 5:
-                    return None
-                cum = 1.0
-                for r in rets_slice:
-                    cum *= (1 + r)
-                yrs = months / 12
-                return (cum ** (1 / yrs) - 1) * 100 if yrs > 0 else None
+            q_end = quota_on_or_before(ref_date, fund_spec)
+            if not q_end:
+                continue
+            end_quota_ref = q_end["quota"]
+            end_date_ref  = q_end["date"]
 
-            c12 = fund_cagr_window(12)
-            c36 = fund_cagr_window(36)
-            c60 = fund_cagr_window(60)
+            a12_ref = subtract_months(ref_date, 12)
+            a36_ref = subtract_months(ref_date, 36)
+            a60_ref = subtract_months(ref_date, 60)
+
+            q12_ref = quota_on_or_before(a12_ref, fund_spec)
+            q36_ref = quota_on_or_before(a36_ref, fund_spec)
+            q60_ref = quota_on_or_before(a60_ref, fund_spec)
+
+            def do_cagr_ref(q):
+                if not q: return None
+                return cagr(q["quota"], end_quota_ref, years_apart(q["date"], end_date_ref))
+
+            c12 = do_cagr_ref(q12_ref)
+            c36 = do_cagr_ref(q36_ref)
+            c60 = do_cagr_ref(q60_ref)
+
+            # cagrInception: usa initialQuota do FUND_META_PY (hardcoded, idêntico ao JS)
+            meta_py        = FUND_META_PY.get(cnpj, {})
+            inc_quota_val  = meta_py.get("initialQuota")
+            inc_date_str   = meta_py.get("inception")
+            if inc_quota_val and inc_date_str and end_date_ref:
+                ci_ref = cagr(inc_quota_val, end_quota_ref,
+                              years_apart(inc_date_str, end_date_ref))
+            else:
+                ci_ref = None
+
+            # alphaVsIbov / alphaVsCdi desde inception usando cdi_price_map e ibovReturns
+            # Estes são calculados sobre os retornos do history.json disponíveis até ref_date
+            # (sem lookahead), usando as mesmas funções do modelo completo.
+            latest_quota_at_ref = end_quota_ref
 
             # targetReturn — port completo e fiel de calcTargetReturn
             target = calc_target_return_py(
@@ -2192,7 +2188,7 @@ def compute_metrics_history(
                 cagr36            = c36,
                 cagr60            = c60,
                 latest_quota      = latest_quota_at_ref,
-                latest_date_iso   = ref_iso_eff,
+                latest_date_iso   = end_date_ref,
                 fund_rets_to_ref  = rets_to_ref,
                 fund_dates_to_ref = dates_to_ref,
                 cdi_observado     = cdi_weighted,
@@ -2202,7 +2198,7 @@ def compute_metrics_history(
                 ntnb_long_val     = ntnb_long,
                 f12m_val          = focus_12m,
                 f5a_val           = focus_5a,
-                horizonte         = None,  # usa ageYears como proxy, igual ao JS na tabela
+                horizonte         = None,
             )
 
             # Max drawdown histórico até ref_date
@@ -2217,9 +2213,20 @@ def compute_metrics_history(
                 if dd < max_dd:
                     max_dd = dd
 
-            # worstStress — params calculados sobre histórico COMPLETO (estável)
-            worst_stress = calc_worst_stress(
-                cnpj, stress_params_by_fund.get(cnpj, {}), cdi_weighted)
+            # worstStress — calculado sobre retornos disponíveis até ref_date,
+            # exatamente como o JS faz no buildFundPanel (sem lookahead).
+            beta_ibov_n = float(fund_betas_glob.get(cnpj, {}).get("beta_ibov") or 0.0)
+            beta_sp_n   = float(fund_betas_glob.get(cnpj, {}).get("beta_sp500") or 0.0)
+            r2_val      = float(fund_betas_glob.get(cnpj, {}).get("r2") or 0.0)
+            stress_params_date = _compute_fund_stress_params(
+                cnpj               = cnpj,
+                fund_rets          = rets_to_ref,
+                common_dates_slice = dates_to_ref,
+                beta_ibov_n        = beta_ibov_n,
+                beta_sp_n          = beta_sp_n,
+                r2                 = r2_val,
+            )
+            worst_stress = calc_worst_stress(cnpj, stress_params_date, cdi_weighted)
 
             entry = {
                 "targetReturn": round(target, 2) if target is not None else None,
