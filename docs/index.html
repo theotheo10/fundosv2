@@ -582,35 +582,46 @@
     border-collapse: collapse;
     border-bottom: 0.5px solid var(--border);
   }
-  .compare-metrics-table tr { border-bottom: 0.5px solid var(--border); }
-  .compare-metrics-table tr:last-child { border-bottom: none; }
+  .compare-metrics-table thead tr {
+    border-bottom: 0.5px solid var(--border);
+  }
+  .compare-metrics-table tbody tr {
+    border-bottom: 0.5px solid var(--border);
+  }
+  .compare-metrics-table tbody tr:last-child {
+    border-bottom: none;
+  }
   .compare-metrics-table td {
-    padding: 0.28rem 1.2rem;
+    padding: 0.3rem 1.2rem;
     font-family: 'Courier New', monospace;
     vertical-align: baseline;
   }
   .cmt-label {
     font-size: 0.52rem; text-transform: uppercase;
     letter-spacing: 0.08em; color: var(--muted);
-    width: 22%; white-space: nowrap;
+    width: 28%; white-space: nowrap;
   }
   .cmt-val {
     font-size: 0.82rem; font-weight: bold;
-    text-align: right; width: 20%;
+    text-align: right; width: 25%;
   }
   .cmt-val.pos { color: var(--green); }
   .cmt-val.neg { color: var(--red); }
   .cmt-val.neu { color: var(--text); }
-  .cmt-divider {
-    width: 0.5px; padding: 0;
-    background: var(--border);
+  .cmt-sep {
+    width: 0.5px; background: var(--border); padding: 0;
   }
-  .cmt-delta {
-    font-size: 0.58rem; font-weight: bold;
-    text-align: center; width: 10%;
+  .cmt-delta-cell {
+    font-family: 'Courier New', monospace; font-size: 0.62rem;
+    font-weight: bold; text-align: right; padding-right: 1.2rem;
+    width: 15%; white-space: nowrap;
   }
-  .cmt-delta.better { color: var(--green); }
-  .cmt-delta.worse  { color: var(--red); }
+  .cmt-col-head {
+    font-family: 'Courier New', monospace; font-size: 0.52rem;
+    text-transform: uppercase; letter-spacing: 0.1em;
+    text-align: right; padding: 0.3rem 1.2rem;
+    border-bottom: 0.5px solid var(--border);
+  }
 
   /* ── Resumo em linha ─────────────────────────────────────────── */
   .compare-summary {
@@ -5438,15 +5449,16 @@ function _updateScenarioUI() {
 }
 
 function _renderCompare(A, B) {
-  const fmtPct = (v, d=1) => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(d)}%`;
+  const fmtPct = (v) => v == null ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
   const fmtVal = (v) => v == null ? '—' : v.toFixed(2);
 
-  function delta(vA, vB, higherIsBetter=true) {
+  function deltaHtml(vA, vB, higherBetter=true) {
     if (vA == null || vB == null) return '';
     const d = vB - vA;
     if (Math.abs(d) < 0.05) return '';
-    const better = higherIsBetter ? d > 0 : d < 0;
-    return `<span class="compare-delta ${better?'better':'worse'}">${d>0?'+':''}${d.toFixed(1)}</span>`;
+    const better = higherBetter ? d > 0 : d < 0;
+    const sign = d > 0 ? '+' : '';
+    return `<span class="compare-delta ${better?'better':'worse'}">${sign}${d.toFixed(1)}</span>`;
   }
 
   function fundChips(snap, other) {
@@ -5464,24 +5476,25 @@ function _renderCompare(A, B) {
   const hA = A.horizonte ? `${A.horizonte}a` : '—';
   const hB = B.horizonte ? `${B.horizonte}a` : '—';
 
-  function metRow(label, vA, vB, fmt, higherBetter=true) {
-    const isStress = label === 'Pior stress';
-    const clsA = vA == null ? 'neu' : vA < 0 ? 'neg' : 'pos';
-    const clsB = vB == null ? 'neu' : vB < 0 ? 'neg' : 'pos';
-    const d = delta(vA, vB, higherBetter);
+  // Metric row: label | val A | val B | delta
+  function metRow(label, vA, vB, fmtFn, higherBetter=true, colorFn=null) {
+    const colorA = colorFn ? colorFn(vA) : (vA == null ? 'neu' : vA < 0 ? 'neg' : vA > 0 ? 'pos' : 'neu');
+    const colorB = colorFn ? colorFn(vB) : (vB == null ? 'neu' : vB < 0 ? 'neg' : vB > 0 ? 'pos' : 'neu');
+    const d = deltaHtml(vA, vB, higherBetter);
     return `<tr>
       <td class="cmt-label">${label}</td>
-      <td class="cmt-val ${clsA}">${fmt(vA)}</td>
-      <td class="cmt-divider"></td>
-      <td class="cmt-val ${clsB}">${fmt(vB)}</td>
+      <td class="cmt-val ${colorA}">${fmtFn(vA)}</td>
+      <td class="cmt-val ${colorB}">${fmtFn(vB)}</td>
       <td class="cmt-delta-cell">${d}</td>
     </tr>`;
   }
 
+  // Stress section
   const stressHtml = (() => {
     if (!A.stressRows.length && !B.stressRows.length) return '';
     const names = [...new Set([...A.stressRows.map(s=>s.name), ...B.stressRows.map(s=>s.name)])];
-    const sName = n => ({'2008':'Crise 2008','2013':'Taper 2013','2015':'Dilma 2015','Covid':'Covid 2020','2022':'Brasil 2022'}[n]||n);
+    const sName = n => ({'2008':'2008','2013':'2013','2015':'2015','Covid':'Covid','2022':'2022'}[n]||n);
+    const fullName = n => ({'2008':'Crise financeira (2008)','2013':'Taper tantrum (2013)','2015':'Dilma/Petrolão (2015)','Covid':'Covid (mar/2020)','2022':'Crise Brasil (jun/2022)'}[n]||n);
     const items = names.map(name => {
       const sA = A.stressRows.find(s=>s.name===name);
       const sB = B.stressRows.find(s=>s.name===name);
@@ -5489,18 +5502,19 @@ function _renderCompare(A, B) {
       const diff = rA!=null&&rB!=null ? rB-rA : null;
       const dHtml = diff!=null&&Math.abs(diff)>=0.3
         ? `<span class="compare-delta ${diff>0?'better':'worse'}">${diff>0?'+':''}${diff.toFixed(1)}</span>` : '';
-      return `<div class="compare-stress-item">
-        <div class="compare-stress-name">${sName(name)}</div>
-        <div class="compare-stress-vals">
-          <span class="compare-stress-val" style="color:var(--blue)">${fmtPct(rA)}</span>
-          <span class="compare-stress-arrow">→</span>
-          <span class="compare-stress-val" style="color:var(--green)">${fmtPct(rB)}</span>
-          ${dHtml}
-        </div>
-      </div>`;
+      const clsA = rA==null?'neu':rA<0?'neg':'pos';
+      const clsB = rB==null?'neu':rB<0?'neg':'pos';
+      return `<tr>
+        <td class="cmt-label" style="color:var(--muted)">${fullName(name)}</td>
+        <td class="cmt-val ${clsA}" style="color:var(--blue)">${fmtPct(rA)}</td>
+        <td class="cmt-val ${clsB}" style="color:var(--green)">${fmtPct(rB)}</td>
+        <td class="cmt-delta-cell">${dHtml}</td>
+      </tr>`;
     }).join('');
-    return `<div class="compare-stress-label">Stress por cenário <span style="opacity:0.55;font-weight:normal">(azul=A · verde=B)</span></div>
-    <div class="compare-stress-grid">${items}</div>`;
+    return `<div class="compare-stress-label">Stress por cenário <span style="opacity:0.55;font-weight:normal;text-transform:none;letter-spacing:0">(azul=A · verde=B)</span></div>
+    <table class="compare-metrics-table" style="border-top:none">
+      <tbody>${items}</tbody>
+    </table>`;
   })();
 
   const html = `
@@ -5518,28 +5532,26 @@ function _renderCompare(A, B) {
       <thead><tr>
         <td class="cmt-label"></td>
         <td class="cmt-col-head" style="color:var(--blue)">A</td>
-        <td class="cmt-divider"></td>
         <td class="cmt-col-head" style="color:var(--green)">B</td>
         <td class="cmt-col-head" style="color:var(--muted)">Δ</td>
       </tr></thead>
       <tbody>
-        ${metRow('Retorno alvo', A.expReturn, B.expReturn, fmtPct)}
-        ${metRow('Volatilidade', A.vol, B.vol, v=>v!=null?v.toFixed(1)+'%':'—', false)}
-        ${metRow('Sharpe', A.sharpe, B.sharpe, fmtVal)}
-        <tr><td class="cmt-label">Horizonte RF</td><td class="cmt-val neu">${hA}</td><td class="cmt-divider"></td><td class="cmt-val neu">${hB}</td><td class="cmt-delta-cell"></td></tr>
-        ${metRow('Pior stress', worstA, worstB, fmtPct, false)}
+        ${metRow('Retorno alvo',  A.expReturn, B.expReturn, fmtPct)}
+        ${metRow('Volatilidade',  A.vol, B.vol, v=>v!=null?v.toFixed(1)+'%':'—', false, v=>v==null?'neu':'neu')}
+        ${metRow('Sharpe',        A.sharpe,    B.sharpe,    fmtVal,              true,  v=>v==null?'neu':'neu')}
+        <tr><td class="cmt-label">Horizonte RF</td><td class="cmt-val neu">${hA}</td><td class="cmt-val neu">${hB}</td><td class="cmt-delta-cell"></td></tr>
+        ${metRow('Pior stress',   worstA, worstB, fmtPct, false)}
       </tbody>
     </table>
     <div class="compare-summary">
-      Retorno: ${fmtPct(A.expReturn)} → ${fmtPct(B.expReturn)} ${delta(A.expReturn,B.expReturn)} &nbsp;·&nbsp;
-      Sharpe: ${fmtVal(A.sharpe)} → ${fmtVal(B.sharpe)} ${delta(A.sharpe,B.sharpe)} &nbsp;·&nbsp;
-      Stress: ${fmtPct(worstA)} → ${fmtPct(worstB)} ${delta(worstA,worstB,false)}
+      Retorno: ${fmtPct(A.expReturn)} → ${fmtPct(B.expReturn)} ${deltaHtml(A.expReturn,B.expReturn)} &nbsp;·&nbsp;
+      Sharpe: ${fmtVal(A.sharpe)} → ${fmtVal(B.sharpe)} ${deltaHtml(A.sharpe,B.sharpe)} &nbsp;·&nbsp;
+      Stress: ${fmtPct(worstA)} → ${fmtPct(worstB)} ${deltaHtml(worstA,worstB,false)}
     </div>
     ${stressHtml}`;
 
   document.getElementById('portCompareBody').innerHTML = html;
 }
-
 
 function onPortHorizonSlider() {
   const h    = getPortHorizonte();
@@ -11383,7 +11395,7 @@ function renderFundProfile() {
           + `  Vol idio: ${modelDiag.volIdio}% a.a. · k=${modelDiag.kIdioCrise}× · ρ̄=${modelDiag.rhoBar}`;
       }
       html += `<div class="fp-stress-item" data-tip="${tipText}">
-        <div class="fp-stress-name" title="${s.label}">${s.name}</div>
+        <div class="fp-stress-name" data-tip="${s.label}">${s.name}</div>
         <div class="fp-stress-val" style="color:${cls}">${s.ret >= 0 ? '+' : ''}${s.ret.toFixed(1)}%</div>
       </div>`;
     });
