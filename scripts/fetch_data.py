@@ -2229,26 +2229,6 @@ def main() -> None:
     except Exception as _fe:
         print(f"  ⚠ fronteira eficiente falhou: {_fe}")
 
-    # ── Histórico de métricas por fundo ──────────────────────────────────────────
-    # Recalcula retroativamente os últimos 12 meses (com dados disponíveis na data).
-    # NTN-B histórica carregada uma vez do Tesouro Direto CSV público.
-    # Execuções subsequentes pulam datas já calculadas (incremental).
-    print(f"\n── Histórico de métricas (backfill 12M)")
-    try:
-        ntnb_hist = fetch_ntnb_historico()
-        compute_metrics_history(
-            hist_path      = hist_path,
-            cdi_price_map  = cdi_price_map,
-            ntnb_hist      = ntnb_hist,
-            anchor         = anchor,
-            betas_data     = fund_betas,
-            backfill_months = 12,
-        )
-    except Exception as _mh:
-        import traceback
-        print(f"  ⚠ metricsHistory falhou: {_mh}")
-        traceback.print_exc()
-
     delayed = [r for r in results if not r.get("error") and r.get("isDelayed")]
     if delayed:
         print(f"\n⚠ Fundos atrasados em relação à âncora ({anchor}):")
@@ -2295,6 +2275,27 @@ def main() -> None:
     index_rets = _idx_rets_early
     fund_betas = compute_fund_betas(hist_path, index_rets)
     print(f"  Betas calculados: {len(fund_betas)} fundos")
+
+    # ── Histórico de métricas por fundo ──────────────────────────────────────────
+    # NOTA: este bloco deve vir DEPOIS de compute_fund_betas, que define fund_betas.
+    # Recalcula retroativamente os últimos 12 meses (com dados disponíveis na data).
+    # NTN-B histórica carregada uma vez do Tesouro Direto CSV público.
+    # Execuções subsequentes pulam datas já calculadas (incremental).
+    print(f"\n── Histórico de métricas (backfill 12M)")
+    try:
+        ntnb_hist = fetch_ntnb_historico()
+        compute_metrics_history(
+            hist_path      = hist_path,
+            cdi_price_map  = cdi_price_map,
+            ntnb_hist      = ntnb_hist,
+            anchor         = anchor,
+            betas_data     = fund_betas,
+            backfill_months = 12,
+        )
+    except Exception as _mh:
+        import traceback
+        print(f"  ⚠ metricsHistory falhou: {_mh}")
+        traceback.print_exc()
 
     # ── CDI fallback: se BCB falhou, usa último valor bom gravado ───────────────
     # Garante que o CDI nunca fica null no data.json por causa de falha transitória da API.
