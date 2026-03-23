@@ -2055,8 +2055,9 @@ def compute_metrics_history(
     def get_trib(cnpj: str, fund_info: dict) -> str:
         return TRIB_MAP.get(cnpj, "RV")  # ações/multi → RV
 
-    # Carrega histórico existente para não recalcular datas já presentes
-    existing     = hist.get("metricsHistory", {})
+    # Sempre recalcula do zero — garante consistência quando o modelo muda.
+    # O backfill de 12 meses é rápido (325 entradas) e os dados ficam sempre corretos.
+    existing     = {}  # ignora entradas anteriores
     new_entries: dict[str, dict[str, dict]] = {cnpj: {} for cnpj in funds_hist}
     total_computed = 0
 
