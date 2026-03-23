@@ -2055,9 +2055,19 @@ def compute_metrics_history(
     def get_trib(cnpj: str, fund_info: dict) -> str:
         return TRIB_MAP.get(cnpj, "RV")  # ações/multi → RV
 
-    # Sempre recalcula do zero — garante consistência quando o modelo muda.
-    # O backfill de 12 meses é rápido (325 entradas) e os dados ficam sempre corretos.
-    existing     = {}  # ignora entradas anteriores
+    # Versão do modelo — mudar quando os parâmetros de cálculo mudarem.
+    # Quando a versão muda, todo o metricsHistory é recalculado do zero.
+    # Quando a versão é a mesma, só adiciona datas novas (incremental).
+    # Isso garante: histórico imutável + consistência quando o modelo evolui.
+    MODEL_VERSION = "v3"  # T² weights, CVaR 15% crisis-only, N_MIN=80, beta_crise OLS intercept
+
+    saved_version = hist.get("metricsHistoryVersion")
+    if saved_version != MODEL_VERSION:
+        print(f"  Modelo mudou ({saved_version} → {MODEL_VERSION}): recalculando metricsHistory do zero")
+        existing = {}
+    else:
+        existing = hist.get("metricsHistory", {})
+
     new_entries: dict[str, dict[str, dict]] = {cnpj: {} for cnpj in funds_hist}
     total_computed = 0
 
@@ -2139,7 +2149,7 @@ def compute_metrics_history(
             })
 
         for cnpj, fd in funds_hist.items():
-            # Skip se já calculado
+            # Pula datas já calculadas — cada ponto é imutável (calculado com dados da época)
             if ref_iso in existing.get(cnpj, {}):
                 continue
 
@@ -2269,8 +2279,9 @@ def compute_metrics_history(
             merged.setdefault(cnpj, {}).update(dates_dict)
 
     hist["metricsHistory"] = merged
+    hist["metricsHistoryVersion"] = MODEL_VERSION
     hist_path.write_text(json.dumps(hist, ensure_ascii=False, separators=(",", ":")))
-    print(f"  ✓ metricsHistory: {total_computed} novas entradas · {len(merged)} fundos")
+    print(f"  ✓ metricsHistory: {total_computed} novas entradas · {len(merged)} fundos · versão {MODEL_VERSION}")
 
 
 def patch_history_frontier(hist_path: Path, frontier: list) -> None:
