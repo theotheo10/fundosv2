@@ -2435,7 +2435,7 @@
         <th class="sortable" data-key="cagr36"    id="th-cagr36" data-tip="Retorno médio ao ano nos últimos 3 anos. Taxa ANUALIZADA — ex: +18% significa +18% por ano, não +18% no total.">36M · a.a. ↕</th>
         <th class="sortable" data-key="cagr60"    id="th-cagr60" data-tip="Retorno médio ao ano nos últimos 5 anos. Taxa ANUALIZADA. Janela mais longa = mais confiável, inclui mais ciclos de mercado.">60M · a.a. ↕</th>
         <th class="sortable col-alpha" data-key="alpha" id="th-alpha" data-tip="Excesso de retorno anualizado vs. IBOV no período da coluna de ordenação ativa.&#10;Positivo = gestor superou o índice. Negativo = ficou abaixo.&#10;Medida central de skill do gestor — quanto do retorno veio de decisões ativas, não do mercado.">Alpha ↕</th>
-        <th class="sortable" data-key="inception" id="th-inception" data-tip="Retorno médio ao ano desde o início do fundo. Inclui todos os ciclos, crises e altas desde a criação.">Desde início ↕</th>
+        <th class="sortable" data-key="inception" id="th-inception" data-tip="Retorno médio ao ano desde o início do fundo. Inclui todos os ciclos, crises e altas desde a criação.">Desde o início ↕</th>
         <th class="sortable" data-key="tenure"    id="th-tenure" data-tip="Há quanto tempo o fundo existe. Histórico mais longo = estimativas mais confiáveis.">Histórico ↕</th>
       </tr>
     </thead>
@@ -3161,7 +3161,7 @@
 
     <!-- 1. Visão panorâmica do universo -->
     <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title" data-tip="Retorno anualizado desde o início (CAGR histórico real) versus volatilidade anualizada de cada fundo. Pontos acima da linha tracejada têm Sharpe acima da média do universo.">Risco × Retorno desde início</div>
+      <div class="analysis-card-title" data-tip="Retorno anualizado desde o início (CAGR histórico real) versus volatilidade anualizada de cada fundo. Pontos acima da linha tracejada têm Sharpe acima da média do universo.">Risco × Retorno desde o início</div>
       <div id="scatterLoading" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted);margin-bottom:0.5rem">calculando…</div>
       <div style="position:relative;height:320px;width:100%;max-height:60vw"><canvas id="scatterCanvas"></canvas></div>
     </div>
@@ -8143,7 +8143,7 @@ function renderScatter() {
                font: { family: 'Courier New', size: 10 }, color: '#888' },
              ticks: { font: { family: 'Courier New', size: 10 }, color: '#888' },
              grid: { color: 'rgba(128,128,128,0.1)' } },
-        y: { title: { display: true, text: 'Retorno anualizado desde início (%)',
+        y: { title: { display: true, text: 'Retorno anualizado desde o início (%)',
                font: { family: 'Courier New', size: 10 }, color: '#888' },
              ticks: { font: { family: 'Courier New', size: 10 }, color: '#888',
                callback: function(v){return v.toFixed(1)+'%';} },
