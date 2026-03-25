@@ -2396,10 +2396,11 @@
 <div class="filter-panel" id="filterPanel" style="display:none">
   <div class="filter-bar">
     <div class="filter-row">
-      <span class="filter-label" data-tip="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia</span>
+      <span class="filter-label" data-tip="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Long &amp; Short = posições compradas e vendidas; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia</span>
       <button class="filter-chip active" data-filter="tipo" data-val="" onclick="setFilter('tipo','',this)">Todos</button>
       <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
       <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
+      <button class="filter-chip" data-filter="tipo" data-val="Long & Short" onclick="setFilter('tipo','Long & Short',this)">Long &amp; Short</button>
       <button class="filter-chip" data-filter="tipo" data-val="Multimercado" onclick="setFilter('tipo','Multimercado',this)">Multimercado</button>
       <button class="filter-chip" data-filter="tipo" data-val="Renda Fixa" onclick="setFilter('tipo','Renda Fixa',this)">Renda Fixa</button>
       <span class="filter-divider"></span>
@@ -2543,6 +2544,7 @@
                   <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);align-self:center">Tipo:</span>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long Only"    onclick="toggleUniChip(this)">Long Only</button>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long Biased"  onclick="toggleUniChip(this)">Long Biased</button>
+                  <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long & Short" onclick="toggleUniChip(this)">Long &amp; Short</button>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Multimercado" onclick="toggleUniChip(this)">Multimercado</button>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Renda Fixa"   onclick="toggleUniChip(this)">Renda Fixa</button>
                 </div>
