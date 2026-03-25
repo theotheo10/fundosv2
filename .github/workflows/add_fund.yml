@@ -49,7 +49,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git stash --include-untracked
           git pull --rebase origin main
+          git stash pop
           git add docs/history.json docs/data.json scripts/fetch_data.py docs/index.html
           git diff --staged --quiet || git commit -m "feat: adiciona fundo(s) via add_fund workflow"
           git push
