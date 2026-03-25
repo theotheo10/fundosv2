@@ -3232,7 +3232,7 @@
 
     <!-- 7. Síntese visual do universo -->
     <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title" data-tip="Fronteira eficiente: melhor retorno esperado (CAGR 36M) por nível de volatilidade. Pontos individuais são os fundos; a curva verde são combinações ótimas por diversificação. Portfólios à esquerda e acima da nuvem só são alcançáveis combinando fundos.">Fronteira eficiente — universo de fundos disponíveis</div>
+      <div class="analysis-card-title" data-tip="Fronteira eficiente: melhor retorno por nível de volatilidade. Pontos individuais são os fundos; a curva verde indica combinações ótimas por diversificação. Portfólios à esquerda e acima da nuvem só são alcançáveis combinando fundos.">Fronteira eficiente — universo de fundos disponíveis</div>
       <div style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted);margin-bottom:0.6rem">
         Cada ponto é um fundo individual. A curva é a fronteira eficiente: combinações ótimas entre os fundos disponíveis.
         Portfólios <em>à esquerda e acima</em> da nuvem de fundos só são alcançáveis por diversificação.
@@ -10886,7 +10886,7 @@ function renderEfficientFrontier() {
             ticks:{font:{family:'Courier New',size:10},color:'#888',
               callback:v=>v.toFixed(0)+'%'},
             grid:{color:'rgba(128,128,128,0.08)'}},
-        y:{ min:minRet, title:{display:true,text:'Retorno esperado — CAGR 36M (%)',
+        y:{ min:minRet, title:{display:true,text:'CAGR 36M (%)',
               font:{family:'Courier New',size:10},color:'#888'},
             ticks:{font:{family:'Courier New',size:10},color:'#888',
               callback:v=>v.toFixed(0)+'%'},
