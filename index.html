@@ -2396,10 +2396,11 @@
 <div class="filter-panel" id="filterPanel" style="display:none">
   <div class="filter-bar">
     <div class="filter-row">
-      <span class="filter-label" data-tip="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia</span>
+      <span class="filter-label" data-tip="Tipo de estratégia do fundo: Long Only = só comprado; Long Biased = maioria comprado; Long &amp; Short = posições compradas e vendidas; Multimercado = pode operar juros, câmbio e outros ativos">Estratégia</span>
       <button class="filter-chip active" data-filter="tipo" data-val="" onclick="setFilter('tipo','',this)">Todos</button>
       <button class="filter-chip" data-filter="tipo" data-val="Long Only" onclick="setFilter('tipo','Long Only',this)">Long Only</button>
       <button class="filter-chip" data-filter="tipo" data-val="Long Biased" onclick="setFilter('tipo','Long Biased',this)">Long Biased</button>
+      <button class="filter-chip" data-filter="tipo" data-val="Long & Short" onclick="setFilter('tipo','Long & Short',this)">Long &amp; Short</button>
       <button class="filter-chip" data-filter="tipo" data-val="Multimercado" onclick="setFilter('tipo','Multimercado',this)">Multimercado</button>
       <button class="filter-chip" data-filter="tipo" data-val="Renda Fixa" onclick="setFilter('tipo','Renda Fixa',this)">Renda Fixa</button>
       <span class="filter-divider"></span>
@@ -2543,6 +2544,7 @@
                   <span style="font-family:'Courier New',monospace;font-size:0.52rem;color:var(--muted);align-self:center">Tipo:</span>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long Only"    onclick="toggleUniChip(this)">Long Only</button>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long Biased"  onclick="toggleUniChip(this)">Long Biased</button>
+                  <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Long & Short" onclick="toggleUniChip(this)">Long &amp; Short</button>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Multimercado" onclick="toggleUniChip(this)">Multimercado</button>
                   <button class="opt-uni-chip active" data-unifilter="tipo" data-val="Renda Fixa"   onclick="toggleUniChip(this)">Renda Fixa</button>
                 </div>
@@ -3230,9 +3232,9 @@
 
     <!-- 7. Síntese visual do universo -->
     <div class="analysis-card" style="grid-column:1/-1">
-      <div class="analysis-card-title" data-tip="Fronteira eficiente: curva que representa o melhor retorno possível para cada nível de volatilidade, dada a combinação dos fundos disponíveis. Portfólios abaixo da fronteira são sub-ótimos — é possível ter mais retorno com o mesmo risco, ou menos risco com o mesmo retorno.">Fronteira eficiente — universo de fundos disponíveis</div>
+      <div class="analysis-card-title" data-tip="Fronteira eficiente: melhor retorno por nível de volatilidade. Pontos individuais são os fundos; a curva verde indica combinações ótimas por diversificação. Portfólios à esquerda e acima da nuvem só são alcançáveis combinando fundos.">Fronteira eficiente — universo de fundos disponíveis</div>
       <div style="font-family:'Courier New',monospace;font-size:0.62rem;color:var(--muted);margin-bottom:0.6rem">
-        Cada ponto é um fundo individual. A curva é a fronteira eficiente: combinações ótimas long-only.
+        Cada ponto é um fundo individual. A curva é a fronteira eficiente: combinações ótimas entre os fundos disponíveis.
         Portfólios <em>à esquerda e acima</em> da nuvem de fundos só são alcançáveis por diversificação.
       </div>
       <div id="efficientFrontierLoading" style="font-family:'Courier New',monospace;font-size:0.65rem;color:var(--muted)">calculando…</div>
@@ -3292,6 +3294,7 @@ const FUND_META = {
   "52.239.457/0001-57": { nome:"Itaú Janeiro RF", short:"Janeiro RF", inception:"2023-09-29", initialQuota:1.0, maxQuota:1.395262, tipo:"Renda Fixa - Pós-fixado Global", trib:"TR", expo:"Brasil e Internacional", banco:"Itaú", grossUp:false, obs:"Pós-fixado diversificado em juros e moedas de múltiplos países" },
   "51.253.495/0001-00": { nome:"Mapfre Confianza", short:"Mapfre", inception:"2023-08-01", initialQuota:1.0, maxQuota:1.40946058, tipo:"Renda Fixa - Crédito Privado", trib:"TR", expo:"Brasil", banco:"Itaú / BTG", grossUp:false, obs:"Crédito privado DI+spread — disponível no Itaú e BTG Pactual" },
   "52.969.671/0001-69": { nome:"Artax Infra", short:"Artax Infra", inception:"2023-11-30", initialQuota:1.0, maxQuota:1.377942, tipo:"Renda Fixa - Debêntures Incentivadas", trib:"Isento", expo:"Brasil", banco:"Itaú", grossUp:true, obs:"Isento de IR (Lei 12.431) · Debêntures de infraestrutura" },
+  "07.013.315/0001-12": { nome:"Polo Norte L&S", short:"Polo Norte", inception:"2005-01-03", initialQuota:1.02944309, maxQuota:14.74216414, tipo:"Long & Short", trib:"RV", expo:"Brasil", banco:"Itaú", grossUp:false, obs:"" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva", Isento:"Isento de IR" };
 
@@ -4050,6 +4053,7 @@ const FUND_EXPOSURE = {
     rate_duration:6.5,               // Duration taxa real (NTN-B longa) — alto risco de marcação
     fx_exposure:0,
   }, // Artax Infra
+  "07.013.315/0001-12": { net_normal:0.0, net_crisis:0.0, primary:"ibov" }, // Polo Norte L&S
 };
 
 // Historical stress scenarios
@@ -10862,7 +10866,7 @@ function renderEfficientFrontier() {
               const sharpe = ((p.y - cdiVal) / p.x).toFixed(2);
               const lines = [
                 `  ${p.label}`,
-                `  Retorno alvo:   ${p.y.toFixed(1)}%`,
+                `  Retorno (CAGR 36M): ${p.y.toFixed(1)}%`,
                 `  Volatilidade:   ${p.x.toFixed(1)}%`,
                 `  Sharpe:         ${sharpe}`,
               ];
@@ -10882,7 +10886,7 @@ function renderEfficientFrontier() {
             ticks:{font:{family:'Courier New',size:10},color:'#888',
               callback:v=>v.toFixed(0)+'%'},
             grid:{color:'rgba(128,128,128,0.08)'}},
-        y:{ min:minRet, title:{display:true,text:'Retorno alvo (%)',
+        y:{ min:minRet, title:{display:true,text:'CAGR 36M (%)',
               font:{family:'Courier New',size:10},color:'#888'},
             ticks:{font:{family:'Courier New',size:10},color:'#888',
               callback:v=>v.toFixed(0)+'%'},
