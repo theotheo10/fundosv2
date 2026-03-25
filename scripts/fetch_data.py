@@ -46,6 +46,7 @@ FUNDS = [
     {"name": "Itaú Janeiro RF LP FIF", "exibicao": "Itaú Janeiro RF", "curto": "Janeiro RF", "cnpj": "52239457000157", "cnpjFmt": "52.239.457/0001-57"},
     {"name": "Mapfre Confianza FIF RF Referenciado DI CP", "exibicao": "Mapfre Confianza", "curto": "Mapfre", "cnpj": "51253495000100", "cnpjFmt": "51.253.495/0001-00"},
     {"name": "Itaú Artax Infra FIF Incentivado Infra CIC RF CP LP RL", "exibicao": "Artax Infra", "curto": "Artax Infra", "cnpj": "52969671000169", "cnpjFmt": "52.969.671/0001-69"},
+    {"name": "Polo Norte I Long Short FIC FIM", "exibicao": "Polo Norte L&S", "curto": "Polo Norte", "cnpj": "07013315000112", "cnpjFmt": "07.013.315/0001-12"},
 ]
 
 FIRST_MONTHLY_YEAR = 2021   # CVM: arquivos mensais a partir daqui

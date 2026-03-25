@@ -3294,6 +3294,7 @@ const FUND_META = {
   "52.239.457/0001-57": { nome:"Itaú Janeiro RF", short:"Janeiro RF", inception:"2023-09-29", initialQuota:1.0, maxQuota:1.395262, tipo:"Renda Fixa - Pós-fixado Global", trib:"TR", expo:"Brasil e Internacional", banco:"Itaú", grossUp:false, obs:"Pós-fixado diversificado em juros e moedas de múltiplos países" },
   "51.253.495/0001-00": { nome:"Mapfre Confianza", short:"Mapfre", inception:"2023-08-01", initialQuota:1.0, maxQuota:1.40946058, tipo:"Renda Fixa - Crédito Privado", trib:"TR", expo:"Brasil", banco:"Itaú / BTG", grossUp:false, obs:"Crédito privado DI+spread — disponível no Itaú e BTG Pactual" },
   "52.969.671/0001-69": { nome:"Artax Infra", short:"Artax Infra", inception:"2023-11-30", initialQuota:1.0, maxQuota:1.377942, tipo:"Renda Fixa - Debêntures Incentivadas", trib:"Isento", expo:"Brasil", banco:"Itaú", grossUp:true, obs:"Isento de IR (Lei 12.431) · Debêntures de infraestrutura" },
+  "07.013.315/0001-12": { nome:"Polo Norte L&S", short:"Polo Norte", inception:"2005-01-03", initialQuota:1.02944309, maxQuota:14.74216414, tipo:"Long & Short", trib:"RV", expo:"Brasil", banco:"Itaú", grossUp:false, obs:"" },
 };
 const TRIB_LABEL = { RV:"Renda Variável", TR:"Tabela Regressiva", Isento:"Isento de IR" };
 
@@ -4052,6 +4053,7 @@ const FUND_EXPOSURE = {
     rate_duration:6.5,               // Duration taxa real (NTN-B longa) — alto risco de marcação
     fx_exposure:0,
   }, // Artax Infra
+  "07.013.315/0001-12": { net_normal:0.0, net_crisis:0.0, primary:"ibov" }, // Polo Norte L&S
 };
 
 // Historical stress scenarios
