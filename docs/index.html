@@ -1451,7 +1451,6 @@
     display: grid; grid-template-columns: repeat(4, 1fr);
     gap: 8px; margin-bottom: 1.2rem;
   }
-   }
   .mc-stat {
     background: var(--bg); border: 0.5px solid var(--border);
     border-radius: 8px; padding: 0.7rem 0.9rem;
@@ -5369,7 +5368,7 @@ function simularFundo(aporte, retornoAnual, trib, anosResgate) {
     }
     base             = patrimonioReal;
     dataAtual        = new Date(dataCC);
-    dataUltimoEvento = new Date(dataCC);
+    dataUltimoEvento = new Date(dataCC);  // sempre atualiza, mesmo sem rendimento positivo
   }
 
   // Crescimento do último trecho (do último CC até o resgate)
@@ -6753,15 +6752,20 @@ function covMatrix(cnpjs, historyData) {
   const commonStart = getCommonStartIndex(cnpjs);
   const rets = cnpjs.map(c => historyData.funds[c].returns);
   const n    = rets[0].length;
-  const means = rets.map((r, ri) => { const fIdx = getFirstRealIndex(cnpjs[ri]); const sl = r.slice(fIdx); return sl.reduce((a,b)=>a+b,0)/sl.length; });
   const cov   = Array.from({length: k}, () => new Array(k).fill(0));
   for (let i = 0; i < k; i++)
     for (let j = i; j < k; j++) {
-      let s = 0;
       const tPairStart = Math.max(getFirstRealIndex(cnpjs[i]), getFirstRealIndex(cnpjs[j]));
+      const len = n - tPairStart;
+      if (len <= 1) { cov[i][j] = cov[j][i] = 0; continue; }
+      // Médias calculadas sobre o mesmo intervalo da covariância (interseção dos históricos)
+      let mi = 0, mj = 0;
+      for (let t = tPairStart; t < n; t++) { mi += rets[i][t]; mj += rets[j][t]; }
+      mi /= len; mj /= len;
+      let s = 0;
       for (let t = tPairStart; t < n; t++)
-        s += (rets[i][t] - means[i]) * (rets[j][t] - means[j]);
-      cov[i][j] = cov[j][i] = (s / (n - 1)) * 252 * 10000;
+        s += (rets[i][t] - mi) * (rets[j][t] - mj);
+      cov[i][j] = cov[j][i] = (s / (len - 1)) * 252 * 10000;
     }
   return cov;
 }
@@ -8996,7 +9000,7 @@ function _mcRenderChart(labels, p10, p25, p50, p75, p90, det) {
               const map = {
                 'P10':'P10 (pior 10%)', 'P25':'P25', 'P25b':null,
                 'P75':null, 'P75b':null, 'P90':'P90 (melhor 10%)',
-                'Mediana':'Cenário típico (mediana)', 'Taxa fixa':'Retorno fixo (sem oscilação)'
+                'Mediana':'Cenário típico (mediana)', 'Taxa fixa':'Retorno fixo (sem oscilação) · Nota: por desigualdade de Jensen, E[exp(X)] > exp(E[X]), então a mediana estocástica tende a ficar ligeiramente acima desta linha'
               };
               const lbl = map[c.dataset.label];
               if (!lbl) return null;
@@ -9054,42 +9058,79 @@ function mcRenderIRSummary(p, mediana, p25, p75) {
     const meta  = FUND_META[cnpj] || {};
     trib = meta.trib || 'RV';
   } else {
-    // Portfolio: use most common trib from selected funds
     const weights  = getWeights();
     const selected = Object.keys(weights);
     const trCount  = selected.filter(c => (FUND_META[c]||{}).trib === 'TR').length;
     trib = trCount > selected.length / 2 ? 'TR' : 'RV';
   }
 
-  // Simulate IR on median scenario using simularFundo
-  // Total invested = P + M*12*anos
-  const totInvested = p.P + p.M * 12 * p.anos;
+  const anos   = p.anos;
+  const growth = (p.growth || 0) / 100;
 
-  // For portfolio we simulate as a single equivalent fund
-  const sim = simularFundo(p.P, p.retorno, trib, p.anos);
+  // ── Aporte inicial ────────────────────────────────────────────────────────
+  const simP = simularFundo(p.P, p.retorno, trib, anos);
 
-  // For the monthly aportes part, approximate: each aporte as separate sim
-  // We already have XIRR logic in renderAportes — just show the key numbers
-  const valorLiq = sim.valorLiquido;
-  const irTotal  = sim.irTotal;
-  const custFisc = sim.aliqEconomica;
+  // ── Aportes mensais: cada aporte tem prazo individual ────────────────────
+  // Aporte do mês m (m=1..anos*12) tem prazo = anos - m/12 anos até o resgate
+  // O crescimento do aporte é corrigido: aporte do ano y cresce (1+growth)^(y-1)
+  let irAportes     = 0;
+  let valorBrutoAportes = 0;
+  const cashflows   = [{ t: 0, amount: -p.P }];  // saída inicial
 
-  const cagrLiq = p.P > 0 && valorLiq > p.P
-    ? ((Math.pow(valorLiq / p.P, 1 / p.anos) - 1) * 100).toFixed(1) + '%'
-    : '—';
+  if (p.M > 0) {
+    const totalMeses = anos * 12;
+    for (let m = 1; m <= totalMeses; m++) {
+      const anoIdx    = Math.floor((m - 1) / 12);  // 0-based
+      const aporteM   = p.M * Math.pow(1 + growth, anoIdx);
+      const prazoAnos = (totalMeses - m) / 12;
+      if (prazoAnos <= 0) {
+        // Último mês: sem crescimento, sem IR (prazo ~0)
+        valorBrutoAportes += aporteM;
+        cashflows.push({ t: m / 12, amount: -aporteM });
+        continue;
+      }
+      const simM = simularFundo(aporteM, p.retorno, trib, prazoAnos);
+      irAportes         += simM.irTotal;
+      valorBrutoAportes += simM.valorBruto;
+      cashflows.push({ t: m / 12, amount: -aporteM });
+    }
+  }
+
+  // ── Totais ────────────────────────────────────────────────────────────────
+  const irTotal      = simP.irTotal + irAportes;
+  const valorLiquido = simP.valorLiquido + (valorBrutoAportes - irAportes);
+  const totInvested  = p.P + p.M * 12 * anos;  // aproximado (sem crescimento) para referência
+
+  // XIRR: fluxo de resgate líquido no final
+  cashflows.push({ t: anos, amount: valorLiquido });
+  let cagrLiq = '—';
+  try {
+    const taxa = xirr(cashflows, 0.08);
+    if (isFinite(taxa) && taxa > -1) cagrLiq = (taxa * 100).toFixed(1) + '%';
+  } catch(e) {}
+
+  // Fallback simples se XIRR falhar (sem aportes mensais)
+  if (cagrLiq === '—' && p.P > 0 && valorLiquido > p.P) {
+    cagrLiq = ((Math.pow(valorLiquido / p.P, 1 / anos) - 1) * 100).toFixed(1) + '%';
+  }
+
+  const hasMonthly = p.M > 0;
+  const metodoLabel = hasMonthly
+    ? 'IR calculado por aporte (cada aporte com seu prazo individual) · CAGR líquido via XIRR'
+    : 'IR calculado sobre aporte único · Tributação: ' + trib;
 
   wrap.style.display = '';
   el.innerHTML =
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">'
-    + mcIrCard('Aporte inicial', fmtBRL(p.P), '')
-    + mcIrCard('Valor líquido', fmtBRL(valorLiq), 'var(--green)')
+    + mcIrCard('Total investido', fmtBRL(totInvested), '')
+    + mcIrCard('Valor líquido', fmtBRL(valorLiquido), 'var(--green)')
     + mcIrCard('IR total', fmtBRL(irTotal), 'var(--red)')
     + mcIrCard('CAGR líquido', cagrLiq, 'var(--text)')
     + '</div>'
     + '<div style="font-family:\'Courier New\',monospace;font-size:0.6rem;color:var(--muted);margin-top:0.6rem">'
-    + 'IR calculado sobre o cenário mediano · Tributação: ' + trib
-    + (trib === 'TR' ? ' · Come-cotas: ' + fmtBRL(sim.irComeCotas) : '')
-    + ' · Custo fiscal: ' + custFisc.toFixed(1) + '%'
+    + metodoLabel + ' · Tributação: ' + trib
+    + (trib === 'TR' ? ' · Come-cotas: ' + fmtBRL(simP.irComeCotas) : '')
+    + ' · Custo fiscal inicial: ' + simP.aliqEconomica.toFixed(1) + '%'
     + '</div>';
 }
 
@@ -11689,13 +11730,20 @@ function semiCovMatrix(cnpjs, historyData, cdiAnnual) {
   const rets = cnpjs.map(c => historyData.funds[c].returns);
   const n = rets[0].length;
   const cdiDaily = Math.pow(1 + cdiAnnual / 100, 1 / 252) - 1;
-  const semiDevs = rets.map(ri => ri.map(r => Math.min(r - cdiDaily, 0)));
   const S = Array.from({length: k}, () => new Array(k).fill(0));
   for (let i = 0; i < k; i++) {
     for (let j = i; j < k; j++) {
+      const tPairStart = Math.max(getFirstRealIndex(cnpjs[i]), getFirstRealIndex(cnpjs[j]));
+      const len = n - tPairStart;
+      if (len <= 0) { S[i][j] = S[j][i] = 0; continue; }
+      // Semi-desvios calculados sobre a interseção dos históricos
       let s = 0;
-      for (let t = 0; t < n; t++) s += semiDevs[i][t] * semiDevs[j][t];
-      S[i][j] = S[j][i] = (s / n) * 252 * 10000;
+      for (let t = tPairStart; t < n; t++) {
+        const di = Math.min(rets[i][t] - cdiDaily, 0);
+        const dj = Math.min(rets[j][t] - cdiDaily, 0);
+        s += di * dj;
+      }
+      S[i][j] = S[j][i] = (s / len) * 252 * 10000;
     }
   }
   return S;
@@ -12041,7 +12089,7 @@ function runComparador() {
   const metrics = [
     ['Retorno alvo*', 'CAGR anualizado sobre o período histórico disponível. Não é garantia de retorno futuro.', fmt(mA.cagr,1,true), fmt(mB.cagr,1,true), true, mA.cagr, mB.cagr],
     ['Volatilidade a.a.', 'Desvio padrão anualizado dos retornos diários — quanto o portfólio oscila por ano.', fmt(mA.vol,1), fmt(mB.vol,1), false, mA.vol, mB.vol],
-    ['Max. drawdown', 'Maior queda pico-a-vale registrada no período histórico (desde 2021).', fmt(mA.mdd,1), fmt(mB.mdd,1), true, -Math.abs(mA.mdd), -Math.abs(mB.mdd)],
+    ['DD máx. (desde 2021)', 'Maior queda pico-a-vale registrada no histórico disponível (desde 2021). Não captura crises anteriores como 2008 ou 2015 — use o stress test para estimar esses cenários.', fmt(mA.mdd,1), fmt(mB.mdd,1), true, -Math.abs(mA.mdd), -Math.abs(mB.mdd)],
     ['Sharpe', '(Retorno − CDI) ÷ volatilidade total. Eficiência do retorno por unidade de toda a oscilação.', fmtR(mA.sharpe), fmtR(mB.sharpe), true, mA.sharpe, mB.sharpe],
     ['Sortino', '(Retorno − CDI) ÷ volatilidade DESCENDENTE. Penaliza apenas retornos abaixo do CDI.', fmtR(mA.sortino), fmtR(mB.sortino), true, mA.sortino, mB.sortino],
     ['Calmar', 'Retorno ÷ |max drawdown|. Quanto de CAGR o portfólio entregou por cada 1% de queda máxima.', fmtR(mA.calmar), fmtR(mB.calmar), true, mA.calmar, mB.calmar],
