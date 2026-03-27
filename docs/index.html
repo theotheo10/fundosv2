@@ -6888,15 +6888,31 @@ function maxSharpeWeights(cnpjs, mus, cdiTarget, cov) {
 // (mais interessante que simplesmente alocar 100% no melhor)
 // Se não conseguir Sharpe, usa pesos uniformes
 function maxReturnWeights(mus) {
-  // Pesos proporcionais ao retorno alvo de cada fundo.
-  // Usa softmax com temperatura 0.3 para dar separação clara entre fundos
-  // sem concentrar 100% no único melhor (o que seria idêntico a não diversificar).
-  // Temperatura baixa → mais concentrado no melhor; alta → mais uniforme.
-  const TEMP = 3.0;
-  const maxMu = Math.max(...mus);
-  const exp_ = mus.map(m => Math.exp((m - maxMu) / TEMP));
-  const sumE  = exp_.reduce((a, b) => a + b, 0);
-  return exp_.map(x => x / sumE);
+  // Solução LP exata para máximo retorno com constraints de peso.
+  // Ordena fundos por retorno decrescente e aloca o máximo permitido (optMaxW)
+  // em cada um até somar 100%, respeitando o mínimo (optMinW) em todos.
+  // Isso garante que o portfólio realmente maximiza o retorno esperado dado os constraints.
+  const k = mus.length;
+  const wMax = (typeof optMaxW !== 'undefined') ? optMaxW : 1.0;
+  const wMin = (typeof optMinW !== 'undefined') ? optMinW : 0.01;
+
+  // Ordena índices por retorno decrescente
+  const order = mus.map((m, i) => i).sort((a, b) => mus[b] - mus[a]);
+
+  // Inicia todos no mínimo
+  const w = new Array(k).fill(wMin);
+  let remaining = 1.0 - wMin * k;
+
+  // Aloca o excedente nos melhores fundos primeiro
+  for (const i of order) {
+    if (remaining <= 1e-12) break;
+    const room = wMax - wMin;
+    const add  = Math.min(room, remaining);
+    w[i] += add;
+    remaining -= add;
+  }
+
+  return w;
 }
 
 // ── Gera todas as combinações C(n, k) ────────────────────────────────────────
@@ -10802,16 +10818,18 @@ function renderEfficientFrontier() {
     if (!m) return;
     const fData = funds.find(f => f.cnpjFmt === cnpj);
     if (!fData) return;
-    const t = calcTargetReturn(fData);
-    if (!t) return;
     const fd = historyData.funds[cnpj];
     const realRets2 = getRealReturns(cnpj);
     const n2 = realRets2.length;
     const mean2 = realRets2.reduce((a,b)=>a+b,0)/n2;
     const var2  = realRets2.reduce((a,r)=>a+(r-mean2)**2,0)/(n2-1);
     const vol2  = Math.sqrt(var2*252)*100;
+    // Retorno histórico observado: CAGR 36M preferencial, fallback cagrInception
+    // Consistente com o que o servidor usa para calcular a fronteira eficiente.
+    const histRet = fData.cagr36 ?? (cagrInception(fData) ?? fData.cagrInception ?? fData.cagr12);
+    if (histRet == null) return;
     fundPoints.push({
-      x: parseFloat(vol2.toFixed(2)), y: parseFloat(t.value.toFixed(2)),
+      x: parseFloat(vol2.toFixed(2)), y: parseFloat(histRet.toFixed(2)),
       label: (FUND_META[cnpj]||{}).nome || fd.nome, cnpj, color: CHART_COLORS[i % CHART_COLORS.length],
       sortino: m.sortino, calmar: m.calmar, ir: m.ir, beta: m.beta,
     });
