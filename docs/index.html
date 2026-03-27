@@ -3709,8 +3709,19 @@ function calcTargetReturn(f, globalFunds, globalCdiTarget, horizonte) {
     floorInfo = null;
   }
 
-  // Floor aplicado: E[R] ≥ cdiFloor
-  const discounted = Math.max(capped, cdiFloor);
+  // Para RF: o retorno alvo escala o CDI-blend do horizonte pelo alpha multiplicativo
+  // histórico do fundo. Ex: fundo que rendeu 91% do CDI historicamente → com CDI
+  // blend de 12% (1a) → 10.9%; com blend de 9.1% (20a) → 8.3%.
+  // Isso preserva o diferencial do gestor mas ancora o CDI base no horizonte certo.
+  // Para equity/multi: comportamento original — floor = CDI observado.
+  let discounted;
+  if (isRF && cdiObservado > 0) {
+    const alphaRatio = capped / cdiObservado;  // spread multiplicativo histórico vs CDI
+    const rfEstimate = cdiFloor * alphaRatio;  // projeta esse ratio sobre o blend do horizonte
+    discounted = Math.max(rfEstimate, cdiFloor * 0.80);  // floor de segurança: mín 80% do blend
+  } else {
+    discounted = Math.max(capped, cdiFloor);
+  }
 
   return {
     value:           discounted,
