@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-27T16:04:45.998526+00:00",
+  "generatedAt": "2026-03-27T20:17:19.204921+00:00",
   "anchorDate": "2026-03-25",
   "ibov": {
     "cagr12": 40.43303496196518,
@@ -31,102 +31,102 @@
   },
   "fund_betas": {
     "22.232.927/0001-90": {
-      "beta_ibov": 0.818,
-      "beta_sp500": -0.0409,
-      "alpha_ann": 6.9,
-      "r2": 0.5573,
-      "n_obs": 863
+      "beta_ibov": 0.8298,
+      "beta_sp500": -0.0261,
+      "alpha_ann": 6.78,
+      "r2": 0.5423,
+      "n_obs": 804
     },
     "17.400.251/0001-66": {
-      "beta_ibov": 0.9254,
-      "beta_sp500": -0.0396,
-      "alpha_ann": 7.28,
-      "r2": 0.5847,
-      "n_obs": 863
+      "beta_ibov": 0.9638,
+      "beta_sp500": -0.0193,
+      "alpha_ann": 7.63,
+      "r2": 0.5875,
+      "n_obs": 804
     },
     "18.302.338/0001-63": {
-      "beta_ibov": 0.8091,
-      "beta_sp500": -0.0684,
-      "alpha_ann": 9.3,
-      "r2": 0.4595,
-      "n_obs": 863
+      "beta_ibov": 0.8403,
+      "beta_sp500": -0.0562,
+      "alpha_ann": 11.6,
+      "r2": 0.461,
+      "n_obs": 804
     },
     "37.495.383/0001-26": {
-      "beta_ibov": 0.5107,
-      "beta_sp500": 0.1295,
-      "alpha_ann": 6.86,
-      "r2": 0.4385,
-      "n_obs": 863
+      "beta_ibov": 0.5031,
+      "beta_sp500": 0.1594,
+      "alpha_ann": 6.5,
+      "r2": 0.4271,
+      "n_obs": 804
     },
     "42.698.666/0001-05": {
-      "beta_ibov": 0.2554,
-      "beta_sp500": -0.0467,
-      "alpha_ann": 16.17,
-      "r2": 0.2406,
-      "n_obs": 863
+      "beta_ibov": 0.2462,
+      "beta_sp500": -0.0204,
+      "alpha_ann": 14.24,
+      "r2": 0.2126,
+      "n_obs": 804
     },
     "24.623.392/0001-03": {
-      "beta_ibov": 0.8739,
-      "beta_sp500": -0.0281,
-      "alpha_ann": 5.59,
-      "r2": 0.6679,
-      "n_obs": 863
+      "beta_ibov": 0.8772,
+      "beta_sp500": -0.0386,
+      "alpha_ann": 7.33,
+      "r2": 0.6512,
+      "n_obs": 804
     },
     "28.747.685/0001-53": {
-      "beta_ibov": 0.905,
-      "beta_sp500": 0.0981,
-      "alpha_ann": 5.07,
-      "r2": 0.5552,
-      "n_obs": 863
+      "beta_ibov": 0.8879,
+      "beta_sp500": 0.1104,
+      "alpha_ann": 8.54,
+      "r2": 0.5238,
+      "n_obs": 804
     },
     "10.500.884/0001-05": {
-      "beta_ibov": 0.8623,
-      "beta_sp500": -0.0321,
-      "alpha_ann": 4.64,
-      "r2": 0.8325,
-      "n_obs": 863
+      "beta_ibov": 0.8761,
+      "beta_sp500": -0.0315,
+      "alpha_ann": 5.63,
+      "r2": 0.8243,
+      "n_obs": 804
     },
     "35.744.790/0001-02": {
-      "beta_ibov": 0.0191,
-      "beta_sp500": 0.0964,
-      "alpha_ann": 29.12,
-      "r2": 0.0449,
-      "n_obs": 863
+      "beta_ibov": 0.0153,
+      "beta_sp500": 0.1042,
+      "alpha_ann": 29.87,
+      "r2": 0.0451,
+      "n_obs": 804
     },
     "38.954.217/0001-03": {
-      "beta_ibov": 0.9865,
-      "beta_sp500": -0.0395,
-      "alpha_ann": 4.92,
-      "r2": 0.752,
-      "n_obs": 863
+      "beta_ibov": 0.9655,
+      "beta_sp500": -0.016,
+      "alpha_ann": 7.42,
+      "r2": 0.7229,
+      "n_obs": 804
     },
     "32.073.525/0001-43": {
-      "beta_ibov": 0.707,
-      "beta_sp500": 0.0076,
-      "alpha_ann": 5.28,
-      "r2": 0.7263,
-      "n_obs": 863
+      "beta_ibov": 0.7215,
+      "beta_sp500": 0.0114,
+      "alpha_ann": 5.71,
+      "r2": 0.7096,
+      "n_obs": 804
     },
     "21.689.246/0001-92": {
-      "beta_ibov": 0.3021,
-      "beta_sp500": 0.5998,
-      "alpha_ann": 8.15,
-      "r2": 0.4508,
-      "n_obs": 863
+      "beta_ibov": 0.302,
+      "beta_sp500": 0.567,
+      "alpha_ann": 9.96,
+      "r2": 0.4379,
+      "n_obs": 804
     },
     "14.438.229/0001-17": {
-      "beta_ibov": 0.7329,
-      "beta_sp500": 0.0135,
-      "alpha_ann": -2.74,
-      "r2": 0.667,
-      "n_obs": 863
+      "beta_ibov": 0.7332,
+      "beta_sp500": 0.0237,
+      "alpha_ann": -4.01,
+      "r2": 0.6388,
+      "n_obs": 804
     },
     "17.397.315/0001-17": {
-      "beta_ibov": 0.5923,
-      "beta_sp500": -0.083,
-      "alpha_ann": 15.1,
-      "r2": 0.665,
-      "n_obs": 863
+      "beta_ibov": 0.5716,
+      "beta_sp500": -0.0481,
+      "alpha_ann": 14.33,
+      "r2": 0.6549,
+      "n_obs": 804
     },
     "46.351.969/0001-08": {
       "beta_ibov": 0.2387,
@@ -136,18 +136,18 @@
       "n_obs": 792
     },
     "15.334.585/0001-53": {
-      "beta_ibov": 0.9649,
-      "beta_sp500": -0.0464,
-      "alpha_ann": 6.34,
-      "r2": 0.845,
-      "n_obs": 863
+      "beta_ibov": 0.962,
+      "beta_sp500": -0.0221,
+      "alpha_ann": 6.64,
+      "r2": 0.8421,
+      "n_obs": 804
     },
     "47.511.351/0001-20": {
-      "beta_ibov": 0.4254,
-      "beta_sp500": 0.3505,
-      "alpha_ann": 6.94,
-      "r2": 0.4684,
-      "n_obs": 863
+      "beta_ibov": 0.4166,
+      "beta_sp500": 0.3452,
+      "alpha_ann": 9.72,
+      "r2": 0.4531,
+      "n_obs": 804
     },
     "52.116.227/0001-09": {
       "beta_ibov": 0.1122,
@@ -164,25 +164,25 @@
       "n_obs": 804
     },
     "29.726.133/0001-21": {
-      "beta_ibov": 0.1377,
-      "beta_sp500": 0.0459,
-      "alpha_ann": 9.03,
-      "r2": 0.1541,
-      "n_obs": 863
+      "beta_ibov": 0.1562,
+      "beta_sp500": 0.0547,
+      "alpha_ann": 8.1,
+      "r2": 0.1762,
+      "n_obs": 804
     },
     "35.828.684/0001-07": {
-      "beta_ibov": 0.0471,
-      "beta_sp500": -0.0045,
-      "alpha_ann": 12.75,
-      "r2": 0.0523,
-      "n_obs": 863
+      "beta_ibov": 0.0424,
+      "beta_sp500": -0.0028,
+      "alpha_ann": 12.28,
+      "r2": 0.0375,
+      "n_obs": 804
     },
     "16.876.874/0001-47": {
-      "beta_ibov": 0.845,
-      "beta_sp500": -0.0194,
-      "alpha_ann": 8.49,
-      "r2": 0.722,
-      "n_obs": 863
+      "beta_ibov": 0.8373,
+      "beta_sp500": -0.0105,
+      "alpha_ann": 10.51,
+      "r2": 0.7042,
+      "n_obs": 804
     },
     "52.239.457/0001-57": {
       "beta_ibov": 0.0483,
@@ -206,11 +206,25 @@
       "n_obs": 562
     },
     "07.013.315/0001-12": {
-      "beta_ibov": 0.516,
-      "beta_sp500": -0.0111,
-      "alpha_ann": 7.71,
-      "r2": 0.3375,
-      "n_obs": 863
+      "beta_ibov": 0.5668,
+      "beta_sp500": -0.0181,
+      "alpha_ann": 10.16,
+      "r2": 0.3715,
+      "n_obs": 804
+    },
+    "14.812.722/0001-55": {
+      "beta_ibov": 0.0115,
+      "beta_sp500": 0.0429,
+      "alpha_ann": 15.96,
+      "r2": 0.022,
+      "n_obs": 804
+    },
+    "48.997.077/0001-04": {
+      "beta_ibov": 0.0314,
+      "beta_sp500": 0.0376,
+      "alpha_ann": 15.47,
+      "r2": 0.0259,
+      "n_obs": 603
     }
   },
   "funds": [
@@ -862,6 +876,56 @@
       "cdiCagrInception": null,
       "alphaVsCdi": null,
       "alphaVsIbov": 3.6406,
+      "error": false
+    },
+    {
+      "name": "AZ Quest Total Return FIC FI Fin Multimercado",
+      "cnpj": "14.812.722/0001-55",
+      "cnpjFmt": "14.812.722/0001-55",
+      "latestDate": "2026-03-25",
+      "latestQuota": 4.9926943,
+      "isDelayed": false,
+      "delayDays": 0,
+      "maxQuota": 4.9926943,
+      "maxQuotaDate": "2026-03-25",
+      "inceptionDate": "2012-01-23",
+      "anchorDate": "2026-03-25",
+      "anchor12m": "2025-03-25",
+      "anchor36m": "2023-03-25",
+      "anchor60m": "2021-03-25",
+      "cagr12": 19.94526675272037,
+      "cagr36": 16.10962214029772,
+      "cagr60": 14.227530618098339,
+      "cagrInception": 12.01812013083039,
+      "ibovCagrInception": 7.9915,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
+      "alphaVsIbov": 4.0266,
+      "error": false
+    },
+    {
+      "name": "Genoa Capital Sagres I FIF CIC Multimercado RL",
+      "cnpj": "48.997.077/0001-04",
+      "cnpjFmt": "48.997.077/0001-04",
+      "latestDate": "2026-03-25",
+      "latestQuota": 1.4892181,
+      "isDelayed": false,
+      "delayDays": 0,
+      "maxQuota": 1.54042265,
+      "maxQuotaDate": "2026-02-26",
+      "inceptionDate": "2023-09-28",
+      "anchorDate": "2026-03-25",
+      "anchor12m": "2025-03-25",
+      "anchor36m": "2023-03-25",
+      "anchor60m": "2021-03-25",
+      "cagr12": 19.61871526637684,
+      "cagr36": null,
+      "cagr60": null,
+      "cagrInception": 17.35383139777873,
+      "ibovCagrInception": 20.8532,
+      "cdiCagrInception": 12.6709,
+      "alphaVsCdi": 4.6829,
+      "alphaVsIbov": -3.4994,
       "error": false
     }
   ]
