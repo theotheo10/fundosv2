@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-17T16:13:43.135934+00:00",
+  "generatedAt": "2026-04-17T21:42:07.346385+00:00",
   "anchorDate": "2026-04-15",
   "ibov": {
     "cagr12": 53.03926703284911,
@@ -298,8 +298,8 @@
       "cagr60": 15.470724581816086,
       "cagrInception": 15.263431859736931,
       "ibovCagrInception": 8.4796,
-      "cdiCagrInception": 9.7711,
-      "alphaVsCdi": 5.4924,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": 6.7839,
       "error": false
     },
@@ -323,8 +323,8 @@
       "cagr60": null,
       "cagrInception": 18.735621863252106,
       "ibovCagrInception": 10.8047,
-      "cdiCagrInception": 11.7723,
-      "alphaVsCdi": 6.9633,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": 7.9309,
       "error": false
     },
@@ -348,8 +348,8 @@
       "cagr60": null,
       "cagrInception": 20.39465260231914,
       "ibovCagrInception": 15.9781,
-      "cdiCagrInception": 12.9805,
-      "alphaVsCdi": 7.4141,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": 4.4166,
       "error": false
     },
@@ -448,8 +448,8 @@
       "cagr60": 19.42653214988157,
       "cagrInception": 19.148416686364065,
       "ibovCagrInception": 10.1815,
-      "cdiCagrInception": 11.1702,
-      "alphaVsCdi": 7.9782,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": 8.9669,
       "error": false
     },
@@ -473,8 +473,8 @@
       "cagr60": 14.598548382116894,
       "cagrInception": 17.822653370244357,
       "ibovCagrInception": 10.1815,
-      "cdiCagrInception": 11.1702,
-      "alphaVsCdi": 6.6525,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": 7.6411,
       "error": false
     },
@@ -598,8 +598,8 @@
       "cagr60": null,
       "cagrInception": 32.06154120231728,
       "ibovCagrInception": 21.7033,
-      "cdiCagrInception": 12.8925,
-      "alphaVsCdi": 19.169,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": 10.3582,
       "error": false
     },
@@ -648,8 +648,8 @@
       "cagr60": null,
       "cagrInception": 22.659331109311797,
       "ibovCagrInception": 17.7165,
-      "cdiCagrInception": 12.9406,
-      "alphaVsCdi": 9.7188,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": 4.9429,
       "error": false
     },
@@ -673,8 +673,8 @@
       "cagr60": null,
       "cagrInception": 15.39443252143693,
       "ibovCagrInception": 23.0949,
-      "cdiCagrInception": 12.6971,
-      "alphaVsCdi": 2.6974,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": -7.7004,
       "error": false
     },
@@ -698,8 +698,8 @@
       "cagr60": null,
       "cagrInception": 24.755926427330067,
       "ibovCagrInception": 18.2041,
-      "cdiCagrInception": 12.9187,
-      "alphaVsCdi": 11.8373,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": 6.5518,
       "error": false
     },
@@ -748,8 +748,8 @@
       "cagr60": 14.49256685846041,
       "cagrInception": 13.682758155795472,
       "ibovCagrInception": 10.1815,
-      "cdiCagrInception": 11.1702,
-      "alphaVsCdi": 2.5126,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": 3.5012,
       "error": false
     },
@@ -798,8 +798,8 @@
       "cagr60": null,
       "cagrInception": 13.948019146588653,
       "ibovCagrInception": 23.0949,
-      "cdiCagrInception": 12.6971,
-      "alphaVsCdi": 1.251,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": -9.1468,
       "error": false
     },
@@ -823,8 +823,8 @@
       "cagr60": null,
       "cagrInception": 13.945757301237126,
       "ibovCagrInception": 19.8194,
-      "cdiCagrInception": 12.7461,
-      "alphaVsCdi": 1.1997,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": -5.8736,
       "error": false
     },
@@ -848,8 +848,8 @@
       "cagr60": null,
       "cagrInception": 13.634929079278969,
       "ibovCagrInception": 20.3733,
-      "cdiCagrInception": 12.7562,
-      "alphaVsCdi": 0.8787,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": -6.7384,
       "error": false
     },
@@ -923,8 +923,8 @@
       "cagr60": null,
       "cagrInception": 17.326852886350718,
       "ibovCagrInception": 23.4149,
-      "cdiCagrInception": 12.7035,
-      "alphaVsCdi": 4.6234,
+      "cdiCagrInception": null,
+      "alphaVsCdi": null,
       "alphaVsIbov": -6.0881,
       "error": false
     }
